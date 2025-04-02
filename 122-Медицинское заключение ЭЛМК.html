@@ -1,0 +1,410 @@
+<!--Начальная дата разработки 21.03.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинское заключение в ЭЛМК </title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{:
+write('''
+<style>
+h1, h2 {
+    margin: 0;
+    padding: 0;
+}
+
+.main-custom {
+    font-family: 'Times New Roman';
+    font-size: 1rem;
+}
+
+.h1-custom {
+    text-align: center;
+    margin-bottom: 1.2em;
+    font-size: 1.2em;
+}
+
+.h2-custom {
+    text-align: center;
+    margin-bottom: 1.1em;
+    font-size: 1.1em;
+}
+
+.section-custom:not(:last-child) {
+    margin-bottom: 1.5em;
+}
+
+
+.header-custom, .footer-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border: 1px solid #000;
+}
+
+.footer-custom--sign {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.shild {
+    display: flex;
+    border: 1px solid #000;
+    padding: 10px;
+}
+
+.shild--mo {
+    flex-direction: column;
+    width: 50%;
+    font-size: .6rem;
+}
+
+.shild--logo {
+    justify-content: center;
+    align-items: center;
+    width: 25%;
+    height: 50px;
+}
+
+</style>
+''')}
+
+{:
+eventInfoRef = db.getRecordEx(stmt=u"""
+  select o.name
+  from Event e
+           join Person p on e.execPerson_id = p.id and p.deleted = 0
+           join OrgStructure o on p.orgStructure_id = o.id and o.deleted = 0
+  where e.id = {eventId}
+""".format(eventId=event.id))
+if eventInfoRef:
+  currentOrgStructure = forceString(eventInfoRef.value('name'))
+else:
+  currentOrgStructure = ''
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<main class="main-custom">
+
+  <header class="header-custom">
+    <div class="shild shild--mo">
+      <div>
+        <b>{currentOrganisation.fullName}</b>
+      </div>
+      <div>
+        Адрес места нахождения:
+        <b>{currentOrganisation.address}</b>
+      </div>
+      <div>
+        Контакты: <b>{currentOrganisation.phone}</b>
+      </div>
+      <div>
+        <div>Номер и дата выдачи лицензии на осуществление медицинской деятельности:</div>
+      </div>
+      <div>
+        ОГРН: <b>{currentOrganisation.OGRN}</b>
+      </div>
+    </div>
+
+    <div class="shild shild--logo">
+      Логотип МО
+    </div>
+  </header>
+
+  <h1 class="h1-custom">
+    Медицинское заключение по результатам медицинского осмотра работника для предоставления в <br>
+    подсистему ЭЛМК от 11.01.2023
+  </h1>
+
+
+  <section>
+    <div>
+      Номер личной медицинской книжки <b>{action[u'Номер личной медицинской книжки']}</b>
+    </div>
+    <div>
+      Фамилия, имя, отчество (при наличии) работника <b>{client.fullName}</b>
+    </div>
+    <div>
+      Вид медицинского осмотра <b>{action[u'Вид медицинского осмотра']}</b>
+    </div>
+    <div>
+      Структурное подразделение (филиал), непосредственно осуществляющий медицинские осмотры:
+      <b>{currentOrgStructure}</b>
+    </div>
+    <div>
+      Наименование вида работы <b>{action[u'Наименование выполняемой работы']}</b>
+    </div>
+    <div>
+      Сведения о перенесенных инфекционных заболеваниях:
+      <b>
+        {action[u'Перенесенное заболевание']} 
+        {action[u'Сведения о перенесенном заболевании']}
+        ({action[u'Дата перенесенного заболевания']})
+      </b>
+    </div>
+    <div>
+      Заключение по результатам медицинского осмотра
+      <b>{action[u'Заключение по результатам медицинского осмотра']}</b>
+    </div>
+    <div>
+      Дата проведения очередного периодического медицинского осмотра
+      <b>{action[u'Дата проведения очередного периодического медицинского осмотра']}</b>
+    </div>
+  </section>
+
+  <section class="section-custom">
+    <h2 class="h2-custom">Сведения о профилактических прививках</h2>
+
+    <table width="100%" cellpadding="3" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Наименование</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- note здесь не понял какие пропы к каким колонкам относятся. поэтому пока так -->
+        <tr>
+          <td colspan="2">
+            {action[u'Сведения о профилактических прививках']}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            {action[u'Проведенные профилактические прививки']}
+          </td>
+        </tr>
+        <tr>
+          <td>{action[u'Дата вакцинации']}</td>
+          <td>
+            {action[u'Заболевание, против которого проведена профпрививка']}
+            {action[u'Порядковый номер вакцинации (ревакцинации)']}
+            {action[u'Признак повторной вакцинации (ревакцинации)']}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+
+  <section class="section-custom">
+    <h2 class="h2-custom">Осмотры врачей-специалистов</h2>
+
+    {: doctorPropNameList = [u'Cведения о результате проведения осмотра врача-специалиста1', u'Cведения о результате проведения осмотра врача-специалиста2', u'Cведения о результате проведения осмотра врача-специалиста3', u'Cведения о результате проведения осмотра врача-специалиста4']}
+    <table width="100%" cellpadding="3" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Наименование</th>
+          <th>Дата</th>
+          <th>Заключение</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      {for: doctorPropName in doctorPropNameList}
+        {: subAct = action[doctorPropName]}
+        {if: subAct.value}
+          <tr>
+            <td>
+              {subAct[u'Врач-специалист']}
+            </td>
+            <td>
+              {subAct[u'Дата осмотра']}
+            </td>
+            <td>
+              <div>{subAct[u'Заключение врача-специалиста']}</div>
+              {if: subAct[u'Примечание'].value}
+                  <div>Примечание: {subAct[u'Примечание']}</div>
+              {end:}
+            </td>
+          </tr>
+        {end:}
+      {end:}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section-custom">
+    {: researchPropNameList = [u'Результаты лабораторного исследования1', u'Результаты лабораторного исследования2', u'Результаты лабораторного исследования3', u'Результаты лабораторного исследования4', u'Результаты лабораторного исследования5', u'Результаты лабораторного исследования6']}
+    {: subActPropNameList = [u'Лабораторное исследование', u'Дата обследования', u'Заключение лабораторного обследования']}
+    <h2 class="h2-custom">Данные лабораторных обследований</h2>
+
+    <table width="100%" cellpadding="3" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Наименование</th>
+          <th>Дата</th>
+          <th>Заключение</th>
+        </tr>
+      </thead>
+      <tbody>
+        {for: researchPropName in researchPropNameList}
+          {:subAct = action[researchPropName]}
+          {if: subAct.value}
+            <tr>
+              {for: subActPropName in subActPropNameList}
+                <td>{subAct[subActPropName]}</td>
+              {end:}
+            </tr>
+          {end:}
+        {end:}
+      </tbody>
+    </table>
+  </section>
+
+
+  <section class="section-custom">
+    <h2 class="h2-custom">Данные инструментальных обследований</h2>
+
+    <table width="100%" cellpadding="3" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Наименование</th>
+          <th>Дата</th>
+          <th>Заключение</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{action[u'Вид инструментального обследования']}</td>
+          <td>{action[u'Дата исследования']}</td>
+          <td>{action[u'Заключение инструментального обследования']}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+
+<section>
+<!-- @formatter:off -->
+{: from library.Utils import forceString }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: sgn_action = db.getRecordEx(stmt="""
+  select html as h
+  from SignedIEMKDocument
+  where sign_date is not null
+    and sign_path is not null
+    and action_id = {actionId}
+    and person_id != 0
+    and template_id = 635
+    and deleted = 0
+  limit 1;
+  """.format(actionId=action.id))}
+
+{: flag_sgn = False}
+{: resultList = False}
+
+{:
+if sgn_action:
+    import paramiko
+    import re
+
+    flag_sgn = True
+    host = u'localhost'
+    port = 22
+    username = 'root'
+    password = 'shedF34A'
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(host, port=port, username=username, password=password)
+    snils = forceString(action.person.SNILS).replace('-', ' ').replace(' ', '')
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("""/opt/cprocsp/bin/amd64/certmgr -list -dn='{snils}'""".format(snils=snils))
+    ssh_stdout.channel.recv_exit_status()
+    lines = ssh_stdout.readlines()
+    result = ''.join(lines).decode('utf-8', 'ignore')
+
+    resultList = lines
+}
+
+{:
+subject = ''
+certificate = ''
+beg_valid_date = ''
+end_valid_date = ''
+
+beg_valid_pattern = u'Выдан'
+end_valid_pattern = u'Истекает'
+subject_pattern = u'Субъект'
+certificate_pattern =  u'Серийный номер'
+
+if resultList:
+    for item in resultList:
+      if certificate_pattern in item:
+          certificate = forceString(item).split(':')[1].strip()
+          certificate = certificate.split(u'0x', 1)[1]
+      if beg_valid_pattern in item:
+          beg_valid_date = forceString(item).split(':', 1)[1].strip().split(' ', 1)[0].replace('/', '')
+          beg_valid_date = beg_valid_date[0: 2] + '.' + beg_valid_date[2: 4] + '.' + beg_valid_date[4:]
+      if end_valid_pattern in item:
+          end_valid_date = forceString(item).split(':', 1)[1].strip().split(' ', 1)[0].replace('/', '')
+          end_valid_date = end_valid_date[0: 2] + '.' + end_valid_date[2: 4] + '.' + end_valid_date[4:]
+      if subject_pattern in item:
+          for elem in item.split(', '):
+              key, value = elem.split('=')
+              if key == 'CN':
+                  name = value
+              elif key == 'O':
+                  organisation = value
+}
+<!-- @formatter:on -->
+
+
+
+
+</section>
+
+  <footer class="footer-custom">
+    <div>
+      <div>Председатель врачебной комиссии (фамилия и инициалы):</div>
+      <div>
+        <b>{action.setPerson}</b>
+      </div>
+    </div>
+    {if: flag_sgn}
+      <div class="footer-custom--sign">
+        <table border="1" cellpadding="3" cellspacing="0">
+            <tr>
+                <td>
+                    <table border="0" style="font-size: 8pt;">
+                        <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                        <tr><td>Сертификат: {certificate}</td></tr>
+                        <tr><td>Владелец: {name}</td></tr>
+                        {if: organisation}
+                            <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                        {else:}
+                            <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                        {end:}
+                        <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+      </div>
+    {end:}
+  </footer>
+
+</main>
+</body>
+</html>

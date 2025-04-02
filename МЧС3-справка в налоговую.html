@@ -1,0 +1,552 @@
+<!-- изменил Пулин дата 24.02.2025 задача  -->
+<!-- изменил Пулин дата 10.02.2025 задача  -->
+<!-- изменил Пулин дата 24.01.2025 задача  -->
+<!-- изменил Пулин дата 14.01.2025 задача  -->
+<!-- изменил Пулин дата 17.12.2024 задача  -->
+<!-- изменил Пулин дата 12.12.2024 задача  -->
+<!-- изменил Пулин дата 06.12.2024 задача  -->
+<!-- изменил Пулин дата 05.12.2024 задача  -->
+<!-- изменил Пулин дата 04.12.2024 задача  -->
+<!-- изменил Пулин дата 03.12.2024 задача  -->
+<!-- изменил Пулин дата 29.11.2024 задача  -->
+<!-- изменил Пулин дата 30.09.2024 задача  -->
+<!--Начальная дата разработки 18.09.2024 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка для налоговой</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime}
+
+{: import base64 }
+{: import qrcode}
+{: from io import BytesIO}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    font-weight: 900;
+}
+body {
+    font-family: 'Courier New';
+    font-size: 12px;
+    /* note в документации указан размер шрифта в 16-18 пунктов. попробовать этот размер */
+    /* 16pt */
+}
+.barcode--custom {
+font-family: 'Code 3 de 9', '3 of 9 Barcode';
+font-size: 48px;
+}
+
+.pR {
+    padding-right: 10px;
+}
+.mB {
+    margin-bottom: 10px;
+}
+.line {
+    margin: 0 0 3px 0;
+}
+.remark {
+    font-size: 2em;
+}
+.page-break {
+    page-break-after: always;
+}
+@media print {
+    .hide {
+        display: none;
+    }
+}
+td {
+    margin-bottom: 3px
+}
+</style>
+''')}
+
+{:
+# <!--  отрисовка линии пустых квадратов   -->
+def rendLineEmptySquare(amount):
+  for _ in range(amount):
+    write(r"""
+        <td width="1%">
+            <table cellpadding="0" cellspacing="0" border="1">
+                <tr>
+                    <td style="padding: 0 0.5rem; color: #fff">1</td>
+                </tr>
+            </table>
+        </td>
+    """)
+
+# <!-- отрисовка строки в квадратах -->
+def rendTextInSquare(text):
+  for index, letter in enumerate(text):
+    write(r"""
+        <td width="1%">
+            <table cellpadding="0" cellspacing="0" border="1">
+                <tr>
+                    <td style="padding: 0 3px">{letter}</td>
+                </tr>
+            </table>
+        </td>
+    """.format(letter=letter))
+}
+
+{:
+def getDocumentCode(vistaDocumentTypeId):
+    code = ''
+    if vistaDocumentTypeId:
+        ref = db.getRecordEx(stmt=u"""
+            select code
+            from rbNalogDocumentType
+            where vistaDocumentTypeId = {vistaDocumentTypeId}
+        """.format(vistaDocumentTypeId=vistaDocumentTypeId))
+        if ref:
+            code = forceString(ref.value('code'))
+    return code
+}
+
+
+{:
+# <!-- note данные документа -->
+orgINN = u'7813045836'
+orgKPP = u'781301001'
+documentNumber = forceString(action[u'Номер медицинской справки']).rjust(12, u'0')
+documentCorrect = forceString(action[u'Номер корректировки']).rjust(12, u'0')
+documentYear = currentDate.toString('yyyy')
+taxpayer = action[u'Услуга оказана налогоплательщику'].value
+if taxpayer == u'да':
+    isTaxpayerSame = 1
+else:
+    isTaxpayerSame = 0
+}
+
+{:
+payerINN = action[u'ИНН налогоплательщика'].value
+clientDocumentCode = getDocumentCode(client.document.documentTypeCode)
+if isTaxpayerSame:
+    payerLastName = client.lastName
+    payerFirstName = client.firstName
+    payerPatrName = client.patrName
+    payerBirthDate = client.birthDate
+    payerDocumentCode = clientDocumentCode
+    payerDocumentSerial = client.document.serial
+    payerDocumentNumber = client.document.number
+    payerDocumentDate = client.document.date
+else:
+    if action[u'ФИО налогоплательщика'].value:
+        fioList = forceString(action[u'ФИО налогоплательщика'].value).split(' ')
+    else:
+        fioList = []
+    if len(fioList) > 1:
+        payerLastName = fioList[0]
+        payerFirstName = fioList[1]
+        payerPatrName = fioList[2]
+    else:
+        payerLastName = ''
+        payerFirstName = ''
+        payerPatrName = ''
+    payerBirthDate = action[u'Дата рождения налогоплательщика'].value
+
+    payerDocumentCode =  ''
+    if action[u'Код вида документа'].value:
+        list = forceString(action[u'Код вида документа'].value).split(' ', 1)
+        if len(list) > 0:
+            payerDocumentCode = list[0]
+
+    payerDocumentSerial = action[u'Серия документа'].value
+    payerDocumentNumber = action[u'Номер документа'].value
+    payerDocumentDate = action[u'Дата выдачи документа'].value
+}
+
+{:
+currentYearStartDate = datetime.now().strftime('%Y') + '.01' + '.01'
+# <!-- note запрос на получение информации по оплате   -->
+serviceRefList = db.getRecordList(stmt=u"""
+    select e.id                               as eventId,
+           DATE_FORMAT(e.setDate, '%Y.%m.%d') as eventSetDate,
+           DATE_FORMAT(e.setDate, '%d.%m.%Y') as eventSetDateFormated,
+           rbS.name                           as serviceName,
+           ai.sum                        as eventPayedSum,
+           ai.price                           as servicePrice,
+           ai.amount                          as serviceAmount
+    from Event e
+             join EventType et on e.eventType_id = et.id and e.deleted = 0
+             join Account_Item ai on e.id = ai.event_id and ai.deleted = 0
+             join Account ac on ai.master_id = ac.id and ac.deleted = 0
+             join rbService rbS on ai.service_id = rbS.id
+             join Contract_Tariff ct on ai.tariff_id = ct.id
+             join Contract c on ct.master_id = c.id and c.finance_id = 4
+    where e.client_id = {clientId}
+      and DATE(e.setDate) >= DATE(CONCAT_WS('-', '2024', '01', '01'))
+      and DATE(e.setDate) <= DATE(CONCAT_WS('-', '2024', '12', '31'))
+""".format(clientId=client.id, currentYearStartDate=currentYearStartDate))
+
+if serviceRefList and len(serviceRefList)>0:
+    totalPayed = forceInt(serviceRefList[0].value('totalPayed'))
+else:
+    totalPayed = 0
+}
+
+{:
+SEPARATOR = u';'
+codeString = u'ИНН:' + orgINN + SEPARATOR + u'КПП:' + orgKPP + SEPARATOR + u'Номер справки:' + documentNumber + SEPARATOR + u'Номер корректировки:' + documentCorrect + SEPARATOR + u'Отчетный год:' + documentYear + SEPARATOR + u'Данные медицинской организации:' + forceString(currentOrganisation.fullName) + SEPARATOR + u'Данные плательщика; Фамилия:' + payerLastName + SEPARATOR + u'Имя:' + payerFirstName + SEPARATOR + u'Отчество:' + payerPatrName + SEPARATOR + u'ИНН:' + payerINN + SEPARATOR + u'Дата рождения:' + payerBirthDate + SEPARATOR + u'Код вида документа:' + payerDocumentCode + SEPARATOR + u'Серия:' + payerDocumentSerial + SEPARATOR + u'номер:' + payerDocumentNumber + SEPARATOR + u'Дата выдачи:' + payerDocumentDate + SEPARATOR + u'Налогоплательщик и пациент являются одним лицом:' + forceString(isTaxpayerSame) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 1:' + forceString(totalPayed) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 2:' + forceString(0)
+
+img = qrcode.make(codeString)
+buffered = BytesIO()
+img.save(buffered, format="PNG")
+img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+}
+
+{:
+if currentOrganisation.shortName == u'СПб ГБУЗ "ГОРОДСКАЯ ДЕТСКАЯ СТОМАТОЛОГИЧЕСКАЯ ПОЛИКЛИНИКА N 6"':
+    officialPersonLastName = u'Кудрявцева'
+    officialPersonFirstName = u'Татьяна'
+    officialPersonPatrName = u'Владимировна'
+else:
+    officialPersonLastName = currentPerson.lastName
+    officialPersonFirstName = currentPerson.firstName
+    officialPersonPatrName = currentPerson.patrName
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="25%">
+            <div class="barcode--custom">*26901015*</div>
+            <div>26901015</div>
+        </td>
+        <td width="59%">
+            <div>
+                ИНН <b>7813045836</b>
+            </div>
+            <div>
+                КПП <b>781301001</b> Стр. <b>001</b>
+            </div>
+        </td>
+        <td width="1%">
+            <div style="white-space: nowrap; font-size: 8pt">
+                Приложение № 1 <br>
+                к приказу ФНС России <br>
+                от «08» ноября 2023 г. <br>
+                № ЕА-7-11/824
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="3"><b>Форма по КНД 1151156</b></td>
+    </tr>
+</table>
+
+<div align="center" class="h1">
+    Справка <br>
+    об оплате медицинских услуг для представления <br>
+    в налоговый орган
+</div>
+
+<br>
+
+<table width="100%" cellpadding="0" cellspacing="0" class="mB">
+    <tr>
+        <td class="pR">
+            <table cellpadding="0" cellspacing="0">
+                <tr>
+                    <td valign="middle" class="pR">Номер справки <b>{documentNumber}</b></td>
+                </tr>
+            </table>
+        </td>
+        <td class="pR">
+            <table cellpadding="0" cellspacing="0">
+                <tr>
+                    <td valign="middle" class="pR">
+                        Номер корректировки
+                        <b>{forceString(action[u'Номер корректировки']).rjust(3, u'0')}</b>
+                    </td>
+
+                </tr>
+            </table>
+        </td>
+        <td align="right">
+            <table cellpadding="0" cellspacing="0">
+                <tr>
+                    <td valign="middle" class="pR">
+                        Отчетный год
+                        {if: u'Отчетный период, год' in action}
+                            {if: action[u'Отчетный период, год'].value}
+                                <b>{action[u'Отчетный период, год'].value}</b>
+                            {else:}
+                                <b>2024</b>
+                            {end:}
+                        {end:}
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div>
+    Данные медицинской организации / индивидуального предпринимателя, осуществляющего медицинскую деятельность:
+</div>
+<p class="line"><b>{currentOrganisation.fullName}</b></p>
+
+<div>
+    Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее – налогоплательщик):
+</div>
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="1%" style="white-space: nowrap">Фамилия&nbsp;</td>
+        <td><b>{payerLastName}</b></td>
+    </tr>
+    <tr>
+        <td width="1%" style="white-space: nowrap">Имя&nbsp;</td>
+        <td><b>{payerFirstName}</b></td>
+    </tr>
+    <tr>
+        <td width="1%" style="white-space: nowrap">Отчество&nbsp;</td>
+        <td><b>{payerPatrName}</b></td>
+    </tr>
+    <tr>
+        <td>ИНН<sup>2</sup></td>
+        <td><b>{payerINN}</b></td>
+        <td width="50%">Дата рождения <b>{payerBirthDate}</b></td>
+    </tr>
+</table>
+
+<div>Сведения о документе, удостоверяющем личность:</div>
+<table width="100%" cellpadding="0" cellspacing="0" class="line">
+    <tr>
+        <td width="1%" style="white-space: nowrap;">Код вида документа&nbsp;</td>
+        <td width="19%"><b>{payerDocumentCode}</b></td>
+        <td>
+            Серия и номер <b>{payerDocumentSerial}</b> <b>{payerDocumentNumber}</b>
+        </td>
+    </tr>
+    <tr>
+        <td>Дата выдачи</td>
+        <td colspan="2"><b>{payerDocumentDate}</b></td>
+    </tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" class="line">
+    <tr>
+        <td valign="middle">Налогоплательщик и пациент являются одним лицом</td>
+        <td>
+            <b>{isTaxpayerSame}</b>
+        </td>
+    </tr>
+    <tr>
+        <td width="1%" style="white-space: nowrap">Сумма расходов на оказанные медицинские услуги по коду услуги «1»&nbsp;</td>
+        <td>
+            {: total1 = action[u'Сумма расходов по коду услуги «1»'].value}
+            {: totalList1 = forceString(total1).split('.')}
+            <b>{totalList1[0] if len(totalList1) > 0 else '00'}</b> руб.
+            <b>{totalList1[1] if len(totalList1) > 1 else '00'}</b> коп.
+        </td>
+    </tr>
+    <tr>
+        <td>Сумма расходов на оказанные медицинские услуги по коду услуги «2»</td>
+        <td>
+            {if: u'Сумма расходов по коду услуги «2»' in action}
+                {: total2 = action[u'Сумма расходов по коду услуги «2»'].value}
+                {: totalList2 = forceString(total2).split('.')}
+            {else:}
+                {: totalList2 = ['', '']}
+            {end:}
+            {: total2 = action[u'Сумма расходов по коду услуги «2»'].value}
+            {: totalList2 = forceString(total2).split('.')}
+            <b>{totalList2[0] if len(totalList2) > 0 else '00'}</b> руб.
+            <b>{totalList2[1] if len(totalList2) > 1 else '00'}</b> коп.
+        </td>
+    </tr>
+</table>
+
+<table width="100%" cellpadding="5" cellspacing="0" border="1" class="line">
+    <tr>
+        <!-- NOTE левая-->
+        <td width="50%">
+            <div style="font-weight: 600" align="center">
+                Достоверность и полноту сведений, указанных <br>
+                в настоящей справке, подтверждаю:
+            </div>
+            <div>
+                <b>{officialPersonLastName}</b> <br>
+                <b>{officialPersonFirstName}</b> <br>
+                <b>{officialPersonPatrName}</b>
+            </div>
+            <div>
+                Подпись {'_' * 15} Дата <b>{currentDate}</b>
+            </div>
+            <div>
+                Справка составлена на <b>002</b> страницах
+            </div>
+        </td>
+        <!-- NOTE правая -->
+        <td>
+            <div>
+                <b>Зона QR-кода</b>
+                <div align="center"><img src="data:image/png;base64,{img_str}" width="100" alt="qr"></div>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div class="remark">
+    <div> <sup>1</sup> Отчество указывается при наличии (относится ко всем листам документа).</div>
+    <div> <sup>2</sup> ИНН указывается при наличии.</div>
+</div>
+
+<div class="page-break"></div>
+<div class="hide">
+    <hr>
+</div>
+
+<!-- NOTE Вторая страница Данные пациента -->
+
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="25%">
+            <div class="barcode--custom">*26901015*</div>
+            <div>26901015</div>
+        </td>
+        <td width="59%">
+            <div>
+                ИНН <b>7813045836</b>
+            </div>
+            <div>
+                КПП <b>781301001</b> Стр. <b>002</b>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<br>
+<div>
+    Данные физического лица, которому оказаны медицинские услуги<sup>1</sup> :
+</div>
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="1%" style="white-space: nowrap">Фамилия&nbsp;</td>
+        <td><b>{client.lastName}</b></td>
+    </tr>
+    <tr>
+        <td width="1%" style="white-space: nowrap">Имя&nbsp;</td>
+        <td><b>{client.firstName}</b></td>
+    </tr>
+    <tr>
+        <td width="1%" style="white-space: nowrap">Отчество&nbsp;</td>
+        <td><b>{client.patrName}</b></td>
+    </tr>
+    <tr>
+        <td>ИНН<sup>2</sup></td>
+        <td><b></b></td>
+        <td width="50%">Дата рождения <b>{client.birthDate}</b></td>
+    </tr>
+</table>
+
+<div>Сведения о документе, удостоверяющем личность:</div>
+<table width="100%" cellpadding="0" cellspacing="0" class="line">
+    <tr>
+        <td>Код вида документа</td>
+        <td><b>{clientDocumentCode}</b></td>
+        <td>
+            Серия и номер <b>{client.document.serial}</b> <b>{client.document.number}</b>
+        </td>
+    </tr>
+    <tr>
+        <td>Дата выдачи</td>
+        <td colspan="2"><b>{client.document.date}</b></td>
+    </tr>
+</table>
+
+
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="50%">
+            <table width="100%" cellpadding="5" cellspacing="0" border="1" class="line">
+                <tr>
+                    <!-- NOTE левая-->
+                    <td>
+                        <div style="font-weight: 600" align="center">
+                            Достоверность и полноту сведений, указанных <br>
+                            в настоящей справке, подтверждаю:
+                        </div>
+                        <div>
+                            <b>{officialPersonLastName}</b> <br>
+                            <b>{officialPersonFirstName}</b> <br>
+                            <b>{officialPersonPatrName}</b>
+                        </div>
+                        <div>
+                            Подпись {'_' * 15} Дата <b>{currentDate}</b>
+                        </div>
+                        <div>
+                            Справка составлена на <b>002</b> страницах
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div style="page-break-after: always"></div>
+<br>
+<br>
+<br>
+<hr>
+<h3>Список услуг оказанных пациенту</h3>
+{if: serviceRefList}
+    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+        <tr>
+            <td>Дата обращения</td>
+            <td>Название услуги</td>
+            <td>Цена услуги</td>
+            <td>Количество</td>
+            <td>Стоимость</td>
+        </tr>
+        {: total = 0}
+        {for: serviceRef in serviceRefList}
+            {: servicePrice = forceInt(serviceRef.value('servicePrice'))}
+            {: serviceAmount = forceInt(serviceRef.value('serviceAmount'))}
+            {: total += (servicePrice * serviceAmount)}
+            <tr>
+                <td>{forceString(serviceRef.value('eventSetDateFormated'))}&nbsp;</td>
+                <td>{forceString(serviceRef.value('serviceName'))}</td>
+                <td>{servicePrice}</td>
+                <td>{serviceAmount}</td>
+                <td>{servicePrice * serviceAmount}</td>
+            </tr>
+        {end:}
+        <tr>
+            <td colspan="4" align="right"><b>Всего</b></td>
+            <td><b>{total}</b></td>
+        </tr>
+    </table>
+
+{end:}
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!-- изменил Пулин дата 19.03.2025 задача SUP-50529 Перенести шаблон СЭМД направление с ГП 122 на КПТД -->
+<!--Разработка: ? -->
+<!--Доработка: Холодов Александр Андреевич -->
+<!--Контекст печати: f025  -->
+
+<HTML lang="ru">
+<head>
+  <title>Направление</title>
+{: import json}
+{: from PyQt4 import QtGui }
+{: from library.Utils import forceString, forceInt}
+{: db = QtGui.qApp.db }
+
+{:numbers = []}
+{:all_all = []}
+
+{setPageSize('A4')}
+{setOrientation('P')}
+{setMargins(5)}
+
+{:
+write('''
+<style>
+.nowrap {
+    white-space: nowrap;
+}
+</style>
+''')}
+
+{:PolicyNumber = unicode(client.policy.number)}
+{:dl = len(PolicyNumber) if PolicyNumber else 0}
+
+{:MKB = unicode(event.policlinicReferral.mkb)}
+
+{:
+referralRefList = db.getRecordList(stmt="""
+  SELECT r.id,
+         r.createPerson_id,
+         DATE_FORMAT(r.date, '%d.%m.%Y') as dateRef,
+         r.date,
+         r.notes,
+         r.client_id,
+         r.number,
+         r.event_id,
+         r.hospDate,
+         r.netrica_id,
+         r.MKB,
+         r.relegateOrgTo_id,
+         r.person,
+         r.ticketNumber,
+         r.speciality_id,
+         r.type,
+         o.fullName as relegateOrgName,
+         o.shortName as relegateOrgShortName,
+         o.address as relegateOrgAddress
+  FROM Referral r
+           JOIN Organisation o on r.relegateOrg_id = o.id
+  WHERE client_id = {clientId}
+    AND number != ''
+    AND r.deleted = 0
+  ORDER BY number;
+""".format(clientId = client.id))
+}
+
+
+{:
+if referralRefList:
+  referralNumbers = []
+  for ref in referralRefList:
+    title = forceString(ref.value('number')) + '; ' + forceString(ref.value('relegateOrgShortName')) + ' (' + forceString(ref.value('dateRef')) + ')'
+    referralNumbers.append(title)
+
+  dial = dialogs.dialList(u"Выберите номер направления", referralNumbers, 0)
+  selectedReferralNumber = dial.getVar().split('; ')[0]
+  currentReferralRefList = filter(lambda x: selectedReferralNumber == forceString(x.value('number')), referralRefList)
+  currentReferralRef = currentReferralRefList[0] if len(currentReferralRefList) > 0 else None
+
+
+if currentReferralRef:
+  netr_id = forceString(currentReferralRef.value('netrica_id'))
+  mkb = forceString(currentReferralRef.value('MKB'))
+  id_kuda = forceString(currentReferralRef.value('relegateOrgTo_id'))
+  napr_date = forceString(currentReferralRef.value('date'))
+  comment = forceString(currentReferralRef.value('notes'))
+  otpravil = forceString(currentReferralRef.value('person'))
+  commissionDate = forceString(currentReferralRef.value('ticketNumber'))
+  to_organisation = forceString(currentReferralRef.value('relegateOrgName'))
+  to_organisation_address = forceString(currentReferralRef.value('relegateOrgAddress'))
+}
+
+{:
+chiefLastName = ''
+chiefFirstName = ''
+chiefPatrName = ''
+org_id = event.execPerson.orgStructure.id
+if org_id:
+  chiefRef = db.getRecordEx(stmt=u"""
+    SELECT
+        p.lastName,
+        p.firstName,
+        p.patrName
+    FROM OrgStructure o
+    JOIN Person p on o.chief_id = p.id
+    WHERE o.id = {org_id}
+  """.format(org_id=org_id))
+  if chiefRef:
+    chiefLastName = forceString(chiefRef.value('lastName'))
+    chiefFirstName = forceString(chiefRef.value('firstName'))
+    chiefPatrName = forceString(chiefRef.value('patrName'))
+}
+
+{: dial1 = dialogs.dialString(u'Введите обоснование направления', 'default string' ) }
+{: dial2 = dialogs.dialList(u'Выберите нужный вариант направления', [u'госпитализация',u'восстановительное лечение',u'обследование',u'консультация']) }
+{: str = dial1.getVar()}
+{: str1 = dial2.getVar()}
+</head>
+
+<body style="font-family: 'Times New Roman'; font-size: 10pt;">
+
+<TABLE BORDER=0 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Times New Roman; font-size: 10pt; color: black">
+    <TR>
+      <TD WIDTH="40%" align="center" STYLE="font-family: Times New Roman; font-size: 10pt; color: black"> <b>Министерство здравоохранения <br>
+                                                                 Российской Федерации</b>
+      </td>
+      <TD WIDTH="40%">
+      </td>
+      <TD WIDTH="20%" align="center" style="font-size: 6pt">Медицинская документация<br>
+        Форма № 057/у-04<br>
+        утверждена Приказом<br>
+        Минздравсоцразвития России<br>
+        от 22.11.2004 г. № 255
+      </td>
+    </tr>
+    <tr>
+      <TD WIDTH="40%" align="center" STYLE="font-family: Times New Roman; font-size: 10pt; color: black">{currentOrganisation.fullName}<br>
+        {currentOrganisation.address}<BR/>
+      </TD>
+      <TD WIDTH="40%">
+      </td>
+      <TD WIDTH="20%" align="center">
+       Код {'_' * 10}
+      </td>
+    </tr>
+  </table>
+
+
+  <table BORDER=0 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-size: 10pt; color: black">
+    <tr>
+      <td width="10%">
+        Код ОГРН
+      </td>
+      <td width="90%">
+        <table  cellpadding="3" cellspacing="0" border="1">
+          <tr>
+            {for: i in range(len(currentOrganisation.OGRN))}
+            <td align="left" valign="middle">
+              {currentOrganisation.OGRN[i]}
+            </td>
+            {end:}
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <TABLE BORDER=0 WIDTH="100%" cellpadding="3" cellspacing="0">
+    <tr>
+      <td STYLE="font-size: 16pt;">
+        <center><b>НАПРАВЛЕНИЕ ОТ {currentDate} № {netr_id}</b></center>
+      </td>
+    </tr>
+    <tr>
+      <td STYLE="font-size: 12pt;">
+        {if: str1 == u'госпитализация'}
+        <center><b>на госпитализацию</b></center>
+        {elif: str1 == u'восстановительное лечение'}
+        <center><b>на восстановительное лечение</b></center>
+        {elif: str1 == u'обследование'}
+        <center><b>на обследование</b></center>
+        {elif: str1 == u'консультация'}
+        <center><b>на консультацию</b></center>
+        {end:}
+      </td>
+    </tr>
+    <tr>
+      <td STYLE="font-size: 14pt;">
+        <center><b>{to_organisation}</b></center>
+      </td>
+    </tr>
+    <tr>
+      <td STYLE="font-size: 12pt;">
+        <center>{to_organisation_address}</center>
+      </td>
+    </tr>
+
+  </table>
+  <br>
+  <TABLE BORDER=0 WIDTH="100%" cellpadding="3" cellspacing="0">
+    <tr>
+      <TD width="30%" align="left">
+        1.Номер страхового полиса ОМС:
+      </td>
+      <TD width="70%" align="left">
+        <table  cellpadding="3" cellspacing="0" border="1">
+          <tr>
+            {:n = 0}
+            {for: i in range(dl)}
+              <td align="left" valign="middle">{PolicyNumber[n]}</td>
+            {:n = n+1}
+            {end:}
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td  width="30%" align="left">
+        2.Код льготы:
+      </td>
+      <td  width="70%" align="left">
+        <table  cellpadding="3" cellspacing="0" border="1">
+          <tr>
+            <td>&nbsp;&nbsp;</td>
+            <td>&nbsp;&nbsp;</td>
+            <td>&nbsp;&nbsp;</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td width="30%" align='left'>
+        3. Фамилия, имя, отчество:
+      </td>
+      <td width="70%">
+        <b>{client.lastName} {client.firstName} {client.patrName}</b>
+      </td>
+    </tr>
+    <tr>
+      <td width="30%" align='left'>
+        4. Дата рождения:
+      </td>
+      <td>
+        <b>{client.birthDate} ({client.age})</b>
+      </td>
+    </tr>
+    <tr>
+      <td width="30%" align='left'>
+        5. Адрес постоянного места жительства:
+      </td>
+        <td STYLE="font-size: 12pt;">
+        {if: client.locAddress}
+          {if: client.locAddress}<big><b>{client.locAddress}</b></big>{end:}</font><br/>
+        {else:}
+          <hr>
+        {end:}
+      </td>
+    </tr>
+    <tr>
+      <td width="30%" align='left'>
+        6. Место работы, должность:
+      </td>
+      <td width="70%">
+        {if: client.work}
+          <big><b>{client.work.shortName}, {client.work.post}</b></big>
+        {else:}
+          <hr>
+        {end:}
+      </td>
+    </tr>
+    <tr>
+      <td width="30%">
+        7. Код диагноза по МКБ:
+      </td>
+      <td width="70%" align='left'>
+        <table  cellpadding="3" cellspacing="0" border="1">
+          <tr>
+            {if: mkb}
+              {for: i in range(len(mkb))}
+                <td valign="middle">{mkb[i]}</td>
+              {end:}
+            {end:}
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align='left'>
+        8. Обоснование направления:
+      </td>
+            {if: str != 'default string'}
+            <td>{str}</td>
+            {else:}
+            <td></td>
+            {end:}
+
+    </tr>
+  </table>
+  <br>
+  <br>
+    <TABLE BORDER=0 WIDTH="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="1%" valign="top">
+            <div class="nowrap">
+              Медицинский работник, <br/>
+              направивший больного
+            </div>
+          </td>
+          <td valign="top" align='center'>
+            <div align="center"><b>{action.person.post}</b></div>
+            <div align="center"><sup>(должность)</sup></div>
+          </td>
+          <td valign="top" align='center'>
+            <div><b>{action.person.shortName}</b></div>
+            <div><sup>(фио)</sup></div>
+          </td>
+          <td width="1%" valign="top" align='center' class="nowrap">
+            <div>/___________________/</div>
+            <div><sup>подпись</sup></div>
+          </td>
+        </tr>
+
+        <tr>
+          <td valign="top">
+            <div class="nowrap">Заведующий отделением</div>
+          </td>
+          <td valign="top" align='center'>
+            &nbsp;
+          </td>
+          <td valign="top" align='center'>
+            <b>{chiefLastName}</b>
+            <b>{chiefFirstName}</b>
+            <b>{chiefPatrName}</b>
+          </td>
+          <td valign="top" align='center' class="nowrap">
+            <div>/___________________/</div>
+            <div><sup>подпись</sup></div>
+          </td>
+        </tr>
+      </table>
+
+{if: commissionDate}
+    <div><b>Предварительная запись:</b> {commissionDate}</div>
+{end:}
+
+{if: comment or action[u'Примечание'].value}
+    <div><b>Комментарий:</b>
+      {comment}
+      {if: action[u'Примечание'].value}
+          {action[u'Примечание']}
+      {end:}
+    </div>
+{end:}
+</body><!--Начальная дата разработки 19.03.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1"></div>
+
+  <table style="margin-top:20px">
+      <tr>
+      <td>{currentDate}</td>
+      <td style="padding:20px"></td>
+      <td width="1%" align="center">
+        <div>{'_' * 15}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+      <td style="padding:20px"></td>
+      <td style="white-space:nowrap" align="center">
+        <div>{action.person.fullName}</div>
+        <div><sup>(Ф.И.О. медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

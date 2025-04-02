@@ -1,0 +1,168 @@
+<!--Начальная дата разработки 21.03.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.barcode--custom {
+  font-family: 'Code 3 de 9';
+  font-size: 30px;
+}
+
+.upper-case {
+    text-transform: uppercase;
+}
+</style>
+''')}
+
+{:
+ELNQuery = db.query(u"""
+  select DATE_FORMAT(t.begDate, '%d.%m.%Y')                  as begDatePeriod,
+         DATE_FORMAT(t.endDate, '%d.%m.%Y')                  as endDatePeriod,
+         tid.serial                                          as serial,
+         tid.number                                          as number,
+         DATE_FORMAT(tid.issueDate, '%d.%m.%Y')              as issueDate,
+         IF(tid.duplicate = 0, 'первичный', 'дубликат')      as type,
+         IF(tid.org_id is null, 'ГБУЗ "КБ №3"', o.shortName) as organisation,
+         IF(t.OGRN = '', '1032304930525', t.OGRN)            as ogrn,
+         CASE t.state
+             WHEN 0 THEN 'Открыт'
+             WHEN 1 THEN 'Закрыт'
+             WHEN 2 THEN 'Продлён'
+             WHEN 3 THEN 'Передан'
+             WHEN 4 THEN 'Аннулирован'
+             END                                             as status,
+         CONCAT_WS(' ', p.lastName, p.firstName, p.patrName) as doctorFio
+  from TempInvalid t
+           join TempInvalidDocument tid on t.id = tid.master_id and tid.deleted = 0 and t.deleted = 0
+           left join Person p on t.person_id = p.id and p.deleted = 0
+           left join Organisation o on tid.org_id = o.id and o.deleted = 0
+  where t.event_id = {eventId}
+  order by t.id desc ;
+""".format(eventId=event.id))
+
+if ELNQuery.next():
+  ELNRef = ELNQuery.record()
+
+  number = forceString(ELNRef.value('number'))
+  begDatePeriod = forceString(ELNRef.value('begDatePeriod'))
+  endDatePeriod = forceString(ELNRef.value('endDatePeriod'))
+  serial = forceString(ELNRef.value('serial'))
+  number = forceString(ELNRef.value('number'))
+  issueDate = forceString(ELNRef.value('issueDate'))
+  type = forceString(ELNRef.value('type'))
+  organisation = forceString(ELNRef.value('organisation'))
+  ogrn = forceString(ELNRef.value('ogrn'))
+  status = forceString(ELNRef.value('status'))
+  doctorFio = forceString(ELNRef.value('doctorFio'))
+else:
+  number = ''
+  begDatePeriod = ''
+  endDatePeriod = ''
+  serial = ''
+  number = ''
+  issueDate = ''
+  type = ''
+  organisation = ''
+  ogrn = ''
+  status = ''
+  doctorFio = ''
+
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="50%">
+      <div>
+        {if: number != ''}
+          <div align="center" class="barcode--custom">*{number}*</div>
+          <div align="center">*{number}*</div>
+        {end:}
+      </div>
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
+
+<div class="main">
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>Номер ЭЛН</td>
+      <td>{number}</td>
+    </tr>
+    <tr>
+      <td>Наименование МО</td>
+      <td>{organisation}</td>
+    </tr>
+    <tr>
+      <td>ОГРН МО</td>
+      <td>{ogrn}</td>
+    </tr>
+    <tr>
+      <td>Фио застрахованного</td>
+      <td class="upper-case">{event.client.fullName}</td>
+    </tr>
+    <tr>
+      <td>СНИЛС</td>
+      <td>{client.SNILS}</td>
+    </tr>
+    <tr>
+      <td>Период трудоспособности</td>
+      <td>
+        {begDatePeriod} - {endDatePeriod}
+      </td>
+    </tr>
+    <tr>
+      <td>Фио врача</td>
+      <td class="upper-case">{doctorFio}</td>
+    </tr>
+    <tr>
+      <td>Статус</td>
+      <td>{status}</td>
+    </tr>
+    <tr>
+      <td>Явиться на прием</td>
+      <td>{issueDate}</td>
+    </tr>
+    <tr>
+      <td>Тип ЭЛН</td>
+      <td>{type}</td>
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

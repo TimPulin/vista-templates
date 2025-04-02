@@ -1,0 +1,768 @@
+<!--Начальная дата разработки 20.03.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка для налоговой</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(5)}
+{: setLeftMargin(5)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime}
+
+{: import base64 }
+{: import qrcode}
+{: from io import BytesIO}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 18px;
+    font-size: 12px;
+    font-weight: 900;
+}
+body {
+    font-family: 'Courier New';
+    font-size: 10px;
+}
+
+.barcode--custom {
+  font-family: 'Code 3 de 9';
+  font-size: 30px;
+}
+
+.remark {
+    font-size: 8px;
+}
+
+.page-break {
+    page-break-after: always;
+}
+
+.bold {
+    font-weight: 900;
+}
+
+.vertical-spacer {
+    font-size: 17px;
+}
+
+.td-text {
+    vertical-align: middle;
+}
+
+.line > td {
+    padding-bottom: 5px;
+}
+
+.dot {
+    vertical-align: bottom;
+    text-align: center;
+    font-weight: 900;
+}
+
+.square-base {
+    padding: 1px 3px 0 3px;
+    font-family: 'monospace';
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.grid-item {
+    line-height: 1px;
+    color: #fff;
+}
+
+.black-square {
+    color: #000;
+    font-size: 40px;
+    line-height: 34px;
+}
+
+@media print {
+    .hide {
+        display: none;
+    }
+}
+</style>
+''')}
+
+{:
+# <!-- note  отрисовка линии пустых квадратов   -->
+def rendLineEmptySquare(amount):
+  for _ in range(amount):
+    write(r"""
+        <td width="1%">
+            <table cellpadding="0" cellspacing="0" border="1">
+                <tr>
+                    <td style="padding: 1px 0 0 1px">&nbsp;&nbsp;</td>
+                </tr>
+            </table>
+        </td>
+    """)
+
+
+# <!-- note квадраты с содержанием -->
+def rendTextInSquare(text):
+  for index, letter in enumerate(text):
+    if letter == ' ':
+      newLetter = r'&nbsp;'
+    else:
+      newLetter = letter
+
+    write(r"""
+        <td class="square-base">{letter}</td>
+    """.format(letter=newLetter))
+
+def rendEmptySquare(length):
+  mokString = r''
+  for _ in range(length):
+    mokString += r' '
+
+  for index, letter in enumerate(mokString):
+    write(r"""
+        <td class="square-base">&nbsp;</td>
+    """.format(letter=letter))
+}
+
+{:
+def renderGrid(amount):
+  for index in range(amount):
+    write(r"""
+        <td width="1%" class="square-base grid-item">_</td>
+    """.format(letter=index % 10))
+}
+
+
+{:
+def getDocumentCode(vistaDocumentTypeId):
+    code = ''
+    if vistaDocumentTypeId and len(vistaDocumentTypeId) > 1:
+        ref = db.getRecordEx(stmt=u"""
+            select code
+            from rbNalogDocumentType
+            where vistaDocumentTypeId = {vistaDocumentTypeId}
+        """.format(vistaDocumentTypeId=vistaDocumentTypeId))
+        if ref:
+            code = forceString(ref.value('code'))
+    return code
+}
+
+{:
+def adjustString(string, targetLength):
+  newString = ''
+  if string and targetLength:
+    newString = forceString(string).ljust(targetLength, u' ')
+  return newString
+
+def adjustRightString(string, targetLength):
+  newString = ''
+  if string and targetLength:
+    newString = forceString(string).rjust(targetLength, u' ')
+  return newString
+
+def concatSerialAndNumber(serial, number):
+  return forceString(serial) + ' ' + forceString(number)
+}
+
+{:
+# <!-- note данные документа -->
+orgINN = u''
+orgKPP = u''
+orgName = u'МСЧ №3 АО БАЛТИЙСКИЙ ЗАВОД'
+documentNumber = forceString(action[u'Номер справки'].value)
+documentCorrect = forceString(action[u'Номер корректировки'])
+documentYear = action[u'Отчетный период, год'].value
+
+
+taxpayer = action[u'Налогоплательщик и пациент являются одним лицом'].value
+
+if taxpayer == u'да':
+    isTaxpayerSame = 1
+    pageAmount = '001'
+else:
+    isTaxpayerSame = 0
+    pageAmount = '002'
+
+whoPayer = u'1' if isTaxpayerSame else u'0'
+}
+
+{:
+payerINN = adjustString(action[u'ИНН налогоплательщика'].value, 12)
+payerDocumentCode = getDocumentCode(client.document.documentTypeCode)
+
+if isTaxpayerSame:
+    payerLastName = client.lastName
+    payerFirstName = client.firstName
+    payerPatrName = client.patrName
+    payerBirthDate = client.birthDate
+
+    payerDocumentCode = adjustString(clientDocumentCode, 3)
+    documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
+    payerDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
+    payerDocumentSerial = client.document.serial
+    payerDocumentNumber = client.document.number
+    payerDocumentDate = client.document.date
+else:
+    if action[u'ФИО налогоплательщика'].value:
+        fioList = forceString(action[u'ФИО налогоплательщика'].value).split(' ')
+    else:
+        fioList = []
+    if len(fioList) > 1:
+        payerLastName = fioList[0].strip()
+        payerFirstName = fioList[1].strip()
+        payerPatrName = fioList[2].strip()
+    else:
+        payerLastName = ''
+        payerFirstName = ''
+        payerPatrName = ''
+    payerBirthDate = action[u'Дата рождения налогоплательщика'].value
+
+    payerDocumentCode =  ''
+    if action[u'Код вида документа'].value:
+        list = forceString(action[u'Код вида документа'].value).split(' ', 1)
+        if len(list) > 0:
+            payerDocumentCode = list[0]
+
+    payerDocumentSerial = action[u'Серия документа'].value
+    payerDocumentNumber = action[u'Номер документа'].value
+    payerDocumentSerialAndNumber = concatSerialAndNumber(payerDocumentSerial, payerDocumentNumber)
+    payerDocumentDate = action[u'Дата выдачи документа'].value
+}
+
+{:
+currentYearStartDate = forceString(documentYear)
+# <!-- note запрос на получение информации по оплате   -->
+serviceRefList = db.getRecordList(stmt=u"""
+    select e.id                               as eventId,
+           DATE_FORMAT(e.setDate, '%Y.%m.%d') as eventSetDate,
+           DATE_FORMAT(e.setDate, '%d.%m.%Y') as eventSetDateFormated,
+           rbS.name                           as serviceName,
+           ai.sum                        as eventPayedSum,
+           ai.price                           as servicePrice,
+           ai.amount                          as serviceAmount
+    from Event e
+             join EventType et on e.eventType_id = et.id and e.deleted = 0
+             join Account_Item ai on e.id = ai.event_id and ai.deleted = 0
+             join Account ac on ai.master_id = ac.id and ac.deleted = 0
+             join rbService rbS on ai.service_id = rbS.id
+             join Contract_Tariff ct on ai.tariff_id = ct.id
+             join Contract c on ct.master_id = c.id and c.finance_id = 4
+    where ai.date is not null
+      and e.client_id = {clientId}
+      and DATE(e.setDate) >= DATE(CONCAT_WS('-', '{currentYearStartDate}', '01', '01'))
+      and DATE(e.setDate) <= DATE(CONCAT_WS('-', '{currentYearStartDate}', '12', '31'))
+""".format(clientId=client.id, currentYearStartDate=currentYearStartDate))
+
+totalPayed = 0
+if serviceRefList and len(serviceRefList)>0:
+  for serviceRef in serviceRefList:
+    serviceAmount = forceInt(serviceRef.value('serviceAmount'))
+    servicePrice = forceInt(serviceRef.value('servicePrice'))
+    totalPayed += servicePrice * serviceAmount
+}
+
+
+{:
+SEPARATOR = u';'
+codeString = u'ИНН:' + orgINN + SEPARATOR + u'КПП:' + orgKPP + SEPARATOR + u'Номер справки:' + documentNumber + SEPARATOR + u'Номер корректировки:' + documentCorrect + SEPARATOR + u'Отчетный год:' + documentYear + SEPARATOR + u'Данные медицинской организации:' + forceString(orgName) + SEPARATOR + u'Данные плательщика; Фамилия:' + payerLastName + SEPARATOR + u'Имя:' + payerFirstName + SEPARATOR + u'Отчество:' + payerPatrName + SEPARATOR + u'ИНН:' + payerINN + SEPARATOR + u'Дата рождения:' + payerBirthDate + SEPARATOR + u'Код вида документа:' + payerDocumentCode + SEPARATOR + u'Серия:' + payerDocumentSerial + SEPARATOR + u'номер:' + payerDocumentNumber + SEPARATOR + u'Дата выдачи:' + payerDocumentDate + SEPARATOR + u'Налогоплательщик и пациент являются одним лицом:' + forceString(isTaxpayerSame) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 1:' + forceString(totalPayed) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 2:' + forceString(0)
+
+img = qrcode.make(codeString)
+buffered = BytesIO()
+img.save(buffered, format="PNG")
+img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+<!--  note TABLE MAIN -->
+<table cellpadding="0" cellspacing="0">
+  <tr>
+      {: renderGrid(40)}
+  </tr>
+  <!-- note ШАПКА -->
+  <tr class="line">
+    <td colspan="8" rowspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td valign="top" class="black-square">■</td>
+          <td valign="top">
+            <div align="center" class="barcode--custom">26901015</div>
+            <div align="center">26901015</div>
+          </td>
+          <td class="black-square">■</td>
+        </tr>
+      </table>
+    </td>
+    <td colspan="2" rowspan="2"></td>
+    <td colspan="2" class="td-text">ИНН</td>
+    <td colspan="12">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(orgINN) > 0}
+            {: rendTextInSquare(u'123456789012')}
+          {else:}
+            {: rendEmptySquare(12)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+    <td colspan="13" rowspan="2"></td>
+  </tr>
+
+  <tr>
+    <td colspan="2" class="td-text">КПП</td>
+    <td colspan="9">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(orgKPP) > 0}
+            {: rendTextInSquare(orgKPP)}
+          {else:}
+            {: rendEmptySquare(9)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2" class="td-text" align="center">Стр.</td>
+    <td colspan="3">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(u'001')}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="40"><span class="vertical-spacer">&nbsp;</span></td>
+  </tr>
+  <tr class="line">
+    <td colspan="2"></td>
+    <td colspan="38"><b>Форма по КНД 1151156</b></td>
+  </tr>
+  <!-- note END ШАПКА -->
+
+  <tr>
+    <td colspan="10"></td>
+    <td colspan="20">
+      <div align="center" class="h1">
+          Справка <br>
+          об оплате медицинских услуг для представления <br>
+          в налоговый орган
+      </div>
+    </td>
+    <td colspan="10"></td>
+  </tr>
+
+<!--  note MAINE -->
+
+  <tr>
+    <td colspan="5" class="td-text">Номер справки</td>
+    <td colspan="12">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(adjustString(documentNumber, 12))}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+    <td colspan="7" class="td-text">Номер корректировки</td>
+    <td colspan="3">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(adjustString(documentCorrect, 3))}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+    <td colspan="5" class="td-text">Отчетный год</td>
+    <td colspan="4">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(documentYear)}
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="40"><span class="vertical-spacer">&nbsp;</span></td>
+  </tr>
+
+  <tr class="line">
+    <td colspan="40">
+      <div>
+          Данные медицинской организации / индивидуального предпринимателя, осуществляющего медицинскую деятельность:
+      </div>
+    </td>
+  </tr>
+
+  <!-- note НАЗВАНИЕ ОРГАНИЗАЦИИ -->
+  <tr class="line">
+    <td colspan="40">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(adjustString(orgName, 40))}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {for: _ in range(3)}
+    <tr class="line">
+      <td colspan="40">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendEmptySquare(40)}
+          </tr>
+        </table>
+      </td>
+    </tr>
+  {end:}
+
+  <tr>
+    <td colspan="40">
+      <div align="center" class="remark">
+        (наименование медицинской организации / фамилия, имя, отчество индивидуального предпринимателя)
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="40" class="vertical-spacer">&nbsp;</td>
+  </tr>
+
+  <!-- note Данные физического лица-->
+
+  <tr class="line">
+    <td colspan="40">
+      <div align="center">
+        Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее - налогоплательщик)
+      </div>
+    </td>
+  </tr>
+
+  {for: title, text in [[u'Фамилия', payerLastName], [u'Имя', payerFirstName], [u'Отчество', payerPatrName]] }
+    <tr class="line">
+      <td colspan="4" class="td-text">
+        {title}
+      </td>
+      <td colspan="36">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(adjustString(text, 40))}
+          </tr>
+        </table>
+      </td>
+    </tr>
+  {end:}
+
+  <tr class="line">
+    <td colspan="4" class="td-text">
+      ИНН
+    </td>
+    <td colspan="12">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          {if: len(payerINN) > 0}
+            {: rendTextInSquare(payerINN)}
+          {else:}
+            {: rendEmptySquare(12)}
+          {end:}
+
+        </tr>
+      </table>
+    </td>
+    <td colspan="3"></td>
+    <td colspan="6" class="td-text">
+      Дата рождения
+    </td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(payerBirthDate.date.toString('dd'))}
+        </tr>
+      </table>
+    </td>
+
+    <td class="dot" align="center">.</td>
+
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(payerBirthDate.date.toString('MM'))}
+        </tr>
+      </table>
+    </td>
+
+    <td class="dot" align="center">.</td>
+
+    <td colspan="4">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(payerBirthDate.date.toString('yyyy'))}
+        </tr>
+      </table>
+    </td>
+
+    <td colspan="5"></td>
+  </tr>
+
+  <!-- note END Данные физического лица-->
+
+
+  <tr class="vertical-spacer">
+    <td colspan="40">&nbsp;</td>
+  </tr>
+
+  <!-- note Сведения о документе -->
+  <tr class="line">
+    <td colspan="40">Сведения о документе, удостоверяющем личность:</td>
+  </tr>
+
+  <tr>
+    <td colspan="7" class="td-text">Код вида документа</td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(payerDocumentCode) > 0}
+            {: rendTextInSquare(payerDocumentCode)}
+          {else:}
+            {: rendEmptySquare(2)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td colspan="5"></td>
+    <td colspan="6" class="td-text">Серия и номер</td>
+    <td colspan="20">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(payerDocumentSerialAndNumber)}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr></tr>
+
+  <!-- note END Сведения о документе -->
+
+  <tr class="vertical-spacer">
+    <td colspan="40">&nbsp;</td>
+  </tr>
+
+
+  <tr class="line">
+    <td colspan="22" class="td-text">
+      Налогоплательщик и пациент являются одним лицом
+    </td>
+    <td>
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(whoPayer)}
+        </tr>
+      </table>
+    </td>
+    <td></td>
+    <td colspan="16">
+      <div class="remark">0 - нет</div>
+      <div class="remark">1 - да</div>
+    </td>
+  </tr>
+
+  {: code1Expenses = action[u'Сумма расходов по коду услуги «1»']}
+  <tr class="line">
+    <td colspan="22" class="td-text">
+      Сумма расходов на оказанные медицинские услуги по коду услуги «1»
+    </td>
+    <td colspan="13">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(adjustRightString(forceString(totalPayed), 13))}
+        </tr>
+      </table>
+    </td>
+    <td class="dot" align="center">.</td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(u'00')}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+  </tr>
+
+  {: code2Expenses = action[u'Сумма расходов по коду услуги «2»']}
+  <tr>
+    <td colspan="22" class="td-text">
+      Сумма расходов на оказанные медицинские услуги по коду услуги «2»
+    </td>
+    <td colspan="13">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendEmptySquare(12)}
+        </tr>
+      </table>
+    </td>
+    <td class="dot" align="center">.</td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendEmptySquare(2)}
+        </tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+  </tr>
+
+  <tr class="vertical-spacer"><td colspan="40">&nbsp;</td></tr>
+
+  <tr>
+    <td colspan="40" style="line-height: 5px">
+      <hr>
+    </td>
+  </tr>
+
+
+  <tr class="line">
+    <td colspan="20">
+      <div align="center" class="bold">
+        Достоверность и полноту сведений, указанных <br>
+        в настоящей справке, подтверждаю:
+      </div>
+    </td>
+    <td rowspan="7">
+      {for: _ in range(16)}
+        <div align="right">&#124;</div>
+      {end:}
+    </td>
+    <td colspan="19" rowspan="7">
+      <div align="center" class="bold"> Зона QR-кода</div>
+      <div align="center"><img src="data:image/png;base64,{img_str}" width="150" alt="qr"></div>
+    </td>
+  </tr>
+
+  {for: item in [payerLastName, payerFirstName, payerPatrName]}
+    <tr>
+      <td colspan="20">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(adjustString(item, 20))}
+          </tr>
+        </table>
+      </td>
+    </tr>
+  {end:}
+
+  <tr class="line">
+    <td colspan="20">
+      <div align="center" class="remark">
+        (фамилия, имя, отчество)
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="8" valign="bottom">
+      Подпись {'_' * 10}
+    </td>
+    <td colspan="2" valign="bottom">
+      Дата
+    </td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: action.begDate}
+            {: rendTextInSquare(action.begDate.toString('dd'))}
+          {else:}
+            {: rendEmptySquare(2)}
+          {end:}
+
+        </tr>
+      </table>
+    </td>
+
+    <td class="dot" align="center">.</td>
+
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: action.begDate}
+            {: rendTextInSquare(action.begDate.toString('MM'))}
+          {else:}
+            {: rendEmptySquare(2)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+
+    <td class="dot" align="center">.</td>
+
+    <td colspan="4">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: action.begDate}
+            {: rendTextInSquare(action.begDate.toString('yyyy'))}
+          {else:}
+            {: rendEmptySquare(4)}
+          {end:}
+
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="8" class="td-text">
+      Справка составлена на
+    </td>
+    <td colspan="3">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(pageAmount)}
+        </tr>
+      </table>
+    </td>
+    <td colspan="1"></td>
+    <td colspan="8" class="td-text">страницах</td>
+  </tr>
+
+  <tr>
+    <td colspan="21">
+      <div class="remark">
+        <sup>1</sup> Отчество указывается при наличии (относится ко всем листам документа)
+      </div>
+      <div class="remark">
+        <sup>2</sup> ИНН указывается при наличии
+      </div>
+    </td>
+    <td colspan="19"></td>
+  </tr>
+
+  <tr>
+    <td valign="top" class="black-square">■</td>
+    <td colspan="38"></td>
+    <td valign="top" class="black-square">■</td>
+  </tr>
+</table> <!--  note END TABLE MAIN -->
+</div>
+</body>
+</html>

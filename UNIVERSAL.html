@@ -1,0 +1,87 @@
+<!--Начальная дата разработки 02.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5290 Универсальный шаблон печати -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Протокол</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.prop-name {
+    font-weight: bold;
+}
+.prop-value {
+    font-weight: normal;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">
+    {if: action}
+        {if: action.title}
+            {action.title}
+        {else:}
+            {action.name}
+        {end:}
+    {end:}
+  </div>
+
+
+  {if: action}
+      {for: prop in action}
+        {if: prop.value}
+          {if: prop.typeName == u'Action'}
+              <div>action</div>
+          {end:}
+          {if: prop.typeName == u'Constructor'}
+  <h2>Constructor</h2>
+            <div>
+              <span class="prop-name">{prop.name}</span>:
+              <span class="prop-value">{prop.value}</span>
+            </div>
+          {end:}
+            <div>
+              <span class="prop-name">{prop.name}</span>:
+              <span class="prop-value">{prop.value}</span>
+            </div>
+        {end:}
+      {end:}
+  {end:}
+
+</div>
+</body>
+</html>
