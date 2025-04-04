@@ -20,8 +20,18 @@
 {: from library.Utils import forceInt }
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
+{: import re}
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+<!--
+note КОНФИГУРАЦИЯ
+здесь располагаются настройки для шаблона
+-->
+{:
+# <!-- note в  TEMPLATE_ID подставлять id шаблона для корректного отображения подписанного документа  -->
+TEMPLATE_ID = 0
+}
 
 {:
 write('''
@@ -43,8 +53,27 @@ write('''
 .prop-value {
     font-weight: normal;
 }
+
+.ml10 {
+    margin-left: 10px;
+}
 </style>
 ''')}
+
+{:
+def parseAction(value):
+  pattern = u':'
+  replace = u': '
+  if value:
+    return re.sub(pattern, replace, value)
+  else:
+    return ''
+
+def parseList(list):
+  pattern= u'; '
+  if list:
+    return pattern.join(list)
+}
 <!-- @formatter:on -->
 </head>
 <body>
@@ -59,28 +88,107 @@ write('''
         {end:}
     {end:}
   </div>
+  <div>
+    {:date = action.endDate if action.endDate else action.begDate}
+    <b>Дата:</b> {date.toString('dd.MM.yyyy')}
+  </div>
 
 
   {if: action}
       {for: prop in action}
         {if: prop.value}
+          <div>
+            <span class="prop-name">{prop.name}</span>:
           {if: prop.typeName == u'Action'}
-              <div>action</div>
-          {end:}
-          {if: prop.typeName == u'Constructor'}
-  <h2>Constructor</h2>
-            <div>
-              <span class="prop-name">{prop.name}</span>:
+            {if: isinstance(prop.value, list)}
+              {for: item in prop.value}
+                {: propValue = parseAction(item)}
+                <div class="ml10">
+                  <span class="prop-value">{propValue}</span>
+                </div>
+              {end:}
+            {else:}
+              {: propValue = parseAction(prop.value)}
+              <span class="prop-value">{propValue}</span>
+            {end:}
+          {elif: isinstance(prop.value, list)}
+            {: propValue = parseList(prop.value)}
+            <span class="prop-value">{propValue}</span>
+          {else:}
               <span class="prop-value">{prop.value}</span>
             </div>
           {end:}
-            <div>
-              <span class="prop-name">{prop.name}</span>:
-              <span class="prop-value">{prop.value}</span>
-            </div>
         {end:}
       {end:}
   {end:}
+
+<section>
+<!-- @formatter:off -->
+{:
+from library.Utils import forceString
+from PyQt4 import QtGui
+db = QtGui.qApp.db
+
+signRef = None
+flag_sgn = False
+
+if action.id:
+  signRef = db.getRecordEx(stmt="""
+    select
+        certSerial as certificate,
+        certOwner as name,
+        ownerOrganisation as organisation,
+        notValidBefore as beg_valid_date,
+        notValidAfter as end_valid_date
+    from SignedIEMKDocument
+    where sign_date is not null
+      and sign_path is not null
+      and action_id = {actionId}
+      and person_id != 0
+      and template_id = 125
+      and deleted = 0
+    limit 1;
+  """.format(actionId=action.id, templateId=TEMPLATE_ID))
+
+if signRef:
+  flag_sgn = True
+  certificate = forceString(signRef.value('certificate'))
+  name = forceString(signRef.value('name'))
+  organisation = forceString(signRef.value('organisation'))
+  beg_valid_date = forceString(signRef.value('beg_valid_date'))
+  end_valid_date = forceString(signRef.value('end_valid_date'))
+}
+
+<!-- @formatter:on -->
+
+
+{if: flag_sgn}
+    <table align="center">
+        <tr>
+            <td>
+              <table border="1" cellpadding="3" cellspacing="0">
+                  <tr>
+                      <td>
+                          <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                              <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                              <tr><td>Сертификат: {certificate}</td></tr>
+                              <tr><td>Владелец: {name}</td></tr>
+                              {if: organisation}
+                                  <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                              {else:}
+                                  <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                              {end:}
+                              <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                          </table>
+                      </td>
+                  </tr>
+              </table>
+          </td>
+        </tr>
+    </table>
+{end:}
+</section>
+
 
 </div>
 </body>

@@ -1,0 +1,489 @@
+<!-- изменил Пулин дата 02.04.2025 задача
+ дату выдачи паспорта выделить 18px
+ сначала номер полиса, потом наименование смо номер 18px, смо 14px
+ -->
+<!-- ВСЕ НАПРАВЛЕНИЯ -->
+<!-- НЕ ТРОГАЙТЕ ШАБЛОН - НАСТРОЕН ПО ЖЕЛАНИЮ ВАСЯТКИНОЙ -->
+<!-- изменил Пулин дата 26.02.2025 задача убрал отображение анализов иммуногематологические исследования -->
+<!-- изменил Пулин дата 24.02.2025 задача условия для заголовка Цитологические исследования (платные) -->
+<!-- Докинул выбор дней Пальников 19.02.2025  и добавил несоклько новыйх шаблонов 2358, 2359, 2360 -->
+<!-- изменил Пулин дата 19.02.2025 задача  -->
+<!-- изменил Пулин дата 17.02.2025 задача  -->
+<!-- изменил Пулин дата 06.02.2025 задача  -->
+<!-- изменил Пулин дата 06.02.2025 исправлял: action с номерками есть, но в номерках ничего не лежит -->
+<!-- изменил Пулин дата 30.01.2025 задача  -->
+<!-- изменил Пулин дата 28.01.2025 v2  -->
+<!-- изменил Пулин дата 28.01.2025 задача  -->
+<!-- изменил Пулин дата 27.01.2025 задача  -->
+<!-- измени Каравайчик дата 12.02.2025 -->
+<!--
+note У ЭТОГО ШАБЛОНА ЕСТЬ БЛИЗНЕЦЫ.
+вносишь изменения В ЛОГИКУ  в этом шаблоне - ОБНОВИ ЭТИ:
+select * from rbprinttemplate where id in (1866, 2018, 2143, 2274, 2275, 2276);
+
+вносишь изменения В ВЕРСТКУ  в этом шаблоне - ОБНОВИ ЭТИ:
+select * from rbprinttemplate where id in (2326, 2327, 2328, 1866, 2143, 2274, 2276, 2358, 2359, 2360 );
+
+2276 - для тестов. после тестирования ставить deleted = 1
+-->
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+<title>Направление</title>
+{:setPageSize('A4')}
+{:setOrientation('P')}
+{:setTopMargin(5) }
+{:setBottomMargin(5) }
+{:setRightMargin(5) }
+{:setLeftMargin(20)}
+
+{: from PyQt4 import QtGui }
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime}
+
+
+<!--  NOTE утилиты -->
+{:
+def show(text):
+  write("""
+    <div> {text}</div>
+  """.format(text=text))
+}
+
+<!--  NOTE END утилиты -->
+
+
+<!--  NOTE стили-->
+{:
+write('''
+<style>
+.section {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 150%;
+}
+.line {
+  border-bottom: 1px solid black;
+  flex-grow: 2;
+  height: 1rem;
+}
+.flex {
+  display: flex;
+  justify-content: flex-start;
+}
+.barcode--custom {
+  font-family: 'Code 3 de 9';
+  font-size: 48px;
+}
+.message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+}
+.message_body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid red;
+}
+.message_text {
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-align: center;
+}
+.spec_line{
+    line-height: 1.5;
+}
+</style>
+''')}
+<!--  NOTE END стили-->
+
+<!-- NOTE новая логика поиска номерков-->
+{:
+class ReferralAnal:
+  def __init__(self, jobTicket, postfix):
+    self.TICKET_DATE = datetime.strptime(jobTicket.datetime.toString(u"dd.MM.yyyy"), '%d.%m.%Y')
+    self.Ticket_datetime = jobTicket.datetime.toString(u"dd.MM.yyyy, hh:mm")
+    self.Ticket_date = jobTicket.datetime.toString(u"dd.MM.yyyy")
+    self.Ticket_time = jobTicket.datetime.toString(u"hh:mm")
+    self.Ticket_number = jobTicket.idx+1
+    self.Job_type = jobTicket.jobType
+    self.Unique_job_type = forceString(jobTicket) + postfix
+    self.takenTissueJournalId = 0
+    self.destinationId = None
+    self.destinationName = ''
+
+    self.orgName = ''
+    self.orgCode = ''
+
+    self.actList = []
+    self.jobTicket = jobTicket
+
+  def addAct(self, act):
+    self.actList.append(act)
+
+
+def createNewReferralAnal(refList, act, prop, postfix):
+  newInstance = ReferralAnal(prop.value, postfix)
+  newInstance.takenTissueJournalId = act.takenTissueJournal.id
+  destinationId, destinationName  = getDestination(act.typeId)
+  newInstance.destinationId = destinationId
+  newInstance.destinationName = destinationName
+  newInstance.addAct(act)
+  refList.append(newInstance)
+}
+
+{:
+def getDestination(actionTypeId):
+  ref = None
+  if actionTypeId:
+    ref = db.getRecordEx(stmt=u"""
+      select d.name,
+             d.id
+      from destinationtree d
+               join destinationtree_actiontype da on d.id = da.master_id
+               join actiontype at on da.actionType_id = at.id
+      where at.id = {actionTypeId}
+    """.format(actionTypeId=actionTypeId))
+  if ref:
+    id = forceInt(ref.value('id'))
+    name = forceString(ref.value('name'))
+  else:
+    id = None
+    name = ''
+  return [id, name]
+}
+
+{:
+def getPostfix(act):
+  postfix = ''
+  if act.typeId == 69192: # Белковые фракции сыворотки крови
+    postfix = forceString(act.typeId)
+
+  return postfix
+}
+
+{:
+MAIN_REF_LIST = []
+
+for act in event.actions:
+  if act.class_ == 1 and act.status == 0:
+    for prop in act:
+      if prop.typeName == u'JobTicket' and prop.value:
+        postfix = getPostfix(act)
+        Unique_job_type = prop.value + postfix
+
+        filteredRefList = filter(lambda x: x.Unique_job_type==Unique_job_type, MAIN_REF_LIST)
+        filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+        if filteredRef:
+          filteredRefList[0].addAct(act)
+        else:
+          createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
+}
+<!-- NOTE END новая логика поиска номерков-->
+
+{:
+# <!--  note номер карты -->
+AMB_CARD = db.getRecordEx(stmt=u"""
+  select ambCardNumber as am from client where id={clientId} and deleted=0;
+""".format(clientId=client.id))
+}
+
+{:
+# <!--  note номер карты -->
+IS_AMB_REF = db.getRecordEx(stmt=u"""
+  select orgStructure_id as os from  event where id = {eventId}
+""".format(eventId=event.id))
+if IS_AMB_REF:
+  IS_AMB = forceString(IS_AMB_REF.value('os')) != '1000'
+else:
+  IS_AMB = False
+}
+
+{:
+orgStructureName = ''
+orgStructureNameRef = db.getRecordEx(stmt=u"""
+  select o.name as name
+  from event e
+           join orgstructure o on e.orgStructure_id = o.id
+  where e.id = {eventId};
+""".format(eventId=event.id))
+if orgStructureNameRef:
+  orgStructureName = forceString(orgStructureNameRef.value('name'))
+}
+
+
+{:
+#<!--  note диагноз -->
+diagref = db.getRecordEx(stmt=u"""
+  select MKB
+  from diagnosis
+  where id = getEventDiagnosis({eventID});
+""".format(eventID=event.id))
+
+fullDiagnosisRef = db.getRecordEx(stmt=u"""
+  SELECT getEventDiagnosDetails({eventID}) as fullDiagnosis;
+""".format(eventID=event.id))
+
+if diagref:
+  diag = forceString(diagref.value('MKB'))
+else:
+  diag = ''
+
+if fullDiagnosisRef:
+    fullDiagnosis = forceString(fullDiagnosisRef.value('fullDiagnosis'))
+else:
+    fullDiagnosis = ''
+}
+
+{:
+scaleRef = db.getRecordEx(stmt=u"""
+select
+       rbCG.name    as clinicGroupCode,
+       Suspicio     as Suspicio
+from znoinfo z
+         left join zno_table_g tg on z.parameter_g = tg.id
+         left join zno_table_r tr on z.parameter_r = tr.id
+         left join SPRAV_ONK_STAD stad on z.stady = stad.ID_ST
+         left join sprav_onk_t T on z.stady_t = T.ID_T
+         left join sprav_onk_n N on z.stady_n = N.ID_N
+         left join sprav_onk_m M on z.stady_m = M.ID_M
+         left join znoinfo_clinical_group rbCG on z.clinical_group = rbCG.id
+         left join rbcarnotianindex c on z.carnotian = c.id and deleted = 0
+         left join rbecog e on z.ecog = e.id
+where !z.deleted
+  and z.event_id = {eventId}
+group by T.ID_T, N.ID_N, M.ID_M;
+""".format(eventId=event.id))
+
+
+if scaleRef:
+    Suspicio =  forceString(scaleRef.value('Suspicio'))
+    clinicGroupCode = forceString(scaleRef.value('clinicGroupCode'))
+else:
+    Suspicio = ''
+    clinicGroupCode = ''
+}
+
+{:
+osmortActList = filter(lambda x: x.name==u'Осмотр врача', event.actions)
+osmortAct = osmortActList[0] if len(osmortActList)>0 else None
+}
+
+{:
+clientRef = db.getRecordEx(stmt=u"""
+  select cd.serial                        as serial,
+         cd.number                        as number,
+         DATE_FORMAT(cd.date, '%d.%m.%Y') as date,
+         origin                           as origin,
+         rbDCT.name                       as docType
+  from client c
+           join clientdocument cd on c.id = cd.client_id and cd.id = getClientDocumentId(c.id)
+           join rbdocumenttype rbDCT on cd.documentType_id = rbDCT.id
+  where c.id = {clientId};
+""".format(clientId=event.client.id))
+if clientRef:
+  serial = forceString(clientRef.value('serial'))
+  number = forceString(clientRef.value('number'))
+  date = forceString(clientRef.value('date'))
+  origin = forceString(clientRef.value('origin'))
+  docType = forceString(clientRef.value('docType'))
+else:
+  serial = ''
+  number = ''
+  date = ''
+  origin = ''
+  docType = ''
+}
+
+{:
+def isCitoResearch(actList):
+  flag = False
+  for act in actList:
+    if u'цитологи' in act.name.lower():
+      flag = True
+  return flag
+}
+
+{:
+paymentTypeRef = db.getRecordEx(stmt=u"""
+  select rbF.name
+  from event e
+           join eventtype et on e.eventType_id = et.id
+           join rbfinance rbF on et.finance_id = rbF.id
+  where e.id = {eventId};
+""".format(eventId=event.id))
+
+if paymentTypeRef:
+  paymentType = forceString(paymentTypeRef.value('name'))
+else:
+  paymentType = ''
+}
+
+
+</head>
+<body>
+
+{for: ref in MAIN_REF_LIST}
+  {if: ref.destinationId != 26}
+    <section class="section">
+      <table width="100%" border="1" cellpadding="0" cellspacing="0">
+          <tr>
+              <td align="center">
+                <div class="barcode--custom">{ref.takenTissueJournalId}</div>
+                <br>
+                <div>{ref.takenTissueJournalId}</div>
+              </td>
+              <td align="center" style="font-size: 9pt">
+                {if: ref.takenTissueJournalId == 0}
+                    <div class="message">
+                      <div class="message_body">
+                        <div class="message_text">
+                          Данному направлению не назначен номерок
+                        </div>
+                      </div>
+                    </div>
+                {end:}
+                  Государственное бюджетное учреждение здравоохранения<br>
+                  <b>Клинический онкологический диспансер №1</b><br>
+                  Министерство здравоохранения краснодарского края<br>
+                  350040 г. Краснодар, ул. Димитрова, д.146.<br>
+                  Адрес электронной почты лаборатории kdl@kkod.ru<br>
+              </td>
+          </tr>
+      </table>
+
+      <div>
+        {if: IS_AMB}История болезни № <b>{event.externalId or "_" * 8}{end:}</b>
+
+        № А/К
+        {if: AMB_CARD}
+        <span style="font-size: 18px">
+            <b>{forceString(AMB_CARD.value('am'))}</b>
+        </span>
+        {else:}
+          {'_' * 15}
+        {end:}
+        <br>
+        Отделение
+        {orgStructureName}
+      </div>
+      <div>Номер направления <span style="font-size: 18px"><b>{event.id} {paymentType}</b></span></div>
+      <div>
+        <div class="spec_line">
+            <div><span style="font-size: 22px"><b><u>{client.fullName}</u></b></span></div>
+            <div><b>Дата рождения:</b> <span style="font-size: 18px">{client.birthDate}</span>, <b>пол:</b> {client.sex}</div>
+        </div>
+        <div>
+          <b>Документ удостоверяющий личность:
+            {docType}
+            {serial}
+            {number}
+            от <span style="font-size: 18px">{date}</span>
+          </b>
+        </div>
+        <div>Полис:
+          <span style="font-size: 18px;font-weight: 900">{client.compulsoryPolicy.number}</span>
+          <span style="font-size: 14px;font-weight: 900">{client.compulsoryPolicy.insurer}</span>
+        </div>
+          <div>СНИЛС: <span style="font-weight: 900">{client.SNILS if client.SNILS else '_' * 5}</span></div>
+          <div>Место регистрации: <span style="font-size: 16px"> <b>{client.regAddress} </b>тел.  {client.contact.contact}</span></div>
+          <div>Местность:<span style="font-size: 9pt">городская — 1, сельская — 2.</span>
+              {: incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
+              {if: incity} 1
+              {else: } 2
+              {end: }
+          </div>
+      </div>
+
+
+      <div>Диагноз основного заболевания по МКБ:
+         {if: ref.destinationName == u'Цитологические исследования' or isCitoResearch(ref.actList)}
+          <span style="font-size: 24px">
+              <b>
+                  {fullDiagnosis}
+              </b>
+          </span>
+
+          {else:}
+              <span>
+                  <b>
+                      {diag}
+                  </b>
+              </span>
+         {end:}
+      </div>
+
+      <div>Данные о применяемых больным лекарственных препаратах и других биологических факторах, которые могут повлиять на результат исследования <br>
+        __________________________________________________________________ </div>
+      <div><B>Биоматериал</b> _____________________________________________________________________________________</div>
+      <div>Эпидемиологическая информация (при наличии) _______________________________________________________</div>
+
+      <div class="flex">
+        <span>результат исследования</span>
+        <div class="line"></div>
+      </div>
+      <div class="flex">
+        <span><B>Биоматериал</b></span>
+        <div class="line"></div>
+      </div>
+      <div class="flex">
+        <span><B>Эпидемиологическая информация (при наличии)</b></span>
+        <div class="line"></div>
+      </div>
+
+      <div align="center" style="font-weight: 900">
+          <div>
+            {if: ref.destinationName == u'Цитологические исследования' or isCitoResearch(ref.actList)}
+              <b>Цитологическая лаборатория</b>
+            {else:}
+              <b>Клинико-диагностическая лаборатория с молекулярно-генетической диагностикой</b>
+            {end:}
+          </div>
+
+          <div>
+            {if: ref.destinationName == u'Лабораторные исследования (платные)' and isCitoResearch(ref.actList)}
+              <b>Цитологические исследования (платные)</b>
+            {else:}
+              <b>({ref.destinationName})</b>
+            {end:}
+          </div>
+
+      </div>
+
+      <table border="1" cellpadding="3" cellspacing="0" width="100%">
+          <tr>
+              <th>Название исследования</th>
+              <th>Отметить</th>
+          </tr>
+          {for: act in ref.actList}
+            <tr>
+              <td>{act.name}</td>
+              <td></td>
+            </tr>
+          {end:}
+      </table>
+
+        <div>Дата и время назначения лабораторного исследования <span style="font-size: 16px">{if: ref.Ticket_datetime}<u>{ref.Ticket_date} {ref.Ticket_time}</u>{else:}_________{end:}</span></div>
+      <div>Дата и время взятия биоматериала ____________________________________________________________________</div>
+      <div><b><i>Документ оформил(а):</i></b>_________</div>
+      <div>
+        <b><i>Ф.И.О., должность медицинского работника, назначившего лабораторное исследование</i></b>
+        {if: len(ref.actList) > 0}
+          <span style="font-size: 16px"><b>{ref.actList[0].setPerson.fullName}</b></span>
+        {else:}
+          {'_' * 20}
+        {end:}
+      </div>
+      <hr>
+    </section>
+    <div style="page-break-after: always"></div>
+  {end:}
+{end:}
+
+</body>
+</html>

@@ -52,7 +52,7 @@ body {
 }
 
 .page-break {
-    page-break-after: always;
+    page-break-before: always;
 }
 
 .bold {
@@ -203,9 +203,21 @@ else:
 whoPayer = u'1' if isTaxpayerSame else u'0'
 }
 
+<!--  note Данные ПАЦИЕНТА -->
+{:
+if u'ИНН пациента' in action:
+  clientINN = adjustString(action[u'ИНН пациента'].value, 12)
+else:
+  clientINN = ''
+
+clientDocumentCode = adjustString(getDocumentCode(client.document.documentTypeCode))
+documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
+clientDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
+clientDocumentDate = client.document.date
+}
+
 {:
 payerINN = adjustString(action[u'ИНН налогоплательщика'].value, 12)
-payerDocumentCode = getDocumentCode(client.document.documentTypeCode)
 
 if isTaxpayerSame:
     payerLastName = client.lastName
@@ -213,12 +225,11 @@ if isTaxpayerSame:
     payerPatrName = client.patrName
     payerBirthDate = client.birthDate
 
-    payerDocumentCode = adjustString(clientDocumentCode, 3)
-    documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
-    payerDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
+    payerDocumentCode = clientDocumentCode
+    payerDocumentSerialAndNumber = clientDocumentSerialAndNumber
     payerDocumentSerial = client.document.serial
     payerDocumentNumber = client.document.number
-    payerDocumentDate = client.document.date
+    payerDocumentDate = clientDocumentDate
 else:
     if action[u'ФИО налогоплательщика'].value:
         fioList = forceString(action[u'ФИО налогоплательщика'].value).split(' ')
@@ -292,7 +303,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 </head>
 <body>
 
-<div class="main">
+<main class="main">
 <!--  note TABLE MAIN -->
 <table cellpadding="0" cellspacing="0">
   <tr>
@@ -318,7 +329,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
           {if: len(orgINN) > 0}
-            {: rendTextInSquare(u'123456789012')}
+            {: rendTextInSquare(orgINN)}
           {else:}
             {: rendEmptySquare(12)}
           {end:}
@@ -454,7 +465,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <tr class="line">
     <td colspan="40">
       <div align="center">
-        Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее - налогоплательщик)
+        Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее - налогоплательщик)<sub>1</sub>
       </div>
     </td>
   </tr>
@@ -532,7 +543,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="40">&nbsp;</td>
   </tr>
 
-  <!-- note Сведения о документе -->
+  <!-- note Сведения о документе плательщика -->
   <tr class="line">
     <td colspan="40">Сведения о документе, удостоверяющем личность:</td>
   </tr>
@@ -560,9 +571,48 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </table>
     </td>
   </tr>
+  <tr>
+    <td colspan="7" class="td-text">Дата выдачи документа</td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(payerDocumentDate) > 0}
+            {: rendTextInSquare(payerDocumentDate.toString(u'dd'))}
+          {else:}
+            {: rendEmptySquare(2)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td class="dot" align="center">.</td>
+    <td colspan="2">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(payerDocumentDate) > 0}
+            {: rendTextInSquare(payerDocumentDate.toString(u'MM'))}
+          {else:}
+            {: rendEmptySquare(2)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td class="dot" align="center">.</td>
+    <td colspan="4">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {if: len(payerDocumentDate) > 0}
+            {: rendTextInSquare(payerDocumentDate.toString(u'yyyy'))}
+          {else:}
+            {: rendEmptySquare(4)}
+          {end:}
+        </tr>
+      </table>
+    </td>
+    <td colspan="23"></td>
+  </tr>
   <tr></tr>
 
-  <!-- note END Сведения о документе -->
+  <!-- note END Сведения о документе плательщика -->
 
   <tr class="vertical-spacer">
     <td colspan="40">&nbsp;</td>
@@ -763,6 +813,255 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td valign="top" class="black-square">■</td>
   </tr>
 </table> <!--  note END TABLE MAIN -->
-</div>
+
+{if: isTaxpayerSame == False}
+  <div class="page-break"></div>
+  <table cellpadding="0" cellspacing="0">
+    <tr>
+        {: renderGrid(40)}
+    </tr>
+
+    <!-- note ШАПКА -->
+    <tr class="line">
+      <td colspan="8" rowspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td valign="top" class="black-square">■</td>
+            <td valign="top">
+              <div align="center" class="barcode--custom">26901015</div>
+              <div align="center">26901015</div>
+            </td>
+            <td class="black-square">■</td>
+          </tr>
+        </table>
+      </td>
+      <td colspan="2" rowspan="2"></td>
+      <td colspan="2" class="td-text">ИНН</td>
+      <td colspan="12">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(orgINN) > 0}
+              {: rendTextInSquare(orgINN)}
+            {else:}
+              {: rendEmptySquare(12)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td colspan="2"></td>
+      <td colspan="13" rowspan="2"></td>
+    </tr>
+
+    <tr>
+      <td colspan="2" class="td-text">КПП</td>
+      <td colspan="9">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(orgKPP) > 0}
+              {: rendTextInSquare(orgKPP)}
+            {else:}
+              {: rendEmptySquare(9)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td colspan="2" class="td-text" align="center">Стр.</td>
+      <td colspan="3">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(u'001')}
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="40"><span class="vertical-spacer">&nbsp;</span></td>
+    </tr>
+    <!-- note END ШАПКА -->
+
+    <!-- note Данные Пациента -->
+
+    <tr class="line">
+      <td colspan="40">
+        <div align="center">
+          Данные физического лица, которому оказаны медицинские услуги<sub>1</sub>
+        </div>
+      </td>
+    </tr>
+
+    {for: title, text in [[u'Фамилия', client.lastName], [u'Имя', client.firstName], [u'Отчество', client.patrName]] }
+      <tr class="line">
+        <td colspan="4" class="td-text">
+          {title}
+        </td>
+        <td colspan="36">
+          <table width="100%" cellpadding="0" cellspacing="0" border="1">
+            <tr>
+              {: rendTextInSquare(adjustString(text, 40))}
+            </tr>
+          </table>
+        </td>
+      </tr>
+    {end:}
+
+    <tr class="line">
+      <td colspan="4" class="td-text">
+        ИНН<sup>2</sup>
+      </td>
+      <td colspan="12">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            {if: len(clientINN) > 0}
+              {: rendTextInSquare(clientINN)}
+            {else:}
+              {: rendEmptySquare(12)}
+            {end:}
+
+          </tr>
+        </table>
+      </td>
+      <td colspan="3"></td>
+      <td colspan="6" class="td-text">
+        Дата рождения
+      </td>
+      <td colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(client.birtDate.date.toString('dd'))}
+          </tr>
+        </table>
+      </td>
+
+      <td class="dot" align="center">.</td>
+
+      <td colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(client.birtDate.date.toString('MM'))}
+          </tr>
+        </table>
+      </td>
+
+      <td class="dot" align="center">.</td>
+
+      <td colspan="4">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(client.birtDate.date.toString('yyyy'))}
+          </tr>
+        </table>
+      </td>
+
+      <td colspan="5"></td>
+    </tr>
+    <!-- note END Данные Пациента -->
+
+    <!-- note Сведения о документе пациента -->
+    <tr class="line">
+      <td colspan="40">Сведения о документе, удостоверяющем личность:</td>
+    </tr>
+
+    <tr>
+      <td colspan="7" class="td-text">Код вида документа</td>
+      <td colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(clientDocumentCode) > 0}
+              {: rendTextInSquare(clientDocumentCode)}
+            {else:}
+              {: rendEmptySquare(2)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td colspan="5"></td>
+      <td colspan="6" class="td-text">Серия и номер</td>
+      <td colspan="20">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {: rendTextInSquare(clientDocumentSerialAndNumber)}
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="7" class="td-text">Дата выдачи документа</td>
+      <td colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(payerDocumentDate) > 0}
+              {: rendTextInSquare(clientDocumentDate.toString(u'dd'))}
+            {else:}
+              {: rendEmptySquare(2)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td class="dot" align="center">.</td>
+      <td colspan="2">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(payerDocumentDate) > 0}
+              {: rendTextInSquare(clientDocumentDate.toString(u'MM'))}
+            {else:}
+              {: rendEmptySquare(2)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td class="dot" align="center">.</td>
+      <td colspan="4">
+        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <tr>
+            {if: len(payerDocumentDate) > 0}
+              {: rendTextInSquare(clientDocumentDate.toString(u'yyyy'))}
+            {else:}
+              {: rendEmptySquare(4)}
+            {end:}
+          </tr>
+        </table>
+      </td>
+      <td colspan="23"></td>
+    </tr>
+  <tr></tr>
+
+  <!-- note END Сведения о документе пациента -->
+    <tr class="line">
+      <td colspan="40">
+        <div class="remark">
+          <sup>1</sup> Данные заполняются, если налогоплательщик и пациент не являются одним лицом
+        </div>
+        <div class="remark">
+          <sup>2</sup> ИНН указывается при наличии
+        </div>
+      </td>
+      <td colspan="19"></td>
+    </tr>
+
+    <tr>
+      <td colspan="40">
+        <div class="remark">
+        <div align="center">Достоверность и полноту сведений, указанных на данной странице, подтверждаю:</div>
+        <div align="center">
+          {: inLineSpace = r'&nbsp;'}
+          {'_' * 20} (подпись) {inlineSpace * 5}
+          {'_' * 20} (дата)
+        </div>
+        </div>
+      </td>
+    </tr>
+
+
+    <tr>
+      <td valign="top" class="black-square">■</td>
+      <td colspan="38"></td>
+      <td valign="top" class="black-square">■</td>
+    </tr>
+
+  </table> <!--  note END TABLE SECOND PAGE -->
+
+{end:}
+
+</main>
 </body>
 </html>

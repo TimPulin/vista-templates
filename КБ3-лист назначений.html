@@ -1,0 +1,143 @@
+<!-- изменил Пулин дата 03.04.2025 задача  -->
+<!--Начальная дата разработки 02.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Лист назначений</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+
+{:
+diagRef = None
+diagQuery = db.query(u"""
+  select d.MKB        as codeDiag,
+         mkb.DiagName as nameDiag
+  from Diagnosis d
+           join MKB mkb on d.MKB = mkb.DiagID
+  where d.id = getEventDiagnosis({eventId})
+""".format(eventId=event.id))
+if diagQuery.next():
+  diagRef = diagQuery.record()
+if diagRef:
+  codeDiag = forceString(diagRef.value('codeDiag'))
+  nameDiag = forceString(diagRef.value('nameDiag'))
+else:
+  codeDiag = ''
+  nameDiag = ''
+}
+
+
+{:
+usedDrugList = filter(lambda x: x.name==u'Лекарственный препарат', event.actions)
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ЛИСТ НАЗНАЧЕНИЙ И ИХ ВЫПОЛНЕНИЕ</div>
+  
+  <div>
+    Фамилия, имя, отчество (при наличии): <b>{client.fullName}</b>
+  </div>
+  <div>
+    № медицинской карты <b>{client.id}</b>
+    № палаты {'_' * 15}
+    диагноз (основное заболевание) <b>{codeDiag} {nameDiag}</b>
+  </div>
+
+  <div>
+    Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции
+  </div>
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="1">
+    <thead>
+      <tr>
+        <th>
+          Лекарственный препарат (наименование, лекарственная форма, дозировка, способ введения (применения), лечебное питание, режим
+        </th>
+        <th>
+          Метод введения
+        </th>
+        <th>Дата назначения; подпись лечащего врача (врача-специалиста), сделавшего назначение</th>
+        <th>Дата отменены; подпись лечащего врача (врача-специалиста), отменившего назначение</th>
+        <th colspan="10">
+            Отметки об исполнении назначения лекарственного препарата,
+            лечебного питания, режима, (дата и время исполнения, подпись
+            медицинского работника, ответственного за исполнение)
+            (время, дата, подпись)
+        </th>
+      </tr>
+      <tr>
+        {for: _ in range(9)}
+          <td>&nbsp;</td>
+        {end:}
+        <td>
+          Сведения о реакции на применение (при наличии)
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+      {for: usedDrug in usedDrugList}
+        <tr>
+          <td>{usedDrug[u'Препарат']}</td>
+          <td>{usedDrug[u'Метод введения']}</td>
+          <td>{usedDrug[u'Дата назначения']}</td>
+          <td>{usedDrug[u'Дата отмены']}</td>
+          {for: _ in range(9)}
+            <td></td>
+          {end:}
+          <td>{usedDrug[u'Сведения о реакции на применение (при наличии)']}</td>
+        </tr>
+      {end:}
+
+      {for: _ in range(3)}
+        <tr>
+          {for: _ in range(14)}
+            <td>&nbsp;</td>
+          {end:}
+        </tr>
+      {end:}
+    </tbody>
+  </table>
+
+
+
+</div>
+</body>
+</html>
