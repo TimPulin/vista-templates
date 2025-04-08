@@ -1,0 +1,89 @@
+<!--Начальная дата разработки 08.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: etapepic -->
+<!--Задача: DEV_TEMP-5276 Исправить шаблон Этапный эпикриз -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Этапный эпикриз (переводы, снятия с ДУ, лечение)</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.pre {
+    white-space: pre;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Этапный эпикриз (переводы, снятия с ДУ, лечение)</div>
+
+  <div>
+    <div>
+      <b>ФИО больного:</b> {client.fullName}
+    </div>
+    <div>
+      <b>Дата рождения:</b> {client.birthDate}
+    </div>
+    <div>
+      <b>Место регистрации (место проживания):</b> {if: client.regAddress}{client.regAddress}{else:}{client.locAddress}{end:}
+    </div>
+  </div>
+
+  {for: prop in action}
+    {if: prop.value}
+      {if: prop.name == u'Лечение (        , режим №, фаза, количество принятых доз, наименование препаратов, место проведения лечения)'}
+        {: propName = r'Лечение (                   , режим №, фаза, количество принятых доз, наименование препаратов, место проведения лечения)'}
+      {elif: prop.name == u'План ведения больного'}
+        {: propName = u'План ведения больного (продолжение лечения режим №, фаза, количество принятых доз, наименование препаратов, место проведения лечения, окончание лечения, проведение проф. курса АБП)'}
+      {else:}
+        {: propName = prop.name}
+      {end:}
+      <div>
+        <span class="pre"><b>{propName}</b></span>
+        {prop.value:n}
+      </div>
+    {end:}
+  {end:}
+
+  <div>
+    {for: diagnosis in event.diagnosises}
+      {if: diagnosis.type.code == '2'}
+        <b>Код МКБ</b>: {diagnosis.MKB.code}
+       {end:}
+   {end:}
+  </div>
+
+</div>
+</body>
+</html>

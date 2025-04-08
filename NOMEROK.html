@@ -1,0 +1,239 @@
+<!--Начальная дата разработки 08.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Направления</title>
+  <!-- @formatter:off -->
+{: setPageSize('A5')}
+{: setOrientation('P')}
+{: setMargins(5)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    font-family: 'Arial';
+    font-size: 14px;
+}
+
+.header {
+    font-size: 10px;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.page-break {
+    page-break-before: always;
+}
+
+</style>
+''')}
+
+{:
+def getOrgInfo(currentAct):
+  organisationRef = db.getRecordEx(stmt=u"""
+    select o.shortName as name, o.miacCode as code
+    from Action a
+        join Organisation o on a.org_id = o.id
+    where a.id = {actionId};
+  """.format(actionId=currentAct.id))
+
+  if organisationRef:
+    orgName = forceString(organisationRef.value('name'))
+    orgCode = forceString(organisationRef.value('code'))
+  else:
+    orgName = ''
+    orgCode = ''
+  return [orgName, orgCode]
+}
+
+{:
+def createIdForGrouping(refInfo, postfix):
+  return postfix
+
+def getGroupName(act):
+  name = u''
+  if act.group.name == u'Онкомаркеры_гормоны':
+    name = act.group.name
+  elif act.group.name == u'Анализ Мочи':
+    name = act.group.name
+  return name
+
+def makePostfix(act, prefix):
+  postfix = u'base'
+  if act.group.name == u'Онкомаркеры_гормоны':
+    postfix = 'onko_marker'
+  elif act.group.name == u'Анализ Мочи':
+    postfix = 'urine_base'
+  return postfix
+
+def formatTicketDate(ticket):
+  if hasattr(ticket, 'datetime'):
+    return ticket.datetime.toString(u"dd.MM.yyyy")
+  else:
+    return ''
+}
+
+{:
+class ReferralAnal:
+  def __init__(self, act, ticket, postfix):
+    self.Ticket_datetime = ticket.datetime.toString(u"dd.MM.yyyy, hh:mm")
+    self.Ticket_date = ticket.datetime.toString(u"dd.MM.yyyy")
+    self.Ticket_time = ticket.datetime.toString(u"hh:mm")
+    self.Ticket_number = ticket.idx+1
+    self.Ticket_id = ticket.id
+    self.Ticket_place_full = ticket.orgStructure
+    self.Ticket_place =  ticket.orgStructure.code
+    self.Job_type = ticket.jobType
+
+    self.orgName = ''
+    self.orgCode = ''
+
+    self.actList = []
+    self.refInfo = ticket
+
+    self.idForGrouping = createIdForGrouping(self.refInfo, postfix)
+    self.groupName = getGroupName(act)
+
+    self.addAct(act, ticket)
+    self.getOrgInfo(act)
+
+  def getOrgInfo(self, act):
+    orgName, orgCode = getOrgInfo(act)
+    self.orgName = orgName
+    self.orgCode = orgCode
+
+  def addAct(self, act, ticket):
+    ticketDate = formatTicketDate(ticket)
+    self.actList.append([act, ticketDate])
+}
+
+{:
+def createNewReferralAnal(refList, act, prop, postfix):
+  newInstance = ReferralAnal(act, prop.value, postfix)
+  refList.append(newInstance)
+}
+
+{:
+MAIN_REF_LIST = []
+
+for act in event.actions:
+  if act.class_ == 4:
+    for prop in act:
+      if prop.typeName == u'JobTicket' and prop.value:
+        postfix = makePostfix(act, u'')
+        idForGrouping = createIdForGrouping(prop.value, postfix)
+
+        filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_REF_LIST)
+        filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+        if filteredRef:
+          filteredRefList[0].addAct(act, prop.value)
+        else:
+          createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
+
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+{for: ref in MAIN_REF_LIST}
+  <div class="page-break">
+    <table width="100%" cellpadding="0" cellspacing="0" class="header">
+      <tr>
+        <td width="1%">
+          <div class="nowrap">Министерство здравоохранения КК</div>
+          <div class="nowrap">ГБУЗ "Онкологический диспансер №2"</div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%">
+          <div class="nowrap">Код формы по ОКУД___________</div>
+          <div class="nowrap">Код учреждения по ОКПО _____________</div>
+          <div class="nowrap">Медицинская документация Форма № 235/у</div>
+          <div class="nowrap">Утверждена Минздравом СССР 04.10.1980г. №1030</div>
+        </td>
+      </tr>
+    </table>
+
+    <div>
+      <div>
+        <b>КЛИНИКО-ДИАГНОСТИЧЕСКАЯ ЛАБОРАТОРИЯ </b>
+      </div>
+      {if: ref.groupName != ''}
+          <div><b>{ref.groupName}</b></div>
+      {end:}
+      <div>
+        Дата и время взятия биоматериала:  ____________________  Вид помощи: <b>{event.contract.finance}</b>
+      </div>
+      <div>
+        Время доставки в лабораторию: __________________________
+      </div>
+      <div>
+        Фамилия, И., О. <b>{client.fullName}</b> <b>{client.age}</b>
+      </div>
+      <div>
+        Дата рождения:  <b>{client.birthDate}</b> &nbsp;Пол: <b>{client.sex}</b>,&nbsp;код ___________________________
+      </div>
+      <div>
+        Отделение: <b>{currentPerson.orgStructure}</b>    № мед.карты  <b>{client.id}</b>
+      </div>
+    </div>
+
+    <div>
+      Полный диагноз:
+
+      {for: diagnosis in event.diagnosises}
+        {diagnosis.MKB} {('+'+str(diagnosis.MKBEx)) if diagnosis.MKBEx.code != '' else ''} ({diagnosis.type.name})&nbsp;{diagnosis.MKB.descr},&nbsp;
+      {end:}
+    </div>
+
+    <div>
+      Домашний адрес: <b>{client.regAddress}</b>
+    </div>
+
+    <br>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border=1 >
+      <tr>
+        <td align="center">№</td>
+        <td align="center">Исследования</td>
+        <td align="center">Дата</td>
+      </tr>
+
+      {for: index, actInfo in enumerate(ref.actList, 1)}
+        {: act, ticketDate = actInfo}
+        <tr>
+          <td width="1%">{index}&nbsp;</td>
+          <td width="98%">{act.name}</td>
+          <td width="1%" class="nowrap">{ticketDate}&nbsp;</td>
+        </tr>
+      {end:}
+    </table>
+
+    <br>
+
+    <div>
+      Подпись врача: _________________________________________  <b>({action.setPerson.shortName})</b>
+    </div>
+    <br>
+  </div>
+
+{end:}
+</div>
+</body>
+</html>

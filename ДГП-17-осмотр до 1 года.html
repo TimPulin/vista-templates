@@ -1,0 +1,208 @@
+<!--Начальная дата разработки 08.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5267 Добавить 2 новых протокола в статус и настроить их автоматический выбор при создании обращения с целью КЗР -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Консультация педиатра КЗР</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: import re}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+
+{:
+if action.title == u'Осмотр первичный до 1 года':
+  isBeforeOneYear = True
+else:
+  isBeforeOneYear = False
+}
+
+{:
+def parseActInAct(actValue):
+  listBase = []
+  pattern = u':(.*)$'
+  for value in actValue:
+    match = re.search(pattern, value)
+    listBase.append(match.group(1))
+  return listBase
+
+def getPropValue(prop):
+  if prop.value:
+    return prop.value
+  else:
+    return u'_' * 10
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td><b>Консультация педиатра КЗР</b></td>
+      <td><b>Ф.И.О. врача:</b> {action.person.shortName}</td>
+    </tr>
+  </table>
+
+  <div>
+    <b>Дата:</b>
+    {if: action.endDate}
+        {: actionDate = action.endDate}
+    {else:}
+        {: actionDate = action.begDate}
+    {end:}
+    {actionDate.date.toString('dd.MM.yyyy')}
+  </div>
+  <div>
+    <b>В поликлинике</b>
+  </div>
+  <div>
+    <div>
+      Ф.И.О. пациента: <b>{client.fullName}</b>   Дата рождения <b>{client.birthDate}</b>
+    </div>
+    <div>
+      Адрес: <b>{client.regAddress}</b>
+    </div>
+    <div>
+      Телефон: 
+      {if: client.primaryPhones}
+        <b>{client.primaryPhones}</b>
+      {else:}
+        {'_' * 20}
+      {end:}      
+      
+      факс: _______________________    
+
+      e-mail:
+      {if: client.email}
+        <b>{client.email}</b>
+      {else:}
+        {'_' * 20}      
+      {end:}
+    </div>
+    <div>
+      Стр.ком./орг-я: <b>{client.policy.insurer if client.policy.insurer else u'_' * 10}</b> &nbsp;&nbsp;
+      Полис серия<b>{client.policy.serial if client.policy.serial else u'_' * 10}</b> &nbsp;&nbsp;
+      номер <b>{client.policy.number if client.policy.number else u'_' * 10}</b>
+    </div>
+  </div>
+
+  <br>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>
+        {: propNameList = [u't', u'An.morbi', u'An. vitae', u'Перенесенные заболевания', u'Генеалогический анамнез', u'Аллергоанамнез', u'Эпиданамнез', u'Status praesens']}
+        {for: propName in propNameList}
+          <div>
+            <b>{propName}</b>
+            {action[propName]:n}
+          </div>
+        {end:}
+        <div>
+          <b>Вес:</b> {action[u'Вес']}
+          
+          {if: isBeforeOneYear}
+            <b>Аз-</b> {getPropValue(action[u'Аз-'])}   мес.
+            <b>Э-</b> {getPropValue(action[u'Э-'])}   мес.
+          {end:}
+          </div>
+        
+          <div>
+            <b>Рост:</b> {action[u'Рост']}
+            
+            {if: isBeforeOneYear}
+              <b>Ас-</b> {getPropValue(action[u'Ас-'])}   мес.
+              <b>Н-</b> {getPropValue(action[u'Н-'])}  мес.
+            {end:}
+          </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {if: isBeforeOneYear}
+          {: propNameList = [u'Окр. гол.', u'Окр. гр.', u'Контрольное кормление', u'Вес до кормления', u'Вес после кормления']}
+        {else:}
+          {: propNameList = [u'ОГ', u'ОГр']}
+        {end:}
+        
+        {for: propName in propNameList}
+          <div>
+            <b>{propName}</b>
+            {action[propName]}
+          </div>
+        {end:}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <div><b>Основной диагноз:</b> {action[u'Основной диагноз']}</div>
+        <div>
+          <b>Осложнения:</b> {'; '.join(parseActInAct(action[u'Осложнения'].value))}
+        </div>
+        <div>
+          <b>Сопутствующие:</b> {'; '.join(parseActInAct(action[u'Сопутствующие'].value))}
+        </div>
+        <div>
+          <b>Физ. развитие</b> {getPropValue(action[u'ФР'])} &nbsp;&nbsp;
+          <b>НПР</b> {getPropValue(action[u'НПР'])} гр. &nbsp;&nbsp;
+          <b>Гр. здоровья</b> {getPropValue(action[u'Гр. здоровья'])}
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <b>Код МКБ:</b> {action[u'Основной диагноз']}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        <b>Коды услуг по прейскуранту:</b>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">
+        Подпись врача:________________
+      </td>
+      <td width="50%">
+        Подпись пациента:_________________
+      </td>
+    </tr>
+  </table>
+
+</div>
+</body>
+</html>
