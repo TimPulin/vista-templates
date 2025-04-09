@@ -1,0 +1,346 @@
+<!--Начальная дата разработки 13.03.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: cons_stom_amb -->
+<!--Задача: DEV_TEMP-4732 Из формы f043/y-2 добавить кнопку "зубная формула" -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Дневниковая запись</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: import json }
+
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+  font-family:'Arial';
+  font-size: 11pt;
+}
+
+.small {
+  font-size: 8pt;
+}
+.big {
+    font-size: 13pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.tbl-teeth td {
+    text-align: center;
+}
+.tbl-square td {
+    white-space: nowrap;
+}
+.td-with-value {
+  padding: 3px 5px 2px 5px;
+}
+.ideal-square {
+    padding: 2px 7px;
+}
+.tbl-whole td {
+    padding: 10px 10px 7px 10px;
+    font-size: 16px;
+}
+</style>
+''')}
+
+{:
+emptyString = r'&nbsp;'
+
+def squareLayout(value):
+  if value == emptyString:
+    classCss = u'ideal-square'
+  else:
+    classCss = u'td-with-value'
+
+  return r'''
+    <table cellpadding="0" cellspacing="0" border="1" class="tbl-square">
+      <tr><td class="{classCss}">{value}</td></tr>
+    </table>
+  '''.format(value=value, classCss=classCss)
+}
+
+{:
+def doubleSquareLayout(CL_section, CR_section):
+  CL_section = squareLayout(CL_section)
+  CR_section = squareLayout(CR_section)
+
+  return r'''
+    <table cellpadding="0" cellspacing="0">
+      <tr>
+        <td>{left}</td>
+        <td>{right}</td>
+      </tr>
+    </table>
+  '''.format(left=CL_section, right=CR_section)
+}
+
+{:
+def wholeTeethLayout(value):
+  return r'''
+    <table cellspacing="0" border="1" class="tbl-square tbl-whole">
+      <tr><td>{value}</td></tr>
+    </table>
+  '''.format(value=value)
+}
+
+{:
+def teethLayout(
+      U_sectionValue,
+      L_sectionValue,
+      R_sectionValue,
+      D_sectionValue,
+      centerLayout
+    ):
+
+    U_section = squareLayout(U_sectionValue)
+    D_section = squareLayout(D_sectionValue)
+    L_section = squareLayout(L_sectionValue)
+    R_section = squareLayout(R_sectionValue)
+    return r'''
+          <table width="100%" cellpadding="0" cellspacing="2" class="tbl-teeth">
+            <tr>
+              <td align="center">{emptyString}</td>
+              <td align="center">
+                {U_section}
+              </td>
+              <td align="center">{emptyString}</td>
+            </tr>
+            <tr>
+              <td align="center">{L_section}</td>
+              <td align="center">{center}</td>
+              <td align="center">{R_section}</td>
+            </tr>
+            <tr>
+              <td align="center">{emptyString}</td>
+              <td align="center">
+                {D_section}
+              </td>
+              <td align="center">{emptyString}</td>
+            </tr>
+          </table>
+        '''.format(
+              U_section=U_section,
+              D_section=D_section,
+              L_section=L_section,
+              R_section=R_section,
+              center=centerLayout,
+              emptyString=emptyString
+        )
+}
+
+{:
+def renderSquare(value=r'&nbsp;&nbsp;&nbsp;'):
+  return write("""{layout}""".format(layout=squareLayout(value)))
+}
+
+{:
+def renderTeeth(sections):
+  if u'CL' in sections or u'CR' in sections:
+    cl = sections.get(u'CL', emptyString)
+    cr = sections.get(u'CR', emptyString)
+    centerLayout = doubleSquareLayout(cl, cr)
+  else:
+    centerLayout = emptyString
+
+  if u'FULL' in sections:
+    layout = wholeTeethLayout(sections.get(u'FULL', ''))
+  else:
+    layout = teethLayout(
+    sections.get(u'U', emptyString),
+    sections.get(u'D', emptyString),
+    sections.get(u'L', emptyString),
+    sections.get(u'R', emptyString),
+    centerLayout
+  )
+
+  return write('''{layout}'''.format(layout=layout))
+}
+
+{:
+teethSectionNameList = [u'U', u'D', u'L', u'R', u'CL', u'CR', u'FULL']
+
+adultUpTeethNumberList = [u'18', u'17', u'16', u'15', u'14', u'13', u'12', u'11', u'21', u'22', u'23', u'24', u'25', u'26', u'27', u'28']
+adultDownTeethNumberList = [u'48', u'47', u'46', u'45', u'44', u'43', u'42', u'41', u'31', u'32', u'33', u'34', u'35', u'36', u'37', u'38']
+
+childUpTeethNumberList = [u'15', u'14', u'13', u'12', u'11', u'21', u'22', u'23', u'24', u'25']
+childDownTeethNumberList = [u'35', u'34', u'33', u'32', u'31', u'41', u'42', u'43', u'44', u'45']
+}
+
+{:
+dentalCardRefList = db.getRecordList(stmt=u"""
+  SELECT dft.number     as number,
+         f.is_deciduous as isChild,
+         dft.mobility   as mobility,
+         s.section      as sectionKey,
+         rbS.code       as sectionValue
+  FROM DentalFormula f
+           JOIN DentalFormulaTeeth dft ON f.id = dft.formula_id AND dft.deleted = 0
+           JOIN DentalFormulaTeethSections s ON dft.id = s.tooth_id
+           JOIN rbToothSectionState rbS ON s.state_id = rbS.id
+  WHERE f.event_id = {eventId};
+""".format(eventId=event.id))
+
+dentalCard = dict()
+
+if dentalCardRefList:
+  for ref in dentalCardRefList:
+    isChild = forceInt(ref.value('isChild'))
+    number = forceString(ref.value('number'))
+    mobility = forceString(ref.value('mobility'))
+    sectionKey = forceString(ref.value('sectionKey'))
+    sectionValue = forceString(ref.value('sectionValue'))
+
+    if number in dentalCard.data:
+      dentalCard.data[number].data[sectionKey] = sectionValue
+    else:
+      sections = dict()
+      dentalCard.data.setdefault(number, sections)
+      dentalCard.data[number].data[u'mobility'] = mobility
+      dentalCard.data[number].data[sectionKey] = sectionValue
+else:
+  isChild = 0
+}
+
+{:
+if isChild:
+  upTeethNumberList = childUpTeethNumberList
+  downTeethNumberList = childDownTeethNumberList
+else:
+  upTeethNumberList = adultUpTeethNumberList
+  downTeethNumberList = adultDownTeethNumberList
+}
+
+{:
+def getValue(dictionary, key):
+  if key in dictionary:
+    value = dictionary[key]
+  else:
+    value = ''
+  return value
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Дневниковая запись {action.endDate.date.toString("dd.MM.yyyy")}</div>
+  <br>
+  {: propNameList = [u"Осмотр", u"Жалобы", u"Перенесенные заболевания", u"Прикус", u"Объективно", u"Диагноз", u"Лечение", u"Рекомендуемое лечение", u"МЭС 812010"]}
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    {for: propName in propNameList}
+      {: prop = action[propName]}
+      {if: propName == u'Диагноз'}
+          <tr>
+            <td>
+              <b>Диагноз:</b>
+              {for: diag in event.diagnosises}
+                {diag.MKB} {diag.MKB.descr}
+              {end:}
+            </td>
+          </tr>
+          {if: prop.value}
+              <tr><td>{prop.value}</td></tr>
+          {end:}
+      {else:}
+        {if: prop.value}
+          <tr>
+            <td><b>{prop.name}:</b> {prop.value}</td>
+          </tr>
+        {end:}
+      {end:}
+    {end:}
+  </table>
+
+
+  <br>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td class="white-wrap" width="1%">Статус&nbsp;</td>
+    </tr>
+    <tr>
+      <td>Подвижность</td>
+      {for: number in upTeethNumberList}
+        {: emptyDict = dict()}
+        {: teethData = dentalCard.data.get(number, emptyDict)}
+        <td align="center">{teethData.data.get(u'mobility', u'')}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap" width="1%">Состояние&nbsp;</td>
+      {for: number in upTeethNumberList}
+        {: emptyDict = dict()}
+        {: teethData = dentalCard.data.get(number, emptyDict)}
+        <td align="center" valign="middle">{renderTeeth(teethData.data)}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap" width="1%">Номер&nbsp;</td>
+      {for: number in upTeethNumberList}
+        <td align="center">{number}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap" width="1%">Номер&nbsp;</td>
+      {for: number in downTeethNumberList}
+        <td align="center">{number}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap" width="1%">Состояние&nbsp;</td>
+      {for: number in downTeethNumberList}
+        {: emptyDict = dict()}
+        {: teethData = dentalCard.data.get(number, emptyDict)}
+        <td align="center" valign="middle">{renderTeeth(teethData.data)}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap" width="1%">Подвижность&nbsp;</td>
+      {for: number in downTeethNumberList}
+        {: emptyDict = dict()}
+        {: teethData = dentalCard.data.get(number, emptyDict)}
+        <td align="center">{teethData.data.get(u'mobility', u'')}</td>
+      {end:}
+    </tr>
+    <tr>
+      <td class="white-wrap">Статус</td>
+    </tr>
+
+  </table>
+
+  <br>
+  <div class="big">Врач-стоматолог _________________/ {action.setPerson.shortName} </div>
+</div>
+</body>
+</html>
