@@ -1,0 +1,61 @@
+<!--Начальная дата разработки 10.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: token -->
+<!--Задача: SUP-50953 Добавить шаблоны в общий список всплывающего меню Напечатать шаблон -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Подготовка к УЗИ органов брюшной полости</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(17)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Подготовка к УЗИ органов брюшной полости</div>
+
+<p>
+  1. За три дня до УЗИ исключить из рациона черный хлеб, молоко, горох, фасоль, капусту, сырые овощи и фрукты, сладкие блюда и газированные напитки
+</p>
+<p>
+  2. Перед исследованием 9- часов полного голода (за 6 часов до исследования не принимать воды, лекарств, не курить)
+</p>
+<p>
+  З. В течение трех дней перед исследованием желателен прием мезим форте 10000 по 1 таблетке 3 раза в день во время еды и эспумизан по 2 таблетки 3 р/день между едой
+</p>
+
+</div>
+</body>
+</html>

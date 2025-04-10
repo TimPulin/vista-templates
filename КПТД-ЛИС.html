@@ -1,0 +1,300 @@
+<!-- изменил Пулин дата 10.04.2025 задача  -->
+<!-- изменил Пулин дата 09.04.2025 задача  -->
+<!-- изменил Пулин дата 14.03.2025 задача  -->
+<!-- изменил Пулин дата 12.03.2025 задача  -->
+<!-- Изменил Пулин Тимур дата 11.10.2023 задача KPTD-456 В результате настройки ЛИС сломался документ "Лабораторный мониторинг анестезиологического пособия" -->
+<!-- Изменила Алтаева Анна дата 16.09.2024 задача KPTD-456 В результате настройки ЛИС сломался документ "Лабораторный мониторинг анестезиологического пособия" -->
+<!-- Изменила Агафонова Елена дата 04.03.2024 задача KPTD-456 В результате настройки ЛИС сломался документ "Лабораторный мониторинг анестезиологического пособия" -->
+<!-- Изменено: 10.04.2023 DEV_TEMP-2098 Доработка документа ЛАБОРАТОРНЫЙ МОНИТОРИНГ ПРОВЕДЕНИЯ АНЕСТЕЗИОЛОГИЧЕСКОГО ПОСОБИЯ-->
+
+
+<html lang="ru">
+<head>
+  <title>Лабораторный мониторинг анестезиологического пособия</title>
+    {setPageSize('A4')}
+    {setOrientation('P')}
+    {setTopMargin(10)}
+    {setBottomMargin(20)}
+    {setRightMargin(10)}
+    {setLeftMargin(20)}
+
+    {: from PyQt4 import QtGui }
+    {: from library.Utils import forceString, forceDate, forceInt }
+    {: from datetime import date, datetime }
+    {: db = QtGui.qApp.db }
+
+{:
+write('''
+<style>
+.mb-10 {
+    margin-bottom: 10px;
+}
+</style>
+''')}
+
+{:  param_names_list_krov = [
+        [u'гемоглобин', 'gemoglobin'],  # list[0] - название столбца с анализом, list[1] - property.name, где хранится значение анализа
+        [u'гематокрит',  'gematokrit'],
+        [u'эритроциты', 'eritrociti'],
+        [u'лейкоциты', 'leikociti'],
+        [u'тромбоциты', 'trombociti'],
+        [u'К+', 'kalii'],
+        [u'Na+', 'natrii'],
+        [u'Сl-', 'hloridi'],
+        [u'железо', u'ferrum'],
+        [u'глюкоза', 'glukoza'],
+        [u'осмолярность', u''],
+        [u'Анализ крови на свертываемость, секунд (минут)', 'analizkrovinasvertyvanie'],
+        [u'Протромбиновое время (секунд)', 'ptombirovan'],
+        [u'Активированное частичное тромбопластиновое время (секунд)', 'achtv']
+    ]
+}
+
+{:  param_names_list_kos = [
+        [u'источник - артерия (а), вена (в), капилляр(к)', u''],
+        [u'PH', u''],
+        [u'PO2', u''],
+        [u'PC02', u''],
+        [u'BE', u'']
+    ]
+}
+
+{:  param_names_list_mocha = [
+        [u'суточное количество', u''],
+        [u'удельный вес', 'ydelnii_ves'],
+        [u'Н', 'H'],
+        [u'Na+', u''],
+        [u'К+', u''],
+        [u'Cl-', u''],
+        [u'мочевина', ''],
+        [u'белок', u'belok'],
+        [u'осмолярность', u''],
+        [u'креатинин', 'kreatinin']
+    ]
+}
+
+
+{: dt_beg_date = datetime.strptime(forceString(action[u'С']), "%d.%m.%Y")}
+{: dt_end_date = datetime.strptime(forceString(action[u'По']), "%d.%m.%Y")}
+
+
+{: beg_date = datetime.strftime(dt_beg_date, "%Y-%m-%d")}
+{: end_date = datetime.strftime(dt_end_date, "%Y-%m-%d")}
+
+{:
+dataRef = db.getRecordList(stmt="""
+  select DATE_FORMAT(a.endDate, '%d.%m.%Y')                                      as d,
+         IF(MAX(apsFerrum.value) is null, ' ', MAX(apsFerrum.value))             as 'ferrum',
+         IF(MAX(apsOsmolarity.value) is null, ' ', MAX(apsOsmolarity.value))     as 'osmolarity',
+         IF(MAX(aps2.value) is null, ' ', MAX(aps2.value))                       as 'gemoglobin',
+         IF(MAX(aps.value) is null, ' ', MAX(aps.value))                         as 'gematokrit',
+         IF(MAX(aps3.value) is null, ' ', MAX(aps3.value))                       as 'eritrociti',
+         IF(MAX(aps4.value) is null, ' ', MAX(aps4.value))                       as 'leikociti',
+         IF(MAX(aps5.value) is null, ' ', MAX(aps5.value))                       as 'trombociti',
+         IF(MAX(aps6.value) is null, ' ', MAX(aps6.value))                       as 'kalii',
+         IF(MAX(aps7.value) is null, ' ', MAX(aps7.value))                       as 'natrii',
+         IF(MAX(aps8.value) is null, ' ', MAX(aps8.value))                       as 'hloridi',
+         IF(MAX(aps9.value) is null, ' ', MAX(aps9.value))                       as 'glukoza',
+         IF(MAX(aps10.value) is null, ' ', MAX(aps10.value))                     as 'ptombirovan',
+         IF(MAX(aps11.value) is null, ' ', MAX(aps11.value))                     as 'achtv',
+         IF(MAX(aps12.value) is null, ' ', MAX(aps12.value))                     as 'ydelnii_ves',
+         IF(MAX(aps13.value) is null, ' ', MAX(aps13.value))                     as 'H',
+         IF(MAX(aps14.value) is null, ' ', MAX(aps14.value))                     as 'belok',
+         IF(MAX(aps15.value) is null, ' ', MAX(aps15.value))                     as 'kreatinin',
+         IF(MAX(apsUrineGlukoza.value) is null, ' ', MAX(apsUrineGlukoza.value)) as 'urineGlukoza',
+         IF(
+                 MAX(aps2.value) is not null OR
+                 MAX(aps.value) is not null OR
+                 MAX(aps3.value) is not null OR
+                 MAX(aps4.value) is not null OR
+                 MAX(aps5.value) is not null OR
+                 MAX(aps6.value) is not null OR
+                 MAX(aps7.value) is not null OR
+                 MAX(aps8.value) is not null OR
+                 MAX(aps9.value) is not null OR
+                 MAX(aps10.value) is not null OR
+                 MAX(aps11.value) is not null OR
+                 MAX(aps12.value) is not null OR
+                 MAX(aps13.value) is not null OR
+                 MAX(aps14.value) is not null OR
+                 MAX(aps15.value) is not null OR
+                 MAX(apsFerrum.value) is not null OR
+                 MAX(apsOsmolarity.value) is not null OR
+                 MAX(apsUrineGlukoza.value) is not null,
+                 1, 0
+         )                                                                       as isRenderRow
+  from Action a
+           left join ActionType at on a.actionType_id = at.id
+           left join Event e on a.event_id = e.id
+      -- КРОВЬ
+      -- гемоглобин
+           left join ActionProperty ap2 on a.id = ap2.action_id and ap2.type_id in (26710, 26713, 31204)
+           left join ActionProperty_String aps2 on ap2.id = aps2.id
+
+      -- Железо (Fe) => железо NEW
+           left join ActionProperty apFerrum on a.id = apFerrum.action_id and apFerrum.type_id in (32422)
+           left join ActionProperty_String apsFerrum on apFerrum.id = apsFerrum.id
+
+      -- Железо сыворотки крови => осмолярность NEW
+           left join ActionProperty apOsmolarity on a.id = apOsmolarity.action_id and apOsmolarity.type_id in (32422)
+           left join ActionProperty_String apsOsmolarity on apOsmolarity.id = apsOsmolarity.id
+
+      -- гематокрит
+           left join ActionProperty ap on a.id = ap.action_id and ap.type_id in
+                                                                  (2208, 31205, 2658, 2721, 3070, 14390, 16508, 22285,
+                                                                   23288, 23378, 23390, 26371, 26716, 31205, 31552)
+           left join ActionProperty_String aps on ap.id = aps.id
+      -- Эритроциты
+           left join ActionProperty ap3 on a.id = ap3.action_id and ap3.type_id in (26709, 31203)
+           left join ActionProperty_String aps3 on ap3.id = aps3.id
+      -- Лейкоциты
+           left join ActionProperty ap4 on a.id = ap4.action_id and ap4.type_id in (26706, 31202)
+           left join ActionProperty_String aps4 on ap4.id = aps4.id
+      -- Тромбоциты PLT
+           left join ActionProperty ap5 on a.id = ap5.action_id and ap5.type_id in (26717, 31209)
+           left join ActionProperty_String aps5 on ap5.id = aps5.id
+      -- калий
+           left join ActionProperty ap6 on a.id = ap6.action_id and ap6.type_id in (22310, 22718, 22742, 23584)
+           left join ActionProperty_String aps6 on ap6.id = aps6.id
+      -- Натрий
+           left join ActionProperty ap7 on a.id = ap7.action_id and ap7.type_id in (22317, 22725, 22749, 23583)
+           left join ActionProperty_String aps7 on ap7.id = aps7.id
+      -- хлориды
+           left join ActionProperty ap8 on a.id = ap8.action_id and ap8.type_id in (22744, 23586)
+           left join ActionProperty_String aps8 on ap8.id = aps8.id
+      -- Глюкоза
+           left join ActionProperty ap9 on a.id = ap9.action_id and ap9.type_id in
+                                                                    (22298, 22365, 22581, 22706, 22729, 23580, 27380,
+                                                                     31232)
+           left join ActionProperty_String aps9 on ap9.id = aps9.id
+      -- Протромбиновое время
+           left join ActionProperty ap10 on a.id = ap10.action_id and ap10.type_id in (22691, 31255, 32042)
+           left join ActionProperty_String aps10 on ap10.id = aps10.id
+      -- АЧТВ
+           left join ActionProperty ap11 on a.id = ap11.action_id and ap11.type_id in (22693, 31253)
+           left join ActionProperty_String aps11 on ap11.id = aps11.id
+
+      -- МОЧА
+      -- удельный вес, относительная плотность => удельный вес
+           left join ActionProperty ap12
+                     on a.id = ap12.action_id and ap12.type_id in (2692, 2720, 14451, 16486, 22322, 23299, 23353, 24015, 31328)
+           left join ActionProperty_String aps12 on ap12.id = aps12.id
+      -- рН => H
+           left join ActionProperty ap13
+                     on a.id = ap13.action_id and ap13.type_id in (2683, 2711, 14442, 16477, 22324, 23301, 23355, 24017, 31329)
+           left join ActionProperty_String aps13 on ap13.id = aps13.id
+      -- Белок => Белок
+           left join ActionProperty ap14 on a.id = ap14.action_id and ap14.type_id in
+                                                                      (2686, 2714, 3628, 14445, 16480, 22323, 22364,
+                                                                       22383, 22398, 22408, 22580, 23300, 23354, 24016,
+                                                                       25327, 31333, 31338)
+           left join ActionProperty_String aps14 on ap14.id = aps14.id
+      -- Креатинин => Креатинин
+           left join ActionProperty ap15 on a.id = ap15.action_id and ap15.type_id in
+                                                                      (2823, 3027, 9840, 14317, 22050, 22308, 22336,
+                                                                       22716, 22740, 23313, 23367, 23577, 24029, 27387,
+                                                                       31776)
+           left join ActionProperty_String aps15 on ap15.id = aps15.id
+      -- Глюкоза
+           left join ActionProperty apUrineGlukoza on a.id = apUrineGlukoza.action_id and apUrineGlukoza.type_id in
+                                                                                          (2688, 2716, 14447, 16482,
+                                                                                           22325, 23302, 23356, 24018,
+                                                                                           31339, 31353)
+           left join ActionProperty_String apsUrineGlukoza on apUrineGlukoza.id = apsUrineGlukoza.id
+
+           left join ActionPropertyType apt on ap.type_id = apt.id
+           left join TakenTissueJournal ttj on a.takenTissueJournal_id = ttj.id
+  where (a.endDate between '{begD} 00:00:00' and '{endD} 23:59:59')
+    and a.deleted = 0
+    and e.client_id = {cid}
+    AND a.endDate IS NOT NULL
+  GROUP BY date_format(ttj.datetimeTaken, '%Y-%M-%D')
+  ORDER BY a.endDate;
+""".format(cid=event.client.id, begD=beg_date, endD=end_date))
+}
+
+</head>
+
+<body style="font-family: Times New Roman; font-size: 11pt;">
+
+
+<div align="center" class="mb-10"><b>ЛАБОРАТОРНЫЙ МОНИТОРИНГ ПРОВЕДЕНИЯ АНЕСТЕЗИОЛОГИЧЕСКОГО ПОСОБИЯ, ИНТЕНСИВНОЙ ТЕРАПИИ</b></div>
+<div class="mb-10">Фамилия, имя, отчество (при наличии): <b>{client.fullName}</b></div>
+{if: dataRef}
+
+  {: data = filter(lambda x: forceInt(x.value('isRenderRow'))==1, dataRef)}
+  {: ln = len(data)}
+
+  <table width="100%" border="1" cellpadding="2" cellspacing="0" style="font-size: 9pt;">
+  <col style="width:20%">
+  <thead>
+      <tr>
+          <th rowspan="2">Параметры</th>
+          <th colspan="14">Дата</th>
+      </tr>
+      <tr>
+          {for: dt in data}
+              <th>{forceString(dt.value('d')).split(',')[0]}</th>
+          {end:}
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td colspan="{ln+1}">
+              <b>КРОВЬ</b>
+          </td>
+      </tr>
+      {for: lst in param_names_list_krov}
+          {: name, key = lst}
+          <tr>
+              <td>{name}</td>
+              {for: dt in data}
+              <td>{forceString(dt.value(key))}</td>
+              {end:}
+          </tr>
+      {end:}
+
+      <tr>
+          <td colspan="{ln+1}">
+              <b>КИСЛОТНО-ОСНОВНОЕ СОСТОЯНИЕ (КОС)</b>
+          </td>
+      </tr>
+      {for: lst in param_names_list_kos}
+          {: name, key = lst}
+          <tr>
+              <td>{name}</td>
+              {for: dt in data}
+              <td>{forceString(dt.value(key))}</td>
+              {end:}
+          </tr>
+      {end:}
+
+      <tr>
+          <td colspan="{ln+1}">
+              <b>МОЧА</b>
+          </td>
+      </tr>
+      {for: lst in param_names_list_mocha}
+          {: name, key = lst}
+          <tr>
+              <td>{name}</td>
+              {for: dt in data}
+              <td>{forceString(dt.value(key))}</td>
+              {end:}
+          </tr>
+      {end:}
+
+  </tbody>
+  </table>
+{end:}
+
+<br>
+<br>
+<br>
+
+<div>Фамилия, имя, отчество (при наличии), должность, подпись</div>
+<div>{currentPerson.shortName},врач анестезиолог-реаниматолог подпись: __________</div>
+<div>{action[u"медицинская сестра-анестезист"].name}: {action[u"медицинская сестра-анестезист"].value}, подпись: __________</div>
+</body>
+</html>
+
