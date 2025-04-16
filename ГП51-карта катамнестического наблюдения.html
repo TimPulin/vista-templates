@@ -1,0 +1,123 @@
+<!--Начальная дата разработки 14.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>карта катамнестического наблюдения</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.pL {
+    padding-left: 10px;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def isCurrentValue(currentValue, value):
+  return currentValue == value
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div class="small">
+    Табл. Содержание «Единого регистра детей, нуждающихся в катамнестическом наблюдении»
+  </div>
+  <br>
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td colspan="2">ФИО, дата рождения <b>{client.fullName}</b> <b>{client.birthDate}</b></td>
+    </tr>
+    <tr>
+      <td>Индивидуальный регистрационный №</td>
+      <td>
+        <b>{action[u'Индивидуальный регистрационный №']}</b>
+      </td>
+    </tr>
+    <tr>
+      <td>№ медицинской карты</td>
+      <td><b>{client.id}</b></td>
+    </tr>
+
+    {for: prop in action}
+      {if: prop.name in (u'Причина снятия с учета', u'Инвалидность')}
+        {: currentValue = prop.value}
+        {if: prop.name == u'Причина снятия с учета'}
+          {: optionList = [u"По истечении 3-х лет", u"Направлен в АПУ", u"По решению родителей", u"Неявка", u"другое"]}
+        {elif: prop.name == u'Инвалидность'}
+          {: optionList = [u"Да", u"Нет"]}
+        {end:}
+
+        <tr>
+          <td colspan="2">{prop.name}</td>
+        </tr>
+        {for: option in optionList}
+          <tr>
+            <td class="pL">{option}</td>
+            <td>
+              {if: isCurrentValue(currentValue, option)}
+                &#10004;
+              {end:}
+            </td>
+          </tr>
+        {end:}
+   
+      {elif: prop.name not in [u'Индивидуальный регистрационный №']}
+        <tr style="page-break-inside: avoid">
+          <td>{prop.name}</td>
+          <td>
+            <b>{prop.value}</b>
+          </td>
+        </tr>
+      {end:}
+
+
+    {end:}
+  </table>
+
+</div>
+</body>
+</html>

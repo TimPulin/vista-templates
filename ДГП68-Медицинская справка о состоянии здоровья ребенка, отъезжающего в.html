@@ -1,0 +1,264 @@
+<!-- изменил Пулин дата 11.04.2025 задача DEV_TEMP-5325 Поправить шаблон печати для новой редакции СЭМДа (248) -->
+<!--Начальная дата разработки 30.09.2024 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: ChildMedCertV3 -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинская справка</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+body {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.result-option {
+    padding-right: 15px;
+    padding-left: 5px;
+}
+.nbs {
+  display: inline-block;
+  width: 10px;
+}
+.squre {
+  width: 10px;
+  height: 10px;
+}
+.mL {
+    margin-left: 5px;
+}
+</style>
+''')}
+
+{:
+def putElement(value):
+  return write(r'''
+  <span class="nbs">{value}</span>
+  '''.format(value = value))
+}
+{:
+stringMan = putElement('')
+stringWoman = putElement('')
+if client.sex == u'М':
+  stringMan = 'X'
+else:
+  stringWoman = 'X'
+}
+
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  select mkb.DiagID   as codeDiag,
+         mkb.DiagName as nameDiag
+  from Diagnosis ds
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = getEventDiagnosis({eventId})
+""".format(eventId=event.id))
+if diagRef:
+  codeDiag = forceString(diagRef.value('codeDiag'))
+  nameDiag = forceString(diagRef.value('nameDiag'))
+else:
+  codeDiag = ''
+  nameDiag = ''
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="40%"></td>
+        <td width="59%"></td>
+        <td width="1%" style="font-size:8pt">
+          <div style="white-space: nowrap">
+            Приложение № 13
+            <br>  к приказу Министерства здравоохранения Российской Федерации
+            <br>  от 15 декабря 2014 г. № 834н
+          </div>
+        </td>
+      </tr>
+      <tr><td colspan="3"></td></tr>
+      <tr style="font-size:10pt">
+        <td>
+          <div>
+            {currentOrganisation.fullName}
+            <br>
+            {currentOrganisation.address}
+          </div>
+        </td>
+        <td></td>
+        <td>
+          <div style="white-space: nowrap">
+            Код формы по ОКУД {'_' * 10}
+            <br>Код учреждения по ОКПО {'_' * 5}
+            <br>
+            <br>
+            Медицинская документация
+            <br>
+            Форма № 079/уУтверждена приказом Минздрава России
+            <br>
+            от 15 декабря 2014 г. № 834н
+          </div>
+        </td>
+      </tr>
+    </table>
+
+<div align="center" class="h1">
+Медицинская справка <br>
+о состоянии здоровья ребенка, отъезжающего в организацию <br>
+отдыха детей и их оздоровления
+</div>
+
+      <div><b>1. Фамилия, имя, отчество ребенка</b> {client.fullName}</div>
+
+      <table cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td><b>2. Пол</b></td>
+                <td>1. Мужской</td>
+                <td class="result-option">
+                  <table border="1" cellpadding="1" cellspacing="0"><tr><td width="15" style="line-height: 12px;">{stringMan}</td></tr></table>
+                </td>
+                <td>2. Женский</td>
+                <td class="result-option">
+                  <table border="1" cellpadding="2" cellspacing="0"><tr><td width="15" style="line-height: 12px;">{stringWoman}</td></tr></table>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td align="right"><b>3. Дата рождения</b> {client.birthDate}</td>
+        </tr>
+      </table>
+      <div><b>4. Место регистрации: субъект Российской Федерации</b> {forceString(client.regAddress.region)[:-1]}</div>
+      <div style="margin-left: 10px">
+        {if: client.regAddress.district} <b>район</b> {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.parentCity} <b>город</b> {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.city} <b>населенный пункт</b> {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        <br>
+        {if: client.regAddress.street} <b>улица</b> {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.number} <b>дом</b> {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.flat} <b>квартира</b> {client.regAddress.flat}{end:}
+      </div>
+
+
+<div>
+  <b>5. № школы</b> {action[u'№ школы']}
+  <b>класс</b> {action[u'класс']}
+</div>
+
+<div>
+  <b>6. Перенесенные инфекционные и неинфекционные заболевания, операции, травмы</b>
+  {action[u'Перенесенные детские инфекционные заболевания']}
+</div>
+<div>
+  <b>7. Проведенные профилактические прививки и результаты обследований в целях выявления туберкулеза</b>
+  {action[u'Проведенные профилактические прививки']}
+</div>
+<div>
+  <b>8. Состояние здоровья:</b>
+</div>
+<table width="100%" cellpadding="3" cellspacing="0" border="0">
+  <tr>
+    <td width="75%"><b>Диагноз заболевания</b> {nameDiag}</td>
+    <td width="25%" valign="top"><b>код по МКБ-10</b> {codeDiag}</td>
+  </tr>
+</table>
+
+<div class="mL">
+  <b>8(1). Аллергические заболевания (пищевая, лекарственная, бытовая аллергия), аллергические реакции:</b>
+  {action[u'Аллергические заболевания, реакции'].value}
+</div>
+
+<div>
+  <b>9. Назначенный лечащим врачом режим лечения (диета, прием лекарственных препаратов для медицинского применения и специализированных продуктов лечебного питания)</b>
+  {action[u'Назначенный лечащим врачом режим лечения']}
+</div>
+
+<div>
+  <b>10. Рост</b> {action[u'Рост (см)']} см
+  <b>масса тела</b> {action[u'Масса тела (кг)']} кг
+  {: elemList = []}
+  {for: elem in action[u'Оценка физического развития'].value}
+    {:elemList.append(elem)}
+  {end:}
+  {', '.join(elemList)}
+</div>
+
+<div>
+  <b>11. Группа здоровья</b>
+  {action[u'Группа здоровья']}
+</div>
+<div class="mL">
+  <div>
+    <b>11(1). Медицинская группа для занятий физической культурой</b>
+    {action[u'Медицинская группа для занятий физической культурой']}
+  </div>
+</div>
+  <div>
+    <b>12. Нуждаемость в условиях доступной среды</b>
+    {action[u'Нуждаемость в условиях доступной среды']}
+  </div>
+<div>
+  <b>13. Необходимость сопровождения ребенка законным представителем в период пребывания в организации отдыха детей и их оздоровления</b>
+  {action[u'Необходимость сопровождения пациента']}
+</div>
+<div>
+  <b>14. Отсутствие контакта с больными инфекционными заболеваниями</b>
+  {action[u'Контакт с инфекционными больными']}
+</div>
+<div class="mL">
+  <div>
+    <b>14(1). Осмотр на педикулез и чесотку</b>
+    {action[u'Осмотр на педикулез и чесотку']}
+  </div>
+  <div>
+    <b>14(2). Обследование на гельминтозы (энтеробиоз, гименолепидоз)</b> {action[u'Обследование на гельминтозы (энтеробиоз, гименолепидоз)']}
+  </div>
+</div>
+
+<div>
+  <b>15. Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления</b>
+  {action[u'Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления']}
+</div>
+<div>
+  16. Фамилия, инициалы и подпись врача
+  {action.person.shortName}
+  {'_' * 20}
+</div>
+
+<p>M.П.</p>
+<div>
+  «{forceString(action.endDate.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.
+</div>
+
+</body>
+</html>
+
+, , ,

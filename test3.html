@@ -1,76 +1,188 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!-- изменил Пулин дата 31.03.2025 задача SUP-50739 Поправить QR код генерируемый в направлении -->
+<!-- изменил Каравайчик А. Д. 27.01.2025 задача DEV_TEMP-4769 При распечатывания талона формируется qr код в формате 1553_2024-12-20_09%3a15%3a00_223|233|20.12.24|9:15  и он не отрабатывает -->
+<!-- изменил Пулин дата 16.12.2024 задача  -->
+
+<HTML lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Медицинская карта пациента</title>
-    <style>
-        tr, td, th {
-            border: 1px solid black;
-            height: 100px;
-        }
-    </style>
+  <title>направление</title>
+{setPageSize('A5')}
+{setOrientation('P')}
+{setLeftMargin(0)}
+{setRightMargin(0)}
+{: from library.Utils import forceString, forceInt, forceDateTime}
+{: from library.PrintTemplates import get_qr_code_img_b64}
+{: from datetime import datetime}
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: import base64 }
+{: import qrcode}
+{: from io import BytesIO}
+
+<!-- NOTE сделал через запрос к БД, потому что в visit время было без секунд-->
+<!--  note upd вернул отображение через объект visit, потому что через запрос указывалось неправильное время -->
+{:
+customVisitRef = db.getRecordEx(stmt=u"""
+  select
+    e.client_id as clientId,
+    a.person_id as personId,
+    a.directionDate as date,
+    a.office as office,
+    e.org_id as orgId
+  from Action a
+           join Event e on a.event_id = e.id
+               and e.id = {eventId}
+               and e.eventType_id = 29
+  where actionType_id = 19;
+""".format(eventId=event.id))
+
+if customVisitRef:
+  clientId = forceString(customVisitRef.value('clientId'))
+  personId = forceString(customVisitRef.value('personId'))
+  dateReferral = forceString(customVisitRef.value('date').toString())
+  dateReferral = datetime.strptime(dateReferral, '%Y-%m-%dT%H:%M:%S')
+
+  office = forceString(customVisitRef.value('office'))
+
+  visitDate = forceString(dateReferral.strftime('%d.%m.%y'))
+  visitDateFormatted = forceString(dateReferral.strftime('%Y-%m-%d'))
+  # visitTime = forceString(dateReferral.strftime('%H:%M'))
+  visitTime = forceString(visit.data[u'time'])
+  visitTimeFormatted = forceString(dateReferral.strftime('%H:%M:%S')).replace(':', '%3a')
+else:
+  clientId = ''
+  personId = ''
+  office = ''
+  visitDate = ''
+  visitDateFormatted = ''
+  visitTime = ''
+  visitTimeFormatted = ''
+}
+
+{:
+SEPARATOR_GOR = forceString('_')
+SEPARATOR_VERT = forceString('|')
+
+DPO = person.orgStructure.fullName.split('/')[1]
+DPO_number = DPO.split()[-1].strip('№')
+DPO_address = person.orgStructure.address
+
+orgId = ''
+if DPO_number == "9":
+  orgId = 234
+elif DPO_number == "22":
+  orgId = 561
+elif DPO_number == "34":
+  orgId = 235
+elif DPO_number == "66":
+  orgId = 236
+elif DPO_number == "68":
+  orgId = 233
+elif DPO_number == "69":
+  orgId = 237
+elif u'ДПО № 66 Офис врача - педиатра' in  DPO:
+  orgId = 1203
+elif u'Офис Врача ДПО 22 Пейзажная' in DPO:
+  orgId = 1202
+
+orgId = forceString(orgId)
+
+
+'''if visitTime != "":
+  var_time = forceString(visitTime).split(":")
+  if len(var_time[0]) == 1:
+      res_time = "0" + var_time[0] + ":" + var_time[1]
+  else:
+      res_time = visitTime'''
+
+if visitTime != "":
+    hours, minutes = forceString(visitTime).split(":")
+    res_time = "{:02}:{:02}".format(int(hours), int(minutes))
+
+
+
+codeString = personId + SEPARATOR_GOR + visitDateFormatted + SEPARATOR_GOR + visitTimeFormatted + SEPARATOR_GOR + office + SEPARATOR_VERT + orgId + SEPARATOR_VERT + visitDate + SEPARATOR_VERT + res_time
+
+img = qrcode.make(codeString)
+buffered = BytesIO()
+img.save(buffered, format="PNG")
+img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+}
+
+
 </head>
-<body>
-<table>
-    <tr style="font-size: 8px">
-        <td align="left">
-Государственное бюджетное учреждение здравоохранения "Клинический онкологический диспансер №1" министерства здравоохранения Краснодарского края 350040, Россия, край. Краснодарский, г. Краснодар, ул. им Димитрова д.146 ОГРН 1062309027043
-        </td>
-        <td align="right">
-Медицинская документация<br>
-            Учетная форма № 003/у<br>
-            Утверждена приказом Министерства здравоохранения Российской Федерации<br> от 05 августа 2022 г. № 530н
-        </td>
-    </tr>
+<body style="font-family: 'Times New Roman'; font-size: 12pt;">
+
+<br>
+
+<table cellpadding="3" cellspacing="0" align="center">
+  <tr>
+    <td align="center">ГБУЗ ДГП №68</td>
+  </tr>
+  <tr>
+    <td>
+      <table align="center">
+        <tr>
+          <td>
+            <h5 style="margin-bottom: 0px; margin-top: 0px">Пациент: <B>{client.fullName}</B></h5>
+            <h5 style="margin-bottom: 0px; margin-top: 0px">Код: <B>{client.id}</B></h5>
+            {if: person.id == 2041} ЭКГ {else:} {visit.type} {end:}
+            <div>Врач:
+              <B>{person.fullName}</B>
+              {if: person.post.id == 165}<B>{person.speciality.name.replace (u'Врач',u'М/с')}{else:}</B> ({person.speciality}){end:}
+            </div>
+            {DPO}
+          </td>
+        </tr>
+      </table>
+
+      <br>
+
+      Явиться: <b>{visit.data[u'date']}</b> в кабинет № <b>{office}</b>
+
+      <h3 align="center">Время: <b>{res_time}</b></h3>
+
+      {if: person.id==1083 or person.id==1012 or person.id == 1909}
+        <div>
+          Клинический (кровь из пальца) анализ крови, биохимический анализ крови (кровь из вены): анализы сдаются натощак (последний прием пищи в 19 часов накануне, утром – обильное питье (чистая негазированная вода)
+        </div>
+      {end:}
+      {if: person.id==844 or person.id==122 or person.id==400}
+        <div>
+          УЗИ брюшной полости для детей до года: ребенка не кормить за два часа до исследования УЗИ брюшной полости детям старше года: при проведении исследования в первой половине дня: последний приём пищи – накануне до 19 часов При проведении исследования после 14 часов – прием пищи в день исследования до 08:00
+        </div>
+      {end:}
+
+      {if: person.id==333 or person.id==414 or person.id==1549}
+        <div>При себе необходимо иметь сменную обувь и пеленку</div>
+      {end:}
+
+      {if: person.id==2041}
+        <div>С собой иметь: амб.карту, пеленку.<br> Вход в кабинет во второй обуви.</div>
+      {end:}
+
+      <div align="center"><img src="data:image/png;base64,{img_str}" width="100" alt="qr"></div>
+
+
+
+      <div align="center"><font size="1">
+        Телефоны для справок:
+        <br>Регистратура:
+          {if: DPO_number == "9"}
+              246-73-29
+          {elif: DPO_number == "22"}
+              246-74-49
+          {elif: DPO_number == "66"}
+              246-74-46
+          {elif: DPO_number == "68"}
+              246-74-47
+          {elif: DPO_number == "69"}
+              246-74-48
+          {end:}
+        <br>Кварт. помощь: 122
+      </font></div>
+    </td>
+  </tr>
 </table>
 
-<div align="center"><h4><b>МЕДИЦИНСКАЯ КАРТА ПАЦИЕНТА,</b><br>
-ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ В СТАЦИОНАРНЫХ УСЛОВИЯХ, <br>В УСЛОВИЯХ ДНЕВНОГО СТАЦИОНАРА<br>
-    <b>№ {{context.externalId}}</b></h4></div>
-
-Фамилия, имя, отчество (при наличии):<b><u>{{context.client_fio}}</u></b><br>
-Дата рождения: <u>{{context.client_date}}</u>
-Пол:  <u>{{context.sex}}</u><br>
-
-Поступил в <b><u>{{context.stat_type}}</u></b><br>
-Дата и время поступления: <b> <u>{{context.b_date}}</u></b><br>
-
-Поступил через: ______ часов после начала заболевания, получения травмы, отравления <br>
-Направлен в стационар (дневной стационар): поликлиникой - 1, выездной бригадой скорой медицинской помощи - 2, полицией - 3, обратился самостоятельно - 4, другое - 5 (указать) ______________<br>
-
-Виды транспортировки <b><u>{{context.transport_name}}</u></b><br>
-Наименование медицинской организации, направившей пациента  <u>ГБУЗ КОД № 1</u><br>
-Номер и дата направления: Внутреннее направление  <u>{{context.ref_number}} {{context.ref_date}}</u><br>
-Поступил в стационар для оказания медицинской помощи в текущем году: по поводу основного заболевания, указанного в диагнозе при поступлении: первично - 1; повторно - 2<br>
-Форма оказания медицинской помощи:  <u>плановая -1</u><br>
-Наименование отделения <b> <u>{{context.os_to}}</u></b><br>
-профиль коек  <u>{{context.hb_prof}}</u> палата № {{context.hb_name}}<br>
-Переведен в отделение: _________________________________________________________________________<br>
-Профиль коек ____________________________________ палата №_________<br>
-Дата и время перевода __________ 20____г. время: ______час. ______мин.<br>
-<b>Выписан __________ 20____г. время: ______час. ______мин.</b><br>
-Количество дней нахождения в медицинской организации, _________<br>
-
-Диагноз при направлении: <b> <u> {{context.it_mbk}} {{context.clinicGroupCode or ''}} клиническая группа</u></b><br>
-Предварительный диагноз (диагноз при поступлении)<br>
-Дата и время установления диагноза при поступлении __________ 20____г. время: ______час. ______мин.<br>
-
-Основное заболевание: {{context.post_mbk}} <br>
-Осложнения основного заболевания: ______________________________________________________________<br>
-____________________________________________________________________________________________________________________________<br>
-____________________________________________________________________________________________________________________________<br>
-Сопутствующие заболевания: ______________________________________________________________<br>
-____________________________________________________________________________________________________________________________<br>
-____________________________________________________________________________________________________________________________<br>
-Дополнительные сведения о заболевании _________________________________________________________________________<br>
-В анамнезе: туберкулез ____________, ВИЧ-инфекция ____________, вирусные гепатиты ____________, сифилис ____________, COVID-19 ____________<br>
-Осмотр на педикулез, чесотку: <u>да - 1</u>, нет - 2, результат осмотра: отр.<br>
-Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции: ______________________________________________________________<br>
-Трансфузии (переливания) донорской крови и (или) её компонентов (год, осложнения, реакции): _____________________________________________________________________________________________<br>
-
-Группа крови: ____, резус-принадлежность: ____, антиген K1 системы Kell: ____<br>
-Иные сведения групповой принадлежности крови (при наличии): _________________________________________________________________________<br>
-
-
 </body>
-</html>
+</HTML>
