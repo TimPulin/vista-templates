@@ -1,188 +1,52 @@
-<!-- изменил Пулин дата 31.03.2025 задача SUP-50739 Поправить QR код генерируемый в направлении -->
-<!-- изменил Каравайчик А. Д. 27.01.2025 задача DEV_TEMP-4769 При распечатывания талона формируется qr код в формате 1553_2024-12-20_09%3a15%3a00_223|233|20.12.24|9:15  и он не отрабатывает -->
-<!-- изменил Пулин дата 16.12.2024 задача  -->
-
-<HTML lang="ru">
-<head>
-  <title>направление</title>
-{setPageSize('A5')}
-{setOrientation('P')}
-{setLeftMargin(0)}
-{setRightMargin(0)}
-{: from library.Utils import forceString, forceInt, forceDateTime}
-{: from library.PrintTemplates import get_qr_code_img_b64}
-{: from datetime import datetime}
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-{: import base64 }
-{: import qrcode}
-{: from io import BytesIO}
-
-<!-- NOTE сделал через запрос к БД, потому что в visit время было без секунд-->
-<!--  note upd вернул отображение через объект visit, потому что через запрос указывалось неправильное время -->
-{:
-customVisitRef = db.getRecordEx(stmt=u"""
-  select
-    e.client_id as clientId,
-    a.person_id as personId,
-    a.directionDate as date,
-    a.office as office,
-    e.org_id as orgId
-  from Action a
-           join Event e on a.event_id = e.id
-               and e.id = {eventId}
-               and e.eventType_id = 29
-  where actionType_id = 19;
-""".format(eventId=event.id))
-
-if customVisitRef:
-  clientId = forceString(customVisitRef.value('clientId'))
-  personId = forceString(customVisitRef.value('personId'))
-  dateReferral = forceString(customVisitRef.value('date').toString())
-  dateReferral = datetime.strptime(dateReferral, '%Y-%m-%dT%H:%M:%S')
-
-  office = forceString(customVisitRef.value('office'))
-
-  visitDate = forceString(dateReferral.strftime('%d.%m.%y'))
-  visitDateFormatted = forceString(dateReferral.strftime('%Y-%m-%d'))
-  # visitTime = forceString(dateReferral.strftime('%H:%M'))
-  visitTime = forceString(visit.data[u'time'])
-  visitTimeFormatted = forceString(dateReferral.strftime('%H:%M:%S')).replace(':', '%3a')
-else:
-  clientId = ''
-  personId = ''
-  office = ''
-  visitDate = ''
-  visitDateFormatted = ''
-  visitTime = ''
-  visitTimeFormatted = ''
-}
-
-{:
-SEPARATOR_GOR = forceString('_')
-SEPARATOR_VERT = forceString('|')
-
-DPO = person.orgStructure.fullName.split('/')[1]
-DPO_number = DPO.split()[-1].strip('№')
-DPO_address = person.orgStructure.address
-
-orgId = ''
-if DPO_number == "9":
-  orgId = 234
-elif DPO_number == "22":
-  orgId = 561
-elif DPO_number == "34":
-  orgId = 235
-elif DPO_number == "66":
-  orgId = 236
-elif DPO_number == "68":
-  orgId = 233
-elif DPO_number == "69":
-  orgId = 237
-elif u'ДПО № 66 Офис врача - педиатра' in  DPO:
-  orgId = 1203
-elif u'Офис Врача ДПО 22 Пейзажная' in DPO:
-  orgId = 1202
-
-orgId = forceString(orgId)
+<div>
 
 
-'''if visitTime != "":
-  var_time = forceString(visitTime).split(":")
-  if len(var_time[0]) == 1:
-      res_time = "0" + var_time[0] + ":" + var_time[1]
-  else:
-      res_time = visitTime'''
-
-if visitTime != "":
-    hours, minutes = forceString(visitTime).split(":")
-    res_time = "{:02}:{:02}".format(int(hours), int(minutes))
+Туберкулез органов дыхания
+Злокачественные новообразования
+Из них губы, полости рта и глотки
+из них в 1-2 стадии
+пищевода
+из них в 1-2 стадии
+желудка
+из них в 1-2 стадии
+тонкого кишечника
+из них в 1-2 стадии
+ободочной кишки
+из них в 1-2 стадии
+ректосигмоидного соединения, прямой кишки, заднего прохода (ануса) и анального канала
+из них в 1-2 стадии
+трахеи, бронхов, легкого
+из них в 1-2 стадии
+кожи
+из них в 1-2 стадии
+молочной железы
+из них в 0-1 стадии
+2 стадии
+шеики матки
+из них в 0-1 стадии
+2 стадии
+предстательной железы
+из них в 1-2 стадии
+Сахарный диабет
+из него: инсулиннезависимый сахарный диабет
+Преходящие церебральные ишемические приступы (атаки) и родственные синдромы
+Старческая катаракта и другие катаракты
+Глаукома
+Слепота и пониженное зрение
+Кондуктивная и нейросенсорная потеря слуха
+Болезни системы кровообращения
+из них: болезни, характеризующиеся повышенным кровяным давлением
+ишемические болезни сердца
+цереброваскулярные болезни
+из них: закупорка и стеноз прецеребральных и (или) церебральных артерий, не приводящие х инфаркту мозга
+Болезни органов дыхания
+Бронхит, не уточненный ках острый и хронический, простой и слизисто-гнойный хронический бронхит, хронический бронхит неуточненный, эмфизема
+Другая хроническая обструктивная легочная болезнь, астма, астматический статус, бронхоэктатическая болезнь
+Болезни органов пищеварения
+язва желудка, язва двенадцатиперстной кишки
+гастрит и дуоденит
+Прочие
 
 
 
-codeString = personId + SEPARATOR_GOR + visitDateFormatted + SEPARATOR_GOR + visitTimeFormatted + SEPARATOR_GOR + office + SEPARATOR_VERT + orgId + SEPARATOR_VERT + visitDate + SEPARATOR_VERT + res_time
-
-img = qrcode.make(codeString)
-buffered = BytesIO()
-img.save(buffered, format="PNG")
-img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-}
-
-
-</head>
-<body style="font-family: 'Times New Roman'; font-size: 12pt;">
-
-<br>
-
-<table cellpadding="3" cellspacing="0" align="center">
-  <tr>
-    <td align="center">ГБУЗ ДГП №68</td>
-  </tr>
-  <tr>
-    <td>
-      <table align="center">
-        <tr>
-          <td>
-            <h5 style="margin-bottom: 0px; margin-top: 0px">Пациент: <B>{client.fullName}</B></h5>
-            <h5 style="margin-bottom: 0px; margin-top: 0px">Код: <B>{client.id}</B></h5>
-            {if: person.id == 2041} ЭКГ {else:} {visit.type} {end:}
-            <div>Врач:
-              <B>{person.fullName}</B>
-              {if: person.post.id == 165}<B>{person.speciality.name.replace (u'Врач',u'М/с')}{else:}</B> ({person.speciality}){end:}
-            </div>
-            {DPO}
-          </td>
-        </tr>
-      </table>
-
-      <br>
-
-      Явиться: <b>{visit.data[u'date']}</b> в кабинет № <b>{office}</b>
-
-      <h3 align="center">Время: <b>{res_time}</b></h3>
-
-      {if: person.id==1083 or person.id==1012 or person.id == 1909}
-        <div>
-          Клинический (кровь из пальца) анализ крови, биохимический анализ крови (кровь из вены): анализы сдаются натощак (последний прием пищи в 19 часов накануне, утром – обильное питье (чистая негазированная вода)
-        </div>
-      {end:}
-      {if: person.id==844 or person.id==122 or person.id==400}
-        <div>
-          УЗИ брюшной полости для детей до года: ребенка не кормить за два часа до исследования УЗИ брюшной полости детям старше года: при проведении исследования в первой половине дня: последний приём пищи – накануне до 19 часов При проведении исследования после 14 часов – прием пищи в день исследования до 08:00
-        </div>
-      {end:}
-
-      {if: person.id==333 or person.id==414 or person.id==1549}
-        <div>При себе необходимо иметь сменную обувь и пеленку</div>
-      {end:}
-
-      {if: person.id==2041}
-        <div>С собой иметь: амб.карту, пеленку.<br> Вход в кабинет во второй обуви.</div>
-      {end:}
-
-      <div align="center"><img src="data:image/png;base64,{img_str}" width="100" alt="qr"></div>
-
-
-
-      <div align="center"><font size="1">
-        Телефоны для справок:
-        <br>Регистратура:
-          {if: DPO_number == "9"}
-              246-73-29
-          {elif: DPO_number == "22"}
-              246-74-49
-          {elif: DPO_number == "66"}
-              246-74-46
-          {elif: DPO_number == "68"}
-              246-74-47
-          {elif: DPO_number == "69"}
-              246-74-48
-          {end:}
-        <br>Кварт. помощь: 122
-      </font></div>
-    </td>
-  </tr>
-</table>
-
-</body>
-</HTML>
+</div>

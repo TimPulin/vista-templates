@@ -1,0 +1,46 @@
+Фамилия, имя, отчество <b>{client.fullName}</b>
+<br>
+Дата рождения <b>{client.birthDate}</b>
+<br>
+Гражданство: <b>{client.citizenship}</b> <br>
+
+
+Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+<div>
+  {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  <br>
+  {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+</div>
+
+Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+<div>
+  {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  <br>
+  {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+</div>
+
+
+<div>
+  Местность
+  {:incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
+  {if: incity} <b>городская</b> {else:} <b>сельская</b> {end:}
+</div>
+
+<div>
+  Место работы, место учебы, наименование дошкольного образовательного учреждения, наименование организации для детей-сирот:
+  <b>{client.work.shortName} {client.work.post}</b>
+</div>
+
+<div>
+  данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+  {client.compulsoryPolicy.insurer}
+</div>
+<div> СНИЛС: <b>{client.SNILS}</b></div>

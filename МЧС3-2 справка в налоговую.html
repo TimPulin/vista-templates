@@ -1,9 +1,10 @@
+<!-- изменил Пулин дата 18.04.2025 задача  -->
 <!--Начальная дата разработки 20.03.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати:  -->
 <!--Задача:  -->
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -210,7 +211,7 @@ if u'ИНН пациента' in action:
 else:
   clientINN = ''
 
-clientDocumentCode = adjustString(getDocumentCode(client.document.documentTypeCode))
+clientDocumentCode = adjustString(getDocumentCode(client.document.documentTypeCode), 2)
 documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
 clientDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
 clientDocumentDate = client.document.date
@@ -261,13 +262,13 @@ else:
 currentYearStartDate = forceString(documentYear)
 # <!-- note запрос на получение информации по оплате   -->
 serviceRefList = db.getRecordList(stmt=u"""
-    select e.id                               as eventId,
-           DATE_FORMAT(e.setDate, '%Y.%m.%d') as eventSetDate,
-           DATE_FORMAT(e.setDate, '%d.%m.%Y') as eventSetDateFormated,
-           rbS.name                           as serviceName,
-           ai.sum                        as eventPayedSum,
-           ai.price                           as servicePrice,
-           ai.amount                          as serviceAmount
+  select e.id                               as eventId,
+         DATE_FORMAT(e.setDate, '%Y.%m.%d') as eventSetDate,
+         DATE_FORMAT(e.setDate, '%d.%m.%Y') as eventSetDateFormatted,
+         rbS.name                           as serviceName,
+         ai.sum                             as servicePayedSum,
+         ai.price                           as servicePrice,
+         ai.amount                          as serviceAmount
     from Event e
              join EventType et on e.eventType_id = et.id and e.deleted = 0
              join Account_Item ai on e.id = ai.event_id and ai.deleted = 0
@@ -281,12 +282,8 @@ serviceRefList = db.getRecordList(stmt=u"""
       and DATE(e.setDate) <= DATE(CONCAT_WS('-', '{currentYearStartDate}', '12', '31'))
 """.format(clientId=client.id, currentYearStartDate=currentYearStartDate))
 
-totalPayed = 0
-if serviceRefList and len(serviceRefList)>0:
-  for serviceRef in serviceRefList:
-    serviceAmount = forceInt(serviceRef.value('serviceAmount'))
-    servicePrice = forceInt(serviceRef.value('servicePrice'))
-    totalPayed += servicePrice * serviceAmount
+totalPayed = action[u'Сумма расходов по коду услуги «1»'].value
+
 }
 
 
@@ -490,7 +487,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       ИНН
     </td>
     <td colspan="12">
-      <table width="100%" cellpadding="0" cellspacing="0">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
           {if: len(payerINN) > 0}
             {: rendTextInSquare(payerINN)}
@@ -576,7 +573,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {if: len(payerDocumentDate) > 0}
+          {if: payerDocumentDate}
             {: rendTextInSquare(payerDocumentDate.toString(u'dd'))}
           {else:}
             {: rendEmptySquare(2)}
@@ -588,7 +585,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {if: len(payerDocumentDate) > 0}
+          {if: payerDocumentDate}
             {: rendTextInSquare(payerDocumentDate.toString(u'MM'))}
           {else:}
             {: rendEmptySquare(2)}
@@ -600,7 +597,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="4">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {if: len(payerDocumentDate) > 0}
+          {if: payerDocumentDate}
             {: rendTextInSquare(payerDocumentDate.toString(u'yyyy'))}
           {else:}
             {: rendEmptySquare(4)}
@@ -927,7 +924,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {: rendTextInSquare(client.birtDate.date.toString('dd'))}
+            {: rendTextInSquare(client.birthDate.date.toString('dd'))}
           </tr>
         </table>
       </td>
@@ -937,7 +934,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {: rendTextInSquare(client.birtDate.date.toString('MM'))}
+            {: rendTextInSquare(client.birthDate.date.toString('MM'))}
           </tr>
         </table>
       </td>
@@ -947,7 +944,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="4">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {: rendTextInSquare(client.birtDate.date.toString('yyyy'))}
+            {: rendTextInSquare(client.birthDate.date.toString('yyyy'))}
           </tr>
         </table>
       </td>
@@ -989,7 +986,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {if: len(payerDocumentDate) > 0}
+            {if: payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'dd'))}
             {else:}
               {: rendEmptySquare(2)}
@@ -1001,7 +998,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {if: len(payerDocumentDate) > 0}
+            {if:payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'MM'))}
             {else:}
               {: rendEmptySquare(2)}
@@ -1013,7 +1010,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="4">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {if: len(payerDocumentDate) > 0}
+            {if:payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'yyyy'))}
             {else:}
               {: rendEmptySquare(4)}
@@ -1043,8 +1040,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         <div class="remark">
         <div align="center">Достоверность и полноту сведений, указанных на данной странице, подтверждаю:</div>
         <div align="center">
-          {: inLineSpace = r'&nbsp;'}
-          {'_' * 20} (подпись) {inlineSpace * 5}
+          {'_' * 20} (подпись) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
           {'_' * 20} (дата)
         </div>
         </div>
@@ -1059,6 +1055,42 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </tr>
 
   </table> <!--  note END TABLE SECOND PAGE -->
+
+{end:}
+
+<div style="page-break-after: always"></div>
+<br>
+<br>
+<br>
+<hr>
+<h3>Список услуг оказанных пациенту</h3>
+{if: serviceRefList}
+    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+        <tr>
+            <td>Дата обращения</td>
+            <td>Название услуги</td>
+            <td>Цена услуги</td>
+            <td>Количество</td>
+            <td>Стоимость</td>
+        </tr>
+        {: total = 0}
+        {for: serviceRef in serviceRefList}
+            {: servicePrice = forceInt(serviceRef.value('servicePrice'))}
+            {: serviceAmount = forceInt(serviceRef.value('serviceAmount'))}
+            {: total += (servicePrice * serviceAmount)}
+            <tr>
+                <td>{forceString(serviceRef.value('eventSetDateFormatted'))}&nbsp;</td>
+                <td>{forceString(serviceRef.value('serviceName'))}</td>
+                <td>{servicePrice}</td>
+                <td>{serviceAmount}</td>
+                <td>{servicePrice * serviceAmount}</td>
+            </tr>
+        {end:}
+        <tr>
+            <td colspan="4" align="right"><b>Всего</b></td>
+            <td><b>{total}</b></td>
+        </tr>
+    </table>
 
 {end:}
 
