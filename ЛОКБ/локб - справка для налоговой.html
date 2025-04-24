@@ -1,3 +1,6 @@
+
+
+<!-- изменил Пулин дата 24.04.2025 задача DEV_TEMP-5378 Настроить шаблон печати "Справка в налоговую" -->
 <!-- изменил Пулин дата 23.04.2025 задача  -->
 <!-- изменил Пулин дата 18.04.2025 задача  -->
 <!--Начальная дата разработки 20.03.2025 г.-->
@@ -8,9 +11,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF8">
   <title>Справка для налоговой</title>
+
 <!-- @formatter:off -->
+
 {: setPageSize('A4')}
 {: setOrientation('P')}
 {: setTopMargin(5)}
@@ -25,29 +30,37 @@
 {: from datetime import datetime}
 
 {: import base64 }
-{: import qrcode}
+{: # import qrcode}
 {: from io import BytesIO}
+
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
 {:
 write('''
 <style>
+
+.main {
+    font-family: 'monospace';
+    font-size: 10px;
+}
+* {
+    box-sizing: border-box;
+}
+
 .h1 {
     text-align: center;
     margin-bottom: 18px;
     font-size: 12px;
     font-weight: 900;
 }
-body {
-    font-family: 'Courier New';
-    font-size: 10px;
-}
 
 .barcode--custom {
   font-family: 'Code 3 de 9';
   font-size: 30px;
 }
+
+
 
 .remark {
     font-size: 8px;
@@ -63,6 +76,16 @@ body {
 
 .vertical-spacer {
     font-size: 17px;
+}
+
+
+.main-table td {
+    width: 20px;
+    height: 21px;
+}
+
+.tbl-bordered td {
+    border: 1px dotted #666;
 }
 
 .td-text {
@@ -81,6 +104,7 @@ body {
 
 .square-base {
     padding: 1px 3px 0 3px;
+    width: 19.45px;
     font-family: 'monospace';
     font-size: 14px;
     text-transform: uppercase;
@@ -111,7 +135,7 @@ def rendLineEmptySquare(amount):
   for _ in range(amount):
     write(r"""
         <td width="1%">
-            <table cellpadding="0" cellspacing="0" border="1">
+            <table cellpadding="0" cellspacing="0" class="tbl-bordered">
                 <tr>
                     <td style="padding: 1px 0 0 1px">&nbsp;&nbsp;</td>
                 </tr>
@@ -122,7 +146,8 @@ def rendLineEmptySquare(amount):
 
 # <!-- note квадраты с содержанием -->
 def rendTextInSquare(text):
-  for index, letter in enumerate(text):
+  for index in range(len(text)):
+    letter = text[index]
     if letter == ' ':
       newLetter = r'&nbsp;'
     else:
@@ -153,35 +178,6 @@ def renderGrid(amount):
 
 
 {:
-def getDocumentCode(vistaDocumentTypeId):
-    code = ''
-    if vistaDocumentTypeId and len(vistaDocumentTypeId) > 1:
-        ref = db.getRecordEx(stmt=u"""
-            select code
-            from rbNalogDocumentType
-            where vistaDocumentTypeId = {vistaDocumentTypeId}
-        """.format(vistaDocumentTypeId=vistaDocumentTypeId))
-        if ref:
-            code = forceString(ref.value('code'))
-    return code
-}
-
-{:
-def getDocumentCodeByName(documentTypeName):
-    code = ''
-    if documentTypeName:
-        ref = db.getRecordEx(stmt=u"""
-            select code
-            from rbNalogDocumentType
-            where name = '{documentTypeName}'
-        """.format(documentTypeName=documentTypeName))
-        if ref:
-            code = forceString(ref.value('code'))
-    return code
-}
-
-
-{:
 def adjustString(string, targetLength):
   newString = ''
   if string and targetLength:
@@ -202,45 +198,50 @@ def concatSerialAndNumber(serial, number):
 # <!-- note данные документа -->
 orgINN = u''
 orgKPP = u''
-orgName = u'МСЧ №3 АО БАЛТИЙСКИЙ ЗАВОД'
-documentNumber = forceString(action[u'Номер справки'].value)
-documentCorrect = forceString(action[u'Номер корректировки'])
-documentYear = action[u'Отчетный период, год'].value
+orgName = u'ГБУЗ "ЛОКБ"'
+documentNumber = forceString(action[u'Номер медицинской справки'].value)
+
+# documentCorrect = forceString(action[u'Номер корректировки'])
+documentCorrect = u''
+
+documentYear = action[u'Отчетный год'].value
 
 
-taxpayer = action[u'Налогоплательщик и пациент являются одним лицом'].value
+
+
+taxpayer = action[u'Услуга оказана налогоплательщику'].value
 
 if taxpayer == u'да':
     isTaxpayerSame = 1
-    pageAmount = '001'
+    pageAmount = u'001'
 else:
     isTaxpayerSame = 0
-    pageAmount = '002'
+    pageAmount = u'002'
 
 whoPayer = u'1' if isTaxpayerSame else u'0'
 }
 
 <!--  note Данные ПАЦИЕНТА -->
 {:
-if u'ИНН пациента' in action:
-  clientINN = adjustString(action[u'ИНН пациента'].value, 12)
+if u'ИНН' in action:
+  clientINN = adjustString(action[u'ИНН'].value, 12)
 else:
   clientINN = ''
 
-clientDocumentCode = adjustString(getDocumentCode(client.document.documentTypeCode), 2)
+clientDocumentCode = adjustString(client.document.documentTypeCode, 2)
 documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
 clientDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
 clientDocumentDate = client.document.date
 }
 
 {:
-payerINN = adjustString(action[u'ИНН налогоплательщика'].value, 12)
+payerINN = adjustString(action[u'ИНН'].value, 12)
 
 if isTaxpayerSame:
     payerLastName = client.lastName
     payerFirstName = client.firstName
     payerPatrName = client.patrName
-    payerBirthDate = client.birthDate
+    payerBirthDate = datetime.strptime(forceString(client.birthDate), '%d.%m.%Y')
 
     payerDocumentCode = clientDocumentCode
     payerDocumentSerialAndNumber = clientDocumentSerialAndNumber
@@ -260,17 +261,22 @@ else:
         payerLastName = ''
         payerFirstName = ''
         payerPatrName = ''
-    payerBirthDate = action[u'Дата рождения налогоплательщика'].value
+    if action[u'Дата рождения'].value:
+      date = action[u'Дата рождения'].value
+      payerBirthDate = datetime.strptime(date, '%d.%m.%Y')
 
     payerDocumentCode =  ''
-    if action[u'Код вида документа'].value:
-        docName = forceString(action[u'Код вида документа'].value)
-        payerDocumentCode = getDocumentCodeByName(docName)
+    if action[u'Тип документа'].value:
+        docCode, docName = forceString(action[u'Тип документа'].value).split(',')
+        payerDocumentCode = docCode
 
     payerDocumentSerial = action[u'Серия документа'].value
     payerDocumentNumber = action[u'Номер документа'].value
     payerDocumentSerialAndNumber = adjustString(concatSerialAndNumber(payerDocumentSerial, payerDocumentNumber), 11)
-    payerDocumentDate = action[u'Дата выдачи документа'].value
+
+    if action[u'Дата выдачи документа'].value:
+      date = action[u'Дата выдачи документа'].value
+      payerDocumentDate = datetime.strptime(date, '%d.%m.%Y')
 }
 
 {:
@@ -285,39 +291,48 @@ serviceRefList = db.getRecordList(stmt=u"""
          ai.price                           as servicePrice,
          ai.amount                          as serviceAmount
     from Event e
-             join EventType et on e.eventType_id = et.id and e.deleted = 0
+             join EventType et on e.eventType_id = et.id and e.deleted = 0 and e.id = {evenId}
              join Account_Item ai on e.id = ai.event_id and ai.deleted = 0
              join Account ac on ai.master_id = ac.id and ac.deleted = 0
              join rbService rbS on ai.service_id = rbS.id
              join Contract_Tariff ct on ai.tariff_id = ct.id
              join Contract c on ct.master_id = c.id and c.finance_id = 4
     where ai.date is not null
-      and e.client_id = {clientId}
-      and DATE(e.setDate) >= DATE(CONCAT_WS('-', '{currentYearStartDate}', '01', '01'))
-      and DATE(e.setDate) <= DATE(CONCAT_WS('-', '{currentYearStartDate}', '12', '31'))
-""".format(clientId=client.id, currentYearStartDate=currentYearStartDate))
 
-totalPayed = action[u'Сумма расходов по коду услуги «1»'].value
+""".format(evenId = event.id))
+}
 
+{:
+totalPayed = forceString(action[u'Стоимость медицинских услуг'].value)
+
+MED_SERVICE = u'Медицинская услуга'
+REACH_TREATMENT = u'Дорогостоящее лечение'
+serviceType = action[u'Код услуги'].value
+if serviceType == MED_SERVICE:
+  payedByType1 = totalPayed
+  payedByType2 = u''
+else:
+  payedByType1 = u''
+  payedByType2 = totalPayed
 }
 
 
 {:
-SEPARATOR = u';'
-codeString = u'ИНН:' + orgINN + SEPARATOR + u'КПП:' + orgKPP + SEPARATOR + u'Номер справки:' + documentNumber + SEPARATOR + u'Номер корректировки:' + documentCorrect + SEPARATOR + u'Отчетный год:' + documentYear + SEPARATOR + u'Данные медицинской организации:' + forceString(orgName) + SEPARATOR + u'Данные плательщика; Фамилия:' + payerLastName + SEPARATOR + u'Имя:' + payerFirstName + SEPARATOR + u'Отчество:' + payerPatrName + SEPARATOR + u'ИНН:' + payerINN + SEPARATOR + u'Дата рождения:' + payerBirthDate + SEPARATOR + u'Код вида документа:' + payerDocumentCode + SEPARATOR + u'Серия:' + payerDocumentSerial + SEPARATOR + u'номер:' + payerDocumentNumber + SEPARATOR + u'Дата выдачи:' + payerDocumentDate + SEPARATOR + u'Налогоплательщик и пациент являются одним лицом:' + forceString(isTaxpayerSame) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 1:' + forceString(totalPayed) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 2:' + forceString(0)
-
-img = qrcode.make(codeString)
-buffered = BytesIO()
-img.save(buffered, format="PNG")
-img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+# SEPARATOR = u';'
+# codeString = u'ИНН:' + orgINN + SEPARATOR + u'КПП:' + orgKPP + SEPARATOR + u'Номер справки:' + documentNumber + SEPARATOR + u'Номер корректировки:' + documentCorrect + SEPARATOR + u'Отчетный год:' + documentYear + SEPARATOR + u'Данные медицинской организации:' + forceString(orgName) + SEPARATOR + u'Данные плательщика; Фамилия:' + payerLastName + SEPARATOR + u'Имя:' + payerFirstName + SEPARATOR + u'Отчество:' + payerPatrName + SEPARATOR + u'ИНН:' + payerINN + SEPARATOR + u'Дата рождения:' + payerBirthDate.strftime('%d.%m%.%Y') + SEPARATOR + u'Код вида документа:' + payerDocumentCode + SEPARATOR + u'Серия:' + payerDocumentSerial + SEPARATOR + u'номер:' + payerDocumentNumber + SEPARATOR + u'Дата выдачи:' + payerDocumentDate + SEPARATOR + u'Налогоплательщик и пациент являются одним лицом:' + forceString(isTaxpayerSame) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 1:' + forceString(totalPayed) + SEPARATOR + u'Сумма расходов на оказанные медицинские услуги по коду услуги 2:' + forceString(0)
+codeString = ''
+# img = qrcode.make(codeString)
+# buffered = BytesIO()
+# img.save(buffered, format="PNG")
+# img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 }
 <!-- @formatter:on -->
 </head>
 <body>
-<h2>{payerDocumentSerialAndNumber}</h2>
+
 <main class="main">
 <!--  note TABLE MAIN -->
-<table cellpadding="0" cellspacing="0">
+<table cellpadding="0" cellspacing="0" class="main-table">
   <tr>
       {: renderGrid(40)}
   </tr>
@@ -338,7 +353,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2" rowspan="2"></td>
     <td colspan="2" class="td-text">ИНН</td>
     <td colspan="12">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: len(orgINN) > 0}
             {: rendTextInSquare(orgINN)}
@@ -355,7 +370,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <tr>
     <td colspan="2" class="td-text">КПП</td>
     <td colspan="9">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: len(orgKPP) > 0}
             {: rendTextInSquare(orgKPP)}
@@ -367,9 +382,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
     <td colspan="2" class="td-text" align="center">Стр.</td>
     <td colspan="3">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(u'001')}
+          {: rendTextInSquare(forceString(u'001'))}
         </tr>
       </table>
     </td>
@@ -400,7 +415,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <tr>
     <td colspan="5" class="td-text">Номер справки</td>
     <td colspan="12">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(adjustString(documentNumber, 12))}
         </tr>
@@ -409,7 +424,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2"></td>
     <td colspan="7" class="td-text">Номер корректировки</td>
     <td colspan="3">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(adjustString(documentCorrect, 3))}
         </tr>
@@ -418,9 +433,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2"></td>
     <td colspan="5" class="td-text">Отчетный год</td>
     <td colspan="4">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(documentYear)}
+          {: rendTextInSquare(adjustString(documentYear, 4))}
         </tr>
       </table>
     </td>
@@ -441,9 +456,12 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <!-- note НАЗВАНИЕ ОРГАНИЗАЦИИ -->
   <tr class="line">
     <td colspan="40">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(adjustString(orgName, 40))}
+          {: text = adjustString(orgName, 40)}
+          {for: index, letter in enumerate(text)}
+              <td class="square-base">{letter}</td>
+          {end:}
         </tr>
       </table>
     </td>
@@ -451,7 +469,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   {for: _ in range(3)}
     <tr class="line">
       <td colspan="40">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendEmptySquare(40)}
           </tr>
@@ -488,9 +506,12 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         {title}
       </td>
       <td colspan="36">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
-            {: rendTextInSquare(adjustString(text, 40))}
+            {: text = adjustString(text, 40)}
+            {for: index, letter in enumerate(text)}
+                <td class="square-base">{letter}</td>
+            {end:}
           </tr>
         </table>
       </td>
@@ -502,7 +523,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       ИНН
     </td>
     <td colspan="12">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: len(payerINN) > 0}
             {: rendTextInSquare(payerINN)}
@@ -518,9 +539,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       Дата рождения
     </td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(payerBirthDate.date.toString('dd'))}
+          {: rendTextInSquare(payerBirthDate.strftime(u'%d'))}
         </tr>
       </table>
     </td>
@@ -528,9 +549,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td class="dot" align="center">.</td>
 
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(payerBirthDate.date.toString('MM'))}
+          {: rendTextInSquare(payerBirthDate.strftime(u'%m'))}
         </tr>
       </table>
     </td>
@@ -538,9 +559,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td class="dot" align="center">.</td>
 
     <td colspan="4">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(payerBirthDate.date.toString('yyyy'))}
+          {: rendTextInSquare(payerBirthDate.strftime(u'%Y'))}
         </tr>
       </table>
     </td>
@@ -563,10 +584,10 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <tr>
     <td colspan="7" class="td-text">Код вида документа</td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: len(payerDocumentCode) > 0}
-            {: rendTextInSquare(payerDocumentCode)}
+            {: rendTextInSquare(adjustString(payerDocumentCode, 2))}
           {else:}
             {: rendEmptySquare(2)}
           {end:}
@@ -576,7 +597,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="5"></td>
     <td colspan="6" class="td-text">Серия и номер</td>
     <td colspan="11">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(payerDocumentSerialAndNumber)}
         </tr>
@@ -587,10 +608,10 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   <tr>
     <td colspan="7" class="td-text">Дата выдачи документа</td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: payerDocumentDate}
-            {: rendTextInSquare(payerDocumentDate.toString(u'dd'))}
+            {: rendTextInSquare(payerDocumentDate.strftime('%d'))}
           {else:}
             {: rendEmptySquare(2)}
           {end:}
@@ -599,10 +620,10 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
     <td class="dot" align="center">.</td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: payerDocumentDate}
-            {: rendTextInSquare(payerDocumentDate.toString(u'MM'))}
+            {: rendTextInSquare(payerDocumentDate.strftime('%m'))}
           {else:}
             {: rendEmptySquare(2)}
           {end:}
@@ -611,10 +632,10 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
     <td class="dot" align="center">.</td>
     <td colspan="4">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: payerDocumentDate}
-            {: rendTextInSquare(payerDocumentDate.toString(u'yyyy'))}
+            {: rendTextInSquare(payerDocumentDate.strftime('%Y'))}
           {else:}
             {: rendEmptySquare(4)}
           {end:}
@@ -637,7 +658,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       Налогоплательщик и пациент являются одним лицом
     </td>
     <td>
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(whoPayer)}
         </tr>
@@ -650,21 +671,20 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
   </tr>
 
-  {: code1Expenses = action[u'Сумма расходов по коду услуги «1»']}
   <tr class="line">
     <td colspan="22" class="td-text">
       Сумма расходов на оказанные медицинские услуги по коду услуги «1»
     </td>
     <td colspan="13">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(adjustRightString(forceString(totalPayed), 13))}
+          {: rendTextInSquare(adjustRightString(forceString(payedByType1), 13))}
         </tr>
       </table>
     </td>
     <td class="dot" align="center">.</td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(u'00')}
         </tr>
@@ -673,21 +693,20 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="2"></td>
   </tr>
 
-  {: code2Expenses = action[u'Сумма расходов по коду услуги «2»']}
   <tr>
     <td colspan="22" class="td-text">
       Сумма расходов на оказанные медицинские услуги по коду услуги «2»
     </td>
     <td colspan="13">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendEmptySquare(12)}
+          {: rendTextInSquare(adjustRightString(forceString(payedByType2), 13))}
         </tr>
       </table>
     </td>
     <td class="dot" align="center">.</td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendEmptySquare(2)}
         </tr>
@@ -719,16 +738,19 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
     <td colspan="19" rowspan="7">
       <div align="center" class="bold"> Зона QR-кода</div>
-      <div align="center"><img src="data:image/png;base64,{img_str}" width="150" alt="qr"></div>
+      <!--<div align="center"><img src="data:image/png;base64,{img_str}" width="150" alt="qr"></div>-->
     </td>
   </tr>
 
   {for: item in [payerLastName, payerFirstName, payerPatrName]}
     <tr>
       <td colspan="20">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
-            {: rendTextInSquare(adjustString(item, 20))}
+          {: text = adjustString(item, 20)}
+          {for: index, letter in enumerate(text)}
+              <td class="square-base">{letter}</td>
+          {end:}
           </tr>
         </table>
       </td>
@@ -751,7 +773,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       Дата
     </td>
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: action.begDate}
             {: rendTextInSquare(action.begDate.toString('dd'))}
@@ -766,7 +788,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td class="dot" align="center">.</td>
 
     <td colspan="2">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: action.begDate}
             {: rendTextInSquare(action.begDate.toString('MM'))}
@@ -780,7 +802,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td class="dot" align="center">.</td>
 
     <td colspan="4">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {if: action.begDate}
             {: rendTextInSquare(action.begDate.toString('yyyy'))}
@@ -798,7 +820,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       Справка составлена на
     </td>
     <td colspan="3">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
           {: rendTextInSquare(pageAmount)}
         </tr>
@@ -829,7 +851,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 {if: isTaxpayerSame == False}
   <div class="page-break"></div>
-  <table cellpadding="0" cellspacing="0">
+  <table cellpadding="0" cellspacing="0" class="main-table">
     <tr>
         {: renderGrid(40)}
     </tr>
@@ -851,7 +873,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="2" rowspan="2"></td>
       <td colspan="2" class="td-text">ИНН</td>
       <td colspan="12">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if: len(orgINN) > 0}
               {: rendTextInSquare(orgINN)}
@@ -868,7 +890,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <tr>
       <td colspan="2" class="td-text">КПП</td>
       <td colspan="9">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if: len(orgKPP) > 0}
               {: rendTextInSquare(orgKPP)}
@@ -880,7 +902,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </td>
       <td colspan="2" class="td-text" align="center">Стр.</td>
       <td colspan="3">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendTextInSquare(u'001')}
           </tr>
@@ -905,12 +927,15 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     {for: title, text in [[u'Фамилия', client.lastName], [u'Имя', client.firstName], [u'Отчество', client.patrName]] }
       <tr class="line">
         <td colspan="4" class="td-text">
-          {title}
+          {title} <b>{text}</b>
         </td>
         <td colspan="36">
-          <table width="100%" cellpadding="0" cellspacing="0" border="1">
+          <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
             <tr>
-              {: rendTextInSquare(adjustString(text, 40))}
+              {: text = adjustString(text, 36)}
+              {for: index, letter in enumerate(text)}
+                  <td class="square-base">{letter}</td>
+              {end:}
             </tr>
           </table>
         </td>
@@ -938,7 +963,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         Дата рождения
       </td>
       <td colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendTextInSquare(client.birthDate.date.toString('dd'))}
           </tr>
@@ -948,7 +973,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td class="dot" align="center">.</td>
 
       <td colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendTextInSquare(client.birthDate.date.toString('MM'))}
           </tr>
@@ -958,7 +983,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td class="dot" align="center">.</td>
 
       <td colspan="4">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendTextInSquare(client.birthDate.date.toString('yyyy'))}
           </tr>
@@ -977,7 +1002,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <tr>
       <td colspan="7" class="td-text">Код вида документа</td>
       <td colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if: len(clientDocumentCode) > 0}
               {: rendTextInSquare(clientDocumentCode)}
@@ -990,7 +1015,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="5"></td>
       <td colspan="6" class="td-text">Серия и номер</td>
       <td colspan="20">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {: rendTextInSquare(clientDocumentSerialAndNumber)}
           </tr>
@@ -1000,7 +1025,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <tr>
       <td colspan="7" class="td-text">Дата выдачи документа</td>
       <td colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if: payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'dd'))}
@@ -1012,7 +1037,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </td>
       <td class="dot" align="center">.</td>
       <td colspan="2">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if:payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'MM'))}
@@ -1024,7 +1049,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </td>
       <td class="dot" align="center">.</td>
       <td colspan="4">
-        <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
             {if:payerDocumentDate}
               {: rendTextInSquare(clientDocumentDate.toString(u'yyyy'))}
@@ -1081,7 +1106,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 <hr>
 <h3>Список услуг оказанных пациенту</h3>
 {if: serviceRefList}
-    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <table width="100%" cellpadding="3" cellspacing="0" class="tbl-bordered">
         <tr>
             <td>Дата обращения</td>
             <td>Название услуги</td>

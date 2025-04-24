@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 22.04.2025 задача DEV_TEMP-5363 Не распечатать направления на анализы -->
 <!-- изменил Пулин дата 18.04.2025 задача DEV_TEMP-5363 Не распечатать направления на анализы -->
 <!-- изменил Пулин дата 18.04.2025 задача SUP-51074 Поменяйте в направлении на анализы энтеробиоз кабинет -->
 <!-- Разработал: ??????????? -->
@@ -37,6 +38,8 @@ def getOfficeNumber(ticket):
         officeNumber = 202
     elif actGroup in [u'ПЦР Грипп', u'КДЦ']:
       officeNumber = 113
+    elif u'биохимия' in actGroup.lower():
+      officeNumber = 119
   return officeNumber
 }
 
@@ -64,8 +67,7 @@ def getOfficeNumber(ticket):
                     {else:}
                         {:key3 = unicode(prop.value)}
                     {end:}
-                    {:data_key = act}
-                    {:blood.data.setdefault(key3, []).append(data_key)}
+                    {:blood.data.setdefault(key3, []).append(act)}
                 {end:}
             {end:}
 
@@ -169,15 +171,14 @@ def getOfficeNumber(ticket):
 
 
 
-  {for: i, value in enumerate(blood.data.keys())}
+  {for: i, analKey in enumerate(blood.data.keys())}
     {if: i > 0}
       <br/><hr/><br/>
     {end:}
 
-    {:item = blood.data[value]}
+    {:item = blood.data[analKey]}
     {:ticket = item[0]}
     {: actGroup = ticket.group.name}
-
 
     <table BORDER=1 WIDTH="100%" cellpadding="0" cellspacing="0">
         <tr>
@@ -221,13 +222,13 @@ def getOfficeNumber(ticket):
     {:gr = ''}
     {for: v in item}
       {if: v.group.name != gr}
-        {:gr = v.group.name}<br>
-        {gr} <br>
+        {:gr = v.group.name}
+        <div>{gr}</div>
       {end:}
 
-      {v.name}<br>
+      <div>{v.name}</div>
     {end:}
-    {if: event.execPerson} {event.execPerson}{end:}
+    {if: event.execPerson} <div>{event.execPerson}</div>{end:}
 
   {end:}
 
