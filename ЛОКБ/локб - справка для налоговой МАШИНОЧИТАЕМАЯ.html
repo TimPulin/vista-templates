@@ -1,5 +1,4 @@
-
-
+<!-- изменил Пулин дата 28.04.2025 задача  -->
 <!-- изменил Пулин дата 24.04.2025 задача DEV_TEMP-5378 Настроить шаблон печати "Справка в налоговую" -->
 <!-- изменил Пулин дата 23.04.2025 задача  -->
 <!-- изменил Пулин дата 18.04.2025 задача  -->
@@ -204,7 +203,7 @@ documentNumber = forceString(action[u'Номер медицинской спра
 # documentCorrect = forceString(action[u'Номер корректировки'])
 documentCorrect = u''
 
-documentYear = action[u'Отчетный год'].value
+documentYear = forceInt(action[u'Отчетный год'].value)
 
 
 
@@ -231,7 +230,7 @@ else:
 clientDocumentCode = adjustString(client.document.documentTypeCode, 2)
 documentSerialAndNumberConcat = concatSerialAndNumber(client.document.serial, client.document.number)
 clientDocumentSerialAndNumber = adjustString(documentSerialAndNumberConcat, 20)
-clientDocumentDate = client.document.date
+clientDocumentDate = datetime.strptime(forceString(client.document.date), '%d.%m.%Y')
 }
 
 {:
@@ -304,15 +303,16 @@ serviceRefList = db.getRecordList(stmt=u"""
 
 {:
 totalPayed = forceString(action[u'Стоимость медицинских услуг'].value)
-
+if u'не выполнены' in totalPayed.lower():
+  totalPayed = u'0'
 MED_SERVICE = u'Медицинская услуга'
 REACH_TREATMENT = u'Дорогостоящее лечение'
 serviceType = action[u'Код услуги'].value
 if serviceType == MED_SERVICE:
   payedByType1 = totalPayed
-  payedByType2 = u''
+  payedByType2 = u' '
 else:
-  payedByType1 = u''
+  payedByType1 = u' '
   payedByType2 = totalPayed
 }
 
@@ -435,7 +435,10 @@ codeString = ''
     <td colspan="4">
       <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(adjustString(documentYear, 4))}
+          {: text = adjustString(documentYear, 4)}
+          {for: index, letter in enumerate(text)}
+              <td class="square-base">{letter}</td>
+          {end:}
         </tr>
       </table>
     </td>
@@ -458,7 +461,7 @@ codeString = ''
     <td colspan="40">
       <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: text = adjustString(orgName, 40)}
+          {: text = adjustString(u'ГБУЗ Ленинградская областная клиническая', 40)}
           {for: index, letter in enumerate(text)}
               <td class="square-base">{letter}</td>
           {end:}
@@ -466,7 +469,19 @@ codeString = ''
       </table>
     </td>
   </tr>
-  {for: _ in range(3)}
+  <tr class="line">
+    <td colspan="40">
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
+        <tr>
+          {: text = adjustString(u'больница', 40)}
+          {for: index, letter in enumerate(text)}
+              <td class="square-base">{letter}</td>
+          {end:}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {for: _ in range(2)}
     <tr class="line">
       <td colspan="40">
         <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
@@ -678,7 +693,10 @@ codeString = ''
     <td colspan="13">
       <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(adjustRightString(forceString(payedByType1), 13))}
+            {: text = adjustString(payedByType1, 13)}
+            {for: index, letter in enumerate(text)}
+                <td class="square-base">{letter}</td>
+            {end:}
         </tr>
       </table>
     </td>
@@ -700,7 +718,10 @@ codeString = ''
     <td colspan="13">
       <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
         <tr>
-          {: rendTextInSquare(adjustRightString(forceString(payedByType2), 13))}
+          {: text = adjustString(payedByType2, 13)}
+          {for: index, letter in enumerate(text)}
+              <td class="square-base">{letter}</td>
+          {end:}
         </tr>
       </table>
     </td>
@@ -1027,8 +1048,8 @@ codeString = ''
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
-            {if: payerDocumentDate}
-              {: rendTextInSquare(clientDocumentDate.toString(u'dd'))}
+            {if: clientDocumentDate}
+              {: rendTextInSquare(clientDocumentDate.strftime('%d'))}
             {else:}
               {: rendEmptySquare(2)}
             {end:}
@@ -1039,8 +1060,8 @@ codeString = ''
       <td colspan="2">
         <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
-            {if:payerDocumentDate}
-              {: rendTextInSquare(clientDocumentDate.toString(u'MM'))}
+            {if:clientDocumentDate}
+              {: rendTextInSquare(clientDocumentDate.strftime('%m'))}
             {else:}
               {: rendEmptySquare(2)}
             {end:}
@@ -1051,8 +1072,8 @@ codeString = ''
       <td colspan="4">
         <table width="100%" cellpadding="0" cellspacing="0" class="tbl-bordered">
           <tr>
-            {if:payerDocumentDate}
-              {: rendTextInSquare(clientDocumentDate.toString(u'yyyy'))}
+            {if:clientDocumentDate}
+              {: rendTextInSquare(clientDocumentDate.strftime('%Y'))}
             {else:}
               {: rendEmptySquare(4)}
             {end:}
@@ -1105,35 +1126,35 @@ codeString = ''
 <br>
 <hr>
 <h3>Список услуг оказанных пациенту</h3>
-{if: serviceRefList}
-    <table width="100%" cellpadding="3" cellspacing="0" class="tbl-bordered">
-        <tr>
-            <td>Дата обращения</td>
-            <td>Название услуги</td>
-            <td>Цена услуги</td>
-            <td>Количество</td>
-            <td>Стоимость</td>
-        </tr>
-        {: total = 0}
-        {for: serviceRef in serviceRefList}
-            {: servicePrice = forceInt(serviceRef.value('servicePrice'))}
-            {: serviceAmount = forceInt(serviceRef.value('serviceAmount'))}
-            {: total += (servicePrice * serviceAmount)}
-            <tr>
-                <td>{forceString(serviceRef.value('eventSetDateFormatted'))}&nbsp;</td>
-                <td>{forceString(serviceRef.value('serviceName'))}</td>
-                <td>{servicePrice}</td>
-                <td>{serviceAmount}</td>
-                <td>{servicePrice * serviceAmount}</td>
-            </tr>
-        {end:}
-        <tr>
-            <td colspan="4" align="right"><b>Всего</b></td>
-            <td><b>{total}</b></td>
-        </tr>
-    </table>
 
-{end:}
+<table width="100%" cellpadding="3" cellspacing="0" class="tbl-bordered">
+  <tr>
+      <td>Дата обращения</td>
+      <td>Название услуги</td>
+      <td>Цена услуги</td>
+      <td>Количество</td>
+      <td>Стоимость</td>
+  </tr>
+  {if: serviceRefList}
+    {: total = 0}
+    {for: serviceRef in serviceRefList}
+        {: servicePrice = forceInt(serviceRef.value('servicePrice'))}
+        {: serviceAmount = forceInt(serviceRef.value('serviceAmount'))}
+        {: total += (servicePrice * serviceAmount)}
+        <tr>
+            <td>{forceString(serviceRef.value('eventSetDateFormatted'))}&nbsp;</td>
+            <td>{forceString(serviceRef.value('serviceName'))}</td>
+            <td>{servicePrice}</td>
+            <td>{serviceAmount}</td>
+            <td>{servicePrice * serviceAmount}</td>
+        </tr>
+    {end:}
+    <tr>
+        <td colspan="4" align="right"><b>Всего</b></td>
+        <td><b>{total}</b></td>
+    </tr>
+  {end:}
+</table>
 
 </main>
 </body>

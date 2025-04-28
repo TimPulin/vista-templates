@@ -1,0 +1,187 @@
+<!-- ОПРЕДЕЛЕННЫЙ ДЕНЬ -->
+<!-- изменил Пулин дата 25.04.2025 задача  -->
+<!-- изменил Пулин дата 25.04.2025 задача DEV_TEMP-5386 Лист трансфузий на определенный день -->
+<!--
+select * from rbprinttemplate where id = 1903;
+-->
+
+<html lang="ru">
+<head>
+  <title>ЛИСТ РЕГИСТРАЦИИ ТРАНСФУЗИИ</title>
+{: setPageSize('A5')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from library.Utils import forceDouble }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+
+{:
+write('''
+<style>
+body {
+  font-family: Times New Roman;
+  font-size: 10pt;
+}
+header {
+  margin-bottom: 10px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+table thead td {
+  font-size: 10px;
+  vertical-align: top;
+}
+th {
+    text-align: center;
+    font-size: 10px;
+    background-color: #f2f2f2;
+}
+table tbody td {
+  font-size: 12px !important;
+}
+table, th, td {
+    border: 1px solid black;
+}
+th, td {
+    padding: 3px;
+    vertical-align: top;
+}
+td {
+    height: 50px;
+}
+</style>
+''')}
+
+{:
+dateTransDial = dialogs.dialDate(u'Введите дату')
+dateTrans = dateTransDial.getVar()
+}
+
+{: palata = db.getRecordEx(stmt="""
+    SELECT ashb.name AS p
+    FROM Action a
+             JOIN ActionProperty ap ON a.id = ap.action_id AND ap.deleted = 0 AND ap.type_id = 1821
+             JOIN ActionProperty_HospitalBed aphb ON ap.id = aphb.id
+             JOIN OrgStructure_HospitalBed ashb ON aphb.value = ashb.id
+    WHERE a.id = (SELECT max(a2.id) FROM Action a2 WHERE a2.event_id = {eventID} AND a2.actionType_id = 134)
+  """.format(eventID=event.id))
+}
+
+
+{:
+transRefList = db.getRecordList(stmt=u"""
+  SELECT a.id,
+       DATE_FORMAT(a.begDate, '%d.%m.%Y') as transf_date,
+       (SELECT GROUP_CONCAT(ROUND(bc.value / 1000, 3) separator ', ')
+        FROM actionproperty ap
+                 JOIN actionpropertytype apt ON ap.type_id = apt.id AND apt.valueDomain = 'blood_packet'
+                 INNER JOIN ActionProperty_Action apa ON ap.id = apa.id
+                 INNER JOIN Action blood_act ON blood_act.id = apa.value AND blood_act.deleted = 0
+                 JOIN actionproperty blood_apt ON blood_act.id = blood_apt.action_id AND blood_apt.type_id = 25081
+                 JOIN actionproperty_integer bc ON blood_apt.id = bc.id
+        WHERE ap.action_id = a.id
+          AND a.event_id = {eventId}
+          AND a.actionType_id IN (419294682, 419294685, 419294686, 419295205)
+          AND a.deleted = 0) AS rounded_blood_count,
+       (select actionproperty_string.value
+        from actionproperty
+                 join actionproperty_string on actionproperty.id = actionproperty_string.id
+        where actionproperty.type_id in (23480, 25074, 25122, 25157, 27527)
+          and action_id = a.id
+          and actionproperty.deleted = 0) as comp_name,
+       (select actionproperty_string.value
+        from actionproperty
+                 join actionproperty_string on actionproperty.id = actionproperty_string.id
+        where actionproperty.type_id in (27386, 27423, 27526, 27531)
+          and action_id = a.id
+          and actionproperty.deleted = 0)                                                        as personFio,     # 'фио врача, проводившего трансфузию',
+
+         (SELECT CONCAT_WS(' ', p.lastName, p.firstName, p.patrName)
+          FROM Person p
+          where p.id = a.setPerson_id)                                                     as setPersonFio,  # 'фио врача, назначившего трансфузию',
+               (select actionproperty_string.value
+        from actionproperty
+                 join actionproperty_string on actionproperty.id = actionproperty_string.id
+        where actionproperty.type_id in (25088, 25131, 25166, 25431, 27503)
+          and action_id = a.id
+          and actionproperty.deleted = 0) as transf_osl
+FROM action a
+WHERE a.event_id = {eventId}
+  AND a.actionType_id IN (419294682, 419294685, 419294686, 419295205)
+  AND a.deleted = 0
+  AND DATE(a.begDate) = {dateTrans}
+ORDER BY a.begDate;
+""".format(eventId=event.id, dateTrans = dateTrans.toString('yyyy-MM-dd')))
+}
+<!--eventId 467901046-->
+
+
+
+</head>
+
+<body>
+
+<p align = "center"><b>ЛИСТ РЕГИСТРАЦИИ ТРАНСФУЗИИ (ПЕРЕЛИВАНИЯ) ДОНОРСКОЙ КРОВИ И (ИЛИ) ЕЕ КОМПОНЕНТОВ</b>
+за {dateTrans}
+</p>
+
+<header>
+  <div>Фамилия, имя, отчество (при наличии): <b>{client.fullName}</b></div>
+  <div>Дата рождения: <b>{client.birthDate}</b>, возраст <b>{client.age}</b></div>
+  <div>
+    медицинская карта № <b>{event.externalId}</b>
+    № палаты <b>{forceString(palata.value('p')) if palata else u''}</b>
+   </div>
+</header>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <thead>
+    <tr>
+        <th rowspan="2" align="center" width="20%">Наименование компонента крови</th>
+        <th colspan="2" align="center" width="10%">Количество</th>
+        <th rowspan="2" align="center" width="10%">Дата проведения трансфузии</th>
+        <th rowspan="2" align="center" width="12%">Фамилия, имя, отчество (при наличии) лечащего врача (врача-специалиста), проводившего трансфузию</th>
+        <th rowspan="2" align="center" width="12%">Подпись лечащего врача (врача-специалиста), проводившего трансфузию</th>
+        <th rowspan="2" align="center" width="12%">Фамилия, имя, отчество (при наличии) медицинского работника, ответственного за выполнение трансфузии</th>
+        <th rowspan="2" align="center" width="12%">Подпись медицинской сестры, ответственной за выполнение трансфузии</th>
+        <th rowspan="2" align="center" width="12%">Информация о наличии посттрансфузионных осложнений</th>
+    </tr>
+
+    <tr>
+        <th align="center">литр</th>
+        <th align="center">единицы</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {if: transRefList}
+      {for: transRef in transRefList}
+        <tr>
+          <td><b>{forceString(transRef.value('comp_name'))}</b></td>
+          <td>
+            <b>{forceString(transRef.value('rounded_blood_count'))}</b>
+          </td>
+          <td align="center"><b>1</b></td>
+          <td><b>{forceString(transRef.value('transf_date'))}</b></td>
+          <td><b>{forceString(transRef.value('personFio'))}</b></td>
+          <td></td>
+          <td><b>{forceString(transRef.value('personFio'))}</b></td>
+          <td></td>
+          <td><b>{forceString(transRef.value('transf_osl'))}</b></td>
+        </tr>
+      {end:}
+    {end:}
+  </tbody>
+</table>
+</body>
+</html>

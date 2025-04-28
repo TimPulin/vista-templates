@@ -291,7 +291,7 @@ else:
 </table>
 
 <div>Сведения о документе, удостоверяющем личность:</div>
-{: 
+{:
 docType_row = db.getRecordEx(stmt=u"""SELECT rbdoc.EGIZ_code, rbdoc.name FROM Client c JOIN ClientDocument cdoc ON c.id = cdoc.client_id JOIN rbDocumentType rbdoc ON cdoc.documentType_id = rbdoc.id WHERE c.id = {clientId}""".format(clientId=client.id))
 if docType_row:
     docType = forceString(docType_row.value('EGIZ_code'))
@@ -315,7 +315,7 @@ else:
         <td colspan="3">Налогоплательщик и пациент являются одним лицом <b>{taxpayer}</b></td>
         <td ></td>
     </tr>
-    <tr>{: 
+    <tr>{:
         paidSum = db.getRecordEx(stmt="""select sum(acc.payedSum - acc.refusedSum) as sum from Account acc
                                                     inner join CashBoxExportInfo cash on acc.id = cash.account_id
                                             where acc.deleted=0 and cash.client_id={clientID} limit 1;""".format(clientID=client.id))
@@ -351,9 +351,9 @@ patr_name = forceString(person.value('patrName'))
                 <b>{last_name}</b> <br>
                 <b>{first_name}</b> <br>
                 <b>{patr_name}</b>
-                
+
             </div>
-            
+
             <div align="center">
             (фамилия, имя, отчество<sup>1</sup>)
             </div>
@@ -487,4 +487,3 @@ patr_name = forceString(person.value('patrName'))
 </html>
 
 
-    

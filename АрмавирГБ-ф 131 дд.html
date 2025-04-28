@@ -21,6 +21,7 @@
 {: from library.Utils import forceInt }
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
+{:  import datetime}
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
@@ -55,6 +56,51 @@ write('''
 
 
 {:
+# <!-- note информация по клиенту -->
+clientInfoRef = db.getRecordEx(stmt=u"""
+  select rbSct.name as socStatusType
+  from client c
+           left join clientsocstatus cs on c.id = cs.client_id and socStatusClass_id = 1
+           left join rbsocstatustype rbSct on cs.socStatusType_id = rbSct.id
+  where c.id = {clientId}
+""".format(clientId=client.id))
+
+if clientInfoRef:
+  socStatusType = forceString(clientInfoRef.value('socStatusType'))
+else:
+  socStatusType = ''
+}
+
+{:
+# <!-- note для пункта 11 -->
+profExamRef = db.getRecordEx(stmt=u"""
+  select MAX(if(apDisp.type_id = 56714, apS.value, '')) as weight,
+         MAX(if(apDisp.type_id = 56717, apS.value, '')) as height,
+         MAX(if(apDisp.type_id = 56719, apS.value, '')) as imt,
+         MAX(if(apDisp.type_id = 59565, apS.value, '')) as ristFactor
+  from event e
+           join action a on e.id = a.event_id and a.actionType_id = 56155
+           join actionproperty apDisp on a.id = apDisp.action_id
+           join actionproperty_string apS on apDisp.id = apS.id
+  where e.client_id = {clientId}
+  limit 1;
+""".format(clientId=event.client.id))
+
+if profExamRef:
+  weight = forceString(profExamRef.value('weight'))
+  height = forceString(profExamRef.value('height'))
+  imt = forceString(profExamRef.value('imt'))
+  ristFactor = forceString(profExamRef.value('ristFactor'))
+else:
+  weight = '_____'
+  height = '_____'
+  imt = '_____'
+  ristFactor = '_____'
+}
+
+
+
+{:
 indexListForRowspan2 = [2, 4, 6, 8, 10, 12, 14, 16, 24]
 indexListForRowspan3 = [18, 21]
 def getRowspan(index):
@@ -85,9 +131,21 @@ def classMl(index, cellName):
   else:
     return u''
 }
+
+{:
+def ageInCurrentYear():
+  factor = 0
+  [age, string] = client.age.split(' ')
+  birthDateStamp = datetime.datetime(currentDate.year, client.birthDate.month, client.birthDate.day)
+  nowStamp = datetime.datetime.now()
+  if birthDateStamp > nowStamp:
+    factor = 1
+  return ' '.join([forceString(forceInt(age) + factor), string])
+}
 <!-- @formatter:on -->
 </head>
 <body>
+
 
 <div class="main">
 
@@ -145,7 +203,13 @@ def classMl(index, cellName):
     {end:}
   </div>
   <div>
-    4. Дата рождения: "____" _____________ 20__ г., полных лет в отчетном году ____
+    4. Дата рождения:
+    {if: client.birthDate}
+      «<b>{client.birthDate.date.toString('dd')}</b>» <b>{forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)}</b> г.
+    {else:}
+        "____" _____________ 20__ г.,
+    {end:}
+    полных лет в отчетном году <b>{ageInCurrentYear()}</b>
   </div>
 
   <div>
@@ -173,7 +237,12 @@ def classMl(index, cellName):
   </div>
 
   <div>
-    7. Код категории льготы: ________
+    7. Код категории льготы: 
+    {if: socStatusType}
+      <b>{socStatusType}</b>
+    {else:}
+      {'_' * 15}
+    {end:}
   </div>
   <div>
     8. Принадлежность к коренным малочисленным народам Севера, Сибири и Дальнего Востока Российской Федерации: да - 1; нет - 2
@@ -196,11 +265,11 @@ def classMl(index, cellName):
   <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl-result">
     <tr>
       <td width="33%">
-        рост __ см
-        масса тела __ кг
+        рост <b>{height}</b> см
+        масса тела <b>{weight}</b> кг
       </td>
       <td width="33%">
-        индекс массы тела ___ кг/м2
+        индекс массы тела <b>{imt}</b> кг/м2
       </td>
       <td width="33%"></td>
     </tr>
@@ -694,6 +763,16 @@ def classMl(index, cellName):
 </body>
 </html>
 
+
+<!--
+54756, 'Опрос (анкетирование) на выявление неинфекционных заболеваний и факторов риска их развития' => Опрос (анкетирование)
+54757, 'Измерение артериального давления на периферических артериях' => Измерение артериального давления на периферических артериях
+54753, 'Комплекс исследований для оценки абсолютного суммарного сердечно-сосудистого риска на I этапе диспансеризации' => Определение абсолютного сердечно-сосудистого риска у граждан в возрасте от 40 до 64 лет включительно
+
+
+-->
+
+
 <!--Туберкулез органов дыхания-->
 <!--Злокачественные новообразования-->
 <!--Из них губы, полости рта и глотки-->
@@ -739,3 +818,4 @@ def classMl(index, cellName):
 <!--язва желудка, язва двенадцатиперстной кишки-->
 <!--гастрит и дуоденит-->
 <!--Прочие-->
+

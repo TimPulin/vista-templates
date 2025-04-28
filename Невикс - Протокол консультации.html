@@ -1,0 +1,136 @@
+<!--Начальная дата разработки 25.04.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.header__logo {
+    font-weight: 900;
+    font-style: italic;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" class="header__logo white-wrap"><b>Nevix&nbsp;</td>
+        <td width="98%" align="center">ПЛАН обследования и лечения</td>
+        <td width="1%" class="white-wrap">
+          {if: }
+            «{forceString(event.execDate.toString('dd'))}» {forceString(month[event.execDate.date.month()])} {forceString(event.execDate.date.year())} г.&nbsp;
+          {else:}
+            «___»______________{currentDate.toString('yyyy')} г&nbsp;
+          {end:}
+        </td>
+      </tr>
+    </table>
+
+    <div class="bold">
+      Медицинский центр «Невикс» <br>
+      Тел. для записи: 963-05-00, <br>
+      Email: nevixspb@yandex.ru <br>
+      Адрес: СПб,18-линия В.О.,д.45,лит.А <br>
+      www.nevix.spb.ru
+    </div>
+  </div>
+
+  <br>
+
+  <div>
+    <div align="center"><b>{client.fullName}</b></div>
+    <div align="center"><sup>Ф.И.О. пациента</sup></div>
+  </div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        Приложение к мед. карте №<b>{client.id}</b>
+      </td>
+      <td>
+        Врач <b>{event.execPerson.fullName}</b>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <div>
+    <b>План обследования и лечения</b> {action[u'План обследования и лечения']:h}
+  </div>
+
+  <br>
+
+  <div align="justify">
+    С планом лечения ознакомлен(а) и согласен(а). Мне понятен план, объем лечения, возможные осложнения на этапах лечения, возможность возникновения дополнительного обследования, изменения объемов и сроков лечения, дополнительной оплаты.
+  </div>
+
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%" class="white-wrap">Подпись пациента&nbsp;</td>
+      <td>__________________________________________________</td>
+    </tr>
+    <tr>
+      <td class="white-wrap">Подпись законного представителя пациента&nbsp;</td>
+      <td>__________________________________________________</td>
+    </tr>
+  </table>
+
+
+
+</div>
+</body>
+</html>
