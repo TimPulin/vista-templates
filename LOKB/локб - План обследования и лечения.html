@@ -1,7 +1,7 @@
 <!--Начальная дата разработки 28.04.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати: mkz  -->
-<!--Задача:  -->
+<!--Задача: DEV_TEMP-5377 Настроить шаблон печати "План обследования и лечения" -->
 
 <!doctype html>
 <html lang="ru">
@@ -86,8 +86,8 @@ else:
   externalId = ''  
 }
 
-{: actPlanList = filter(lambda x: x.flatCode == u'lokbPMUConsult', event.actions)}
-{: actPlan = actPlanList[0] if len(actPlanList) >0 else None}
+
+{: actPlan = action}
 <!-- @formatter:on -->
 </head>
 <body>

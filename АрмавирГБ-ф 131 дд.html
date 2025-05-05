@@ -51,6 +51,9 @@ write('''
     margin-left: 10px;
 }
 
+.small {
+    font-size: 10pt;
+}
 </style>
 ''')}
 
@@ -77,25 +80,35 @@ profExamRef = db.getRecordEx(stmt=u"""
   select MAX(if(apDisp.type_id = 56714, apS.value, '')) as weight,
          MAX(if(apDisp.type_id = 56717, apS.value, '')) as height,
          MAX(if(apDisp.type_id = 56719, apS.value, '')) as imt,
-         MAX(if(apDisp.type_id = 59565, apS.value, '')) as ristFactor
+         MAX(if(apDisp.type_id = 59565, apS.value, '')) as ristFactor,
+         MAX(if(apDisp.type_id = 59562, apS.value, '')) as examByMobile,
+         MAX(if(apDisp.type_id = 59563, apS.value, '')) as isExamFullRange
   from event e
            join action a on e.id = a.event_id and a.actionType_id = 56155
            join actionproperty apDisp on a.id = apDisp.action_id
            join actionproperty_string apS on apDisp.id = apS.id
   where e.client_id = {clientId}
   limit 1;
-""".format(clientId=event.client.id))
+""".format(clientId=client.id))
 
 if profExamRef:
   weight = forceString(profExamRef.value('weight'))
+  weight = u'_____' if weight == u'' else weight
   height = forceString(profExamRef.value('height'))
+  height = u'_____' if height == u'' else height
   imt = forceString(profExamRef.value('imt'))
+  imt = u'_____' if imt == u'' else imt
+
   ristFactor = forceString(profExamRef.value('ristFactor'))
+  examByMobile = forceString(profExamRef.value('examByMobile'))
+  isExamFullRange = forceString(profExamRef.value('isExamFullRange'))
 else:
   weight = '_____'
   height = '_____'
   imt = '_____'
   ristFactor = '_____'
+  examByMobile = u'нет'
+  isExamFullRange = u'нет'
 }
 
 
@@ -142,6 +155,22 @@ def ageInCurrentYear():
     factor = 1
   return ' '.join([forceString(forceInt(age) + factor), string])
 }
+
+{:
+isSecondDispStepRef = db.getRecordEx(stmt=u"""
+  select *
+  from event e
+  where DATE(e.setDate) between CONCAT_WS('-', DATE_FORMAT(now(), '%Y'), '01', '01') and CONCAT_WS('-', DATE_FORMAT(now(), '%Y'), '12', '31')
+    and e.result_id = 79
+    and e.client_id = {clientId}
+""".format(clientId=client.id))
+
+if isSecondDispStepRef:
+  isSecondDispStep = True
+else:
+  isSecondDispStep = False
+}
+
 <!-- @formatter:on -->
 </head>
 <body>
@@ -195,7 +224,7 @@ def ageInCurrentYear():
   </div>
 
   <div>
-    3. Пол: мужской - 1; женский - 2.
+    3. Пол: <span class="small">мужской - 1; женский - 2</span>
     {if: client.sex.lower() == 'м'}
         <b>1</b>
     {else:}
@@ -213,27 +242,33 @@ def ageInCurrentYear():
   </div>
 
   <div>
-    5. Местность: городская - 1, сельская - 2
+    5. Местность: <span class="small">городская - 1, сельская - 2</span>
     {:incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
     {if: incity} <b>1</b> {else:} <b>2</b> {end:}
   </div>
 
   <div>
-    <div>6. Адрес регистрации по месту жительства или месту пребывания: <b>{forceString(client.regAddress.region)[:-1]}</b></div>
+    <div>6. Адрес регистрации по месту жительства или месту пребывания:
 
-    <div>
-      <div>
-        {if: client.regAddress.district} район <b>{client.regAddress.district}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.parentCity} город <b>{client.regAddress.parentCity}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-      </div>
+    {if: client.regAddress}
+      <b>{forceString(client.regAddress.region)[:-1]}</b></div>
 
       <div>
-        {if: client.regAddress.street} улица <b>{client.regAddress.street}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.number} дом <b>{client.regAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.flat} квартира <b>{client.regAddress.flat}</b>{end:}
+        <div>
+          {if: client.regAddress.district} район <b>{client.regAddress.district}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.parentCity} город <b>{client.regAddress.parentCity}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+
+        <div>
+          {if: client.regAddress.street} улица <b>{client.regAddress.street}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.number} дом <b>{client.regAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.flat} квартира <b>{client.regAddress.flat}</b>{end:}
+        </div>
       </div>
-    </div>
+    {else:}
+      <b>не указан</b>
+    {end:}
   </div>
 
   <div>
@@ -245,7 +280,7 @@ def ageInCurrentYear():
     {end:}
   </div>
   <div>
-    8. Принадлежность к коренным малочисленным народам Севера, Сибири и Дальнего Востока Российской Федерации: да - 1; нет - 2
+    8. Принадлежность к коренным малочисленным народам Севера, Сибири и Дальнего Востока Российской Федерации: <span class="small">да - 1; нет - 2</span>
   </div>
 
   <div>
@@ -254,7 +289,12 @@ def ageInCurrentYear():
   </div>
 
   <div>
-    10. Профилактический медицинский осмотр (первый этап диспансеризации) проводится мобильной медицинской бригадой: да - 1; нет - 2
+    10. Профилактический медицинский осмотр (первый этап диспансеризации) проводится мобильной медицинской бригадой: <span class="small">да - 1; нет - 2</span>
+    {if: examByMobile == u'да'}
+        <b>1</b>
+    {else:}
+      <b>2</b>
+    {end:}
   </div>
   <div>
     11. Результаты исследований и иных медицинских вмешательств, выполненных при проведении профилактического медицинского осмотра (первого этапа диспансеризации):
@@ -450,7 +490,14 @@ def ageInCurrentYear():
 
   <br>
 
-  <div>13. Направлен на второй этап диспансеризации: да - 1, нет - 2</div>
+  <div>
+    13. Направлен на второй этап диспансеризации: <span class="small">да - 1, нет - 2</span>
+    {if: isSecondDispStep}
+      <b>1</b>
+    {else:}
+      <b>2</b>
+    {end:}
+  </div>
   <div>14. Сведения о проведенных приемах (осмотрах, консультациях), исследованиях и иных медицинских вмешательствах на втором этапе диспансеризации</div>
 
   <table width="100%" cellpadding="3" cellspacing="0" border="1">
@@ -474,10 +521,10 @@ def ageInCurrentYear():
         </th>
 
         <th class="white-wrap" width="1%">
-          Отказ <br> (+/-)
+          Отказ&nbsp; <br> (+/-)
         </th>
         <th class="white-wrap" width="1%">
-          Проведено <br> ранее <br> (дата)
+          Проведено&nbsp; <br> ранее <br> (дата)
         </th>
         <th class="white-wrap" width="1%">
           Выявлено <br>
@@ -535,7 +582,15 @@ def ageInCurrentYear():
     <div>Дата окончания второго этапа диспансеризации «__» _____	20__г.</div>
   </div>
 
-  <div>16. Профилактический медицинский осмотр (диспансеризация) проведен(а): в полном объеме — 1, в неполном объеме — 2</div>
+  <div>
+    16. Профилактический медицинский осмотр (диспансеризация) проведен(а): <span class="small">в полном объеме — 1, в неполном объеме — 2</span>
+    {if: isExamFullRange == u'да'}
+      <b>1</b>
+    {else:}
+      <b>2</b>
+    {end:}
+  
+  </div>
   <div>17. Выявленные при проведении профилактического медицинского осмотра (диспансеризации) факторы риска и другие патологические состояния и заболевания, повышающие вероятность развития хронических неинфекционных заболеваний</div>
 
   <table width="100%" cellpadding="3" cellspacing="0" border="1">
