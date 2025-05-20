@@ -1,0 +1,355 @@
+<!--Начальная дата разработки 20.05.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинская карта пациента</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.header {
+    font-size: 10pt;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+
+.counter {
+    counter-reset: point 0;
+}
+
+.counter__point {
+    counter-increment: point 1;
+    position: relative;
+    padding-left: 25px;
+}
+.counter__point:before {
+    content: counter(point)'.';
+    position: absolute;
+    top: 0;
+    left: 0;
+    text-align: right;
+}
+
+.tbl th {
+  font-size: 10pt;
+}
+
+.mL {
+    margin-left: 10px;
+}
+
+.pR {
+    padding-right: 10px;
+}
+
+.point-justify {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.flex {
+    display: flex;
+}
+
+.grow {
+    flex-grow: 2;
+}
+
+.line {
+    display: inline-block;
+    flex-grow: 2;
+    border-bottom: 1px solid #999;
+}
+
+.small {
+  font-size: 8pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+monitoringRefList = db.getRecordList(stmt=u"""
+  SELECT d2.date_registration AS startDate,
+         (SELECT DATE(dic.setDate)
+          FROM Diagnosis di
+                   INNER JOIN Diagnostic dic ON
+              di.id = dic.diagnosis_id
+                  AND di.deleted = 0
+                  AND dic.deleted = 0
+                   INNER JOIN rbDispanser dis ON
+              dis.id = dic.dispanser_id
+                  AND dis.EGISZ_name = 'не установлено'
+          WHERE di.client_id = d.client_id
+            AND di.MKB = d.MKB
+            AND d2.createDatetime < dic.createDatetime
+          LIMIT 1)            AS endDate,
+         mt.DiagName          AS Diagnos,
+         d.MKB,
+         vp.name
+  FROM Diagnosis d
+           INNER JOIN Diagnostic d2 ON
+      d.id = d2.diagnosis_id
+           INNER JOIN rbDispanser dis ON
+      dis.id = d2.dispanser_id
+          AND dis.EGISZ_name != 'не установлено'
+           INNER JOIN MKB_Tree mt ON
+      d.MKB = mt.DiagID
+           INNER JOIN vrbPerson vp ON
+      vp.id = d2.person_id
+  WHERE client_id = {clientId}
+""".format(clientId=event.client.id))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main counter">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap">
+            Наименование медицинской организации
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div>
+            Адрес: {currentOrganisation.address}
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top">
+          <div class="white-wrap">Код форму по ОКУД {'_' * 15}</div>
+          <div class="white-wrap">Код организации по ОКПО {'_' * 10}</div>
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Минздрава России</div>
+          <div class="white-wrap">от 15 декабря 2014 г. № 834н</div>
+        </td>
+
+      </tr>
+    </table>
+  </header>
+
+  <br>
+
+  <div align="center" class="h1">
+    Медицинская карта <br>
+    пациента, получающего медицинскую помощь <br>
+    в амбулаторных условиях
+  </div>
+
+  <br>
+
+  <div class="point-justify">
+    <span class="counter__point">Дата заполнения медицинской карты:</span>
+    <div>число <b>{currentDate.toString('dd')}</b></div>
+    <div>месяц <b>{currentDate.toString('MM')}</b></div>
+    <div>год <b>{currentDate.toString('yyyy')}</b></div>
+  </div>
+  <div>
+    <span class="counter__point">Фамилия, имя, отчество</span>
+    <b>{client.fullName}</b>
+  </div>
+
+  <div class="point-justify">
+    <div>
+      <span class="counter__point">Пол:</span>
+      <span class="small">муж. - 1, жен - 2</span>
+      <b>{1 if client.sex.lower() == u'м' else 2}</b>
+    </div>
+
+
+    <div>
+      <span class="counter__point">Дата рождения:</span>
+      число <b>{client.birthDate.toString('dd')}</b>
+    </div>
+    <div>месяц <b>{client.birthDate.toString('MM')}</b></div>
+    <div>год <b>{client.birthDate.toString('yyyy')}</b></div>
+
+  </div>
+
+  <div>
+    <span class="counter__point">Место регистрации</span>
+      субъект Российской Федерации <b>{forceString(client.regAddress.region)[:-1]}</b>
+    <div class="mL point-justify">
+      {if: client.regAddress.district}
+      <div>район <b>{client.regAddress.district}</b></div>{end:}
+      {if: client.regAddress.parentCity}
+        <div>город <b>{client.regAddress.parentCity}</b></div>
+      {end:}
+      {if: client.regAddress.city}
+        <div>населенный пункт <b>{forceString(client.regAddress.city)[:-1]}</b></div>
+      {end:}
+      <br>
+      {if: client.regAddress.street}
+        <div>улица <b>{client.regAddress.street}</b></div>
+      {end:}
+      {if: client.regAddress.number}
+        <div>дом <b>{client.regAddress.number}</b></div>
+      {end:}
+      {if: client.regAddress.flat}
+        <div>квартира <b>{client.regAddress.flat}</b></div>
+      {end:}
+    </div>
+  </div>
+
+  <div>
+    <span class="counter__point">Местность:</span>
+    <span class="small">городская -1, сельская - 2</span>
+    {:incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
+    {if: incity} <b>1</b> {else:} <b>2</b> {end:}
+  </div>
+  
+  <div class="point-justify">
+    <div>
+      <span class="counter__point">Полис ОМС</span>
+      серия
+      {if: client.policy.serial}
+        <b>{client.policy.serial}</b>
+      {else:}
+        <div class="line"></div>
+      {end:}
+    </div>
+    <div>№
+      {if: client.policy.number}
+        <b>{client.policy.number}</b>
+      {else:}
+        <div class="line"></div>
+      {end:}
+    </div>
+
+    <div>
+      <span class="counter__point">СНИЛС</span>
+      {if: client.SNILS}
+        <b>{client.SNILS}</b>
+      {else:}
+        <div class="line"></div>
+      {end:}
+
+    </div>
+  </div>
+  
+  <div class="flex">
+    <span class="counter__point pR">Наименование страховой медицинской организации:</span>
+    {if: client.compulsoryPolicy.insurer}
+        <b>{client.compulsoryPolicy.insurer}</b>
+    {else:}
+      <div class="line"></div>
+    {end:}
+  </div>
+  
+  <div class="point-justify">
+    <div class="flex grow">
+      <span class="counter__point">Код категории льготы</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="flex grow">
+      <span class="counter__point">Документ</span>
+      {if: client.document.type and client.document.type not in (u'', u' ', u'-')}
+          <b>{client.document.type}</b>:
+      {else:}
+        <div class="line"></div>
+      {end:}
+    </div>
+
+    <div class="flex grow">
+      серия
+      {if: client.document.serial}
+          <b>{client.document.serial}</b>
+      {else:}
+        <div class="line"></div>
+      {end:}
+    </div>
+    <div class="flex grow">
+      №
+      {if: client.document.number}
+          <b>{client.document.number}</b>
+      {else:}
+        <div class="line"></div>
+      {end:}
+    </div>
+  </div>
+
+  <div>
+    <span class="counter__point">Заболевания, по поводу которых осуществляется диспансерное наблюдение</span>
+  </div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl">
+    <tr>
+      <th valign="top" width="1%" class="white-wrap">дата начала <br> диспансерного <br> наблюдения</th>
+      <th valign="top" width="1%" class="white-wrap">дата <br> прекращения <br> диспансерного <br> наблюдения</th>
+      <th valign="top">Диагноз</th>
+      <th valign="top" width="1%" class="white-wrap">Код по <br> МКБ-10</th>
+      <th valign="top">Врач</th>
+    </tr>
+    
+    {if: monitoringRefList}
+        {for: monitoringRef in monitoringRefList}
+          <tr>
+            <td>{forceString(monitoringRef.value('startDate'))}</td>
+            <td>{forceString(monitoringRef.value('endDate'))}</td>
+            <td>{forceString(monitoringRef.value('Diagnos'))}</td>
+            <td>{forceString(monitoringRef.value('MKB'))}</td>
+            <td>{forceString(monitoringRef.value('name'))}</td>
+          </tr>
+        {end:}
+    {else:}
+      {for: _ in range(3)}
+        <tr>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      {end:}
+    {end:}
+
+  </table>
+
+
+
+
+
+
+</div>
+</body>
+</html>

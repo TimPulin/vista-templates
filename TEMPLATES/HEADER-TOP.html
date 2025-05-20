@@ -1,0 +1,34 @@
+.header {
+    font-size: 10pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap">
+            Наименование медицинской организации
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div>
+            Адрес: {currentOrganisation.address}
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top">
+          <div class="white-wrap">Код форму по ОКУД {'_' * 15}</div>
+          <div class="white-wrap">Код организации по ОКПО {'_' * 10}</div>
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Минздрава России</div>
+          <div class="white-wrap">от 15 декабря 2014 г. № 834н</div>
+        </td>
+
+      </tr>
+    </table>
+  </header>

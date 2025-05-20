@@ -1,24 +1,100 @@
-<!-- изменил Пулин дата 28.04.2025 задача DEV_TEMP-5378 Настроить шаблон печати "Справка в налоговую" -->
-<!-- скопировал из гп17 и поправил Скопцов дата 25.12.2024 задача  -->
-<!-- изменил Пулин дата 17.12.2024 задача  -->
-<!-- изменил Пулин дата 12.12.2024 задача  -->
-<!-- изменил Пулин дата 06.12.2024 задача  -->
-<!-- изменил Пулин дата 05.12.2024 задача  -->
-<!-- изменил Пулин дата 04.12.2024 задача  -->
-<!-- изменил Пулин дата 03.12.2024 задача  -->
-<!-- изменил Пулин дата 29.11.2024 задача  -->
-<!-- изменил Пулин дата 30.09.2024 задача  -->
-<!--Начальная дата разработки 18.09.2024 г.-->
-<!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!--Начальная дата разработки 13.02.2024 г.-->
+<!--Разработка: Пулин Тимур -->
+<!--Контекст печати: RSanCur -->
+<!--Задача: DEV_TEMP-3561 Доработать шаблон на сан.кур.карту -->
 
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Справка для налоговой</title>
+  <title>СЭМД. Санаторно-курортная карта</title>
 <!-- @formatter:off -->
+
+{:
+write('''
+  <style>
+    .h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 14pt;
+        font-weight: 900;
+    }
+    body {
+        font-family: 'Times New Roman';
+        font-size: 10pt;
+    }
+    .result-option {
+        padding-right: 15px;
+        padding-left: 5px;
+    }
+    .result-option:last-child {
+        padding-right: 0;
+    }
+    .squre {
+      width: 10px;
+      height: 10px;
+    }
+    .nbs {
+      display: inline-block;
+      width: 10px;
+    }
+    .cut-line {
+      position: relative;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      border-top: 1px dashed black;
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .cut-line__title {
+      position: absolute;
+      top: -8px;
+      padding-right: 5px;
+      background-color: #fff;
+    }
+    .cut-line__text {
+      text-align: center;
+    }
+    .wrap-line {
+      display: flex;
+      align-items: baseline;
+    }
+    .wrap-line_line {
+      display: inline-block;
+      width: 100%;
+      border-bottom: 1px solid black;
+    }
+    .wrap-line_title {
+      white-space: nowrap;
+      font-weight: 900;
+    }
+
+    .square {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 1px solid black;
+    }
+@media print {
+  .page {
+    position: relative;
+  }
+  .page--front {
+    height: calc(100vh - 90px);
+  }
+  .page--back {
+    height: calc(100vh - 65px);
+  }
+  .return-ticket {
+    width: 100%;
+    height: 380px;
+    position: absolute;
+    bottom: 0;
+  }
+}
+  </style>
+''')}
+
 {: setPageSize('A4')}
 {: setOrientation('P')}
 {: setTopMargin(5)}
@@ -30,461 +106,568 @@
 {: from library.Utils import forceInt }
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
-{: from datetime import datetime}
-
-
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
 {:
-write('''
-<style>
-.h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 1.5rem;
-    font-weight: 900;
-}
-body {
-    font-family: 'Courier New';
-    font-size: 12px;
-}
-.barcode--custom {
-    font-family: 'Code 3 de 9', '3 of 9 Barcode';
-    font-size: 48px;
-}
+def getMkbName(mkbCode):
+  name = ''
+  ref = db.getRecordEx(stmt=u"""
+  select DiagName as name
+  from MKB
+  where DiagID = '{mkbCode}';
+  """.format(mkbCode=mkbCode))
 
-.pR {
-    padding-right: 10px;
+  if ref:
+    name = forceString(ref.value('name'))
+  return name
 }
-.mB {
-    margin-bottom: 10px;
-}
-.line {
-    margin: 0 0 3px 0;
-}
-.remark {
-    font-size: 1em;
-}
-.page-break {
-    page-break-after: always;
-}
-@media print {
-    .hide {
-        display: none;
-    }
-}
-td {
-    margin-bottom: 3px
-}
-.qr-code-zone{
-    height: 150px;
-}
-
-</style>
-''')}
-
 
 {:
-documentYear = forceInt(action[u'Отчетный год'].value)
-taxpayer = action[u'Услуга оказана налогоплательщику'].value
-
-if taxpayer == u'да':
-    isTaxpayerSame = True
-    pageAmount = u'001'
+mkbCode = action[u'Основной диагноз']
+if mkbCode:
+  mkbName = getMkbName(mkbCode)
 else:
-    isTaxpayerSame = False
-    pageAmount = u'002'
-
-whoPayer = u'1' if isTaxpayerSame else u'0'
+  mkbName = ''
 }
 
-<!--  note Данные ПАЦИЕНТА -->
 {:
-if u'ИНН' in action:
-  clientINN = action[u'ИНН'].value
+
+dopDiagCodeAction = action[u'Сопутствующие заболевания']
+if dopDiagCodeAction.value:
+  dopDiagCodeList = dopDiagCodeAction.value
 else:
-  clientINN = ''
-
-clientDocumentCode = client.document.documentTypeCode
-clientDocumentDate = datetime.strptime(forceString(client.document.date), '%d.%m.%Y')
+  dopDiagCodeList = []
 }
-
 {:
-payerINN = action[u'ИНН'].value
-
-if isTaxpayerSame:
-    payerLastName = client.lastName
-    payerFirstName = client.firstName
-    payerPatrName = client.patrName
-    payerBirthDate = datetime.strptime(forceString(client.birthDate), '%d.%m.%Y')
-
-    payerDocumentCode = clientDocumentCode
-    payerDocumentSerial = client.document.serial
-    payerDocumentNumber = client.document.number
-    payerDocumentDate = clientDocumentDate
+invalidDiagCode = action[u'Заболевание, явившееся причиной инвалидности']
+if invalidDiagCode.value:
+  invalidDiagName = getMkbName(invalidDiagCode)
 else:
-    if action[u'ФИО налогоплательщика'].value:
-        fioList = forceString(action[u'ФИО налогоплательщика'].value).split(' ')
-    else:
-        fioList = []
-    if len(fioList) > 1:
-        payerLastName = fioList[0].strip()
-        payerFirstName = fioList[1].strip()
-        payerPatrName = fioList[2].strip()
-    else:
-        payerLastName = ''
-        payerFirstName = ''
-        payerPatrName = ''
-    if action[u'Дата рождения'].value:
-      date = action[u'Дата рождения'].value
-      payerBirthDate = datetime.strptime(date, '%d.%m.%Y')
-
-    payerDocumentCode =  ''
-    if action[u'Тип документа'].value:
-        docCode, docName = forceString(action[u'Тип документа'].value).split(',')
-        payerDocumentCode = docCode
-
-    payerDocumentSerial = action[u'Серия документа'].value
-    payerDocumentNumber = action[u'Номер документа'].value
-
-    if action[u'Дата выдачи документа'].value:
-      date = action[u'Дата выдачи документа'].value
-      payerDocumentDate = datetime.strptime(date, '%d.%m.%Y')
+  invalidDiagName = ''
 }
 
 {:
-currentYearStartDate = forceString(documentYear)
-# <!-- note запрос на получение информации по оплате   -->
-serviceRefList = db.getRecordList(stmt=u"""
-  select e.id                               as eventId,
-         DATE_FORMAT(e.setDate, '%Y.%m.%d') as eventSetDate,
-         DATE_FORMAT(e.setDate, '%d.%m.%Y') as eventSetDateFormatted,
-         rbS.name                           as serviceName,
-         ai.sum                             as servicePayedSum,
-         ai.price                           as servicePrice,
-         ai.amount                          as serviceAmount
-    from Event e
-             join EventType et on e.eventType_id = et.id and e.deleted = 0 and e.id = {evenId}
-             join Account_Item ai on e.id = ai.event_id and ai.deleted = 0
-             join Account ac on ai.master_id = ac.id and ac.deleted = 0
-             join rbService rbS on ai.service_id = rbS.id
-             join Contract_Tariff ct on ai.tariff_id = ct.id
-             join Contract c on ct.master_id = c.id and c.finance_id = 4
-    where ai.date is not null
-
-""".format(evenId = event.id))
+def putElement(value):
+  return write(r'''
+  <span class="nbs">{value}</span>
+  '''.format(value = value))
 }
 
 {:
-totalPayed = forceString(action[u'Стоимость медицинских услуг'].value)
-if u'не выполнены' in totalPayed.lower():
-  totalPayed = u'0'
-MED_SERVICE = u'Медицинская услуга'
-REACH_TREATMENT = u'Дорогостоящее лечение'
-serviceType = action[u'Код услуги'].value
-if serviceType == MED_SERVICE:
-  payedByType1 = totalPayed
-  payedByType2 = u' '
+stringMan = putElement('')
+stringWoman = putElement('')
+if client.sex == u'М':
+  stringMan = 'X'
 else:
-  payedByType1 = u' '
-  payedByType2 = totalPayed
+  stringWoman = 'X'
+}
+
+{:
+def getRegionCode(name):
+  ref = db.getRecordEx(stmt=u"""
+  select code from rbegiszregion where name = '{name}';
+  """.format(name = name))
+  if ref:
+    code = forceString(ref.value('code'))
+  else:
+    code = ''
+
+  return code
+}
+
+{:
+if action[u'Субъект Российской Федерации'].value:
+  domesticRegionCode = getRegionCode(action[u'Субъект Российской Федерации'].value)
+else:
+  domesticRegionCode = ''
+if action[u'Ближайший субъект Российской Федерации'].value:
+  closestRegionCode = getRegionCode(action[u'Ближайший субъект Российской Федерации'].value)
+else:
+  closestRegionCode = ''
+}
+
+{:
+chiefRef = db.getRecordEx(stmt=u"""
+select concat_ws(' ', p2.lastName, p2.firstName, p2.patrName) as fio
+from Person p1
+    join OrgStructure os on p1.orgStructure_id = os.id
+    join Person p2 on os.chief_id = p2.id
+where p1.id = {personId};
+""".format(personId=action.person.id))
+
+if chiefRef:
+  chief = forceString(chiefRef.value('fio'))
+else:
+  chief = '_____________________'
+}
+
+
+{:
+def rendSquare(amount):
+  for _ in range(amount):
+    write(r"""
+    <span class="square"></span>
+    """)
 }
 <!-- @formatter:on -->
 </head>
+
 <body>
-
-<table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-        <td width="25%">
-            <div class="barcode--custom">*26901015*</div>
-            <div>26901015</div>
-        </td>
-        <td width="59%">
-            <div>
-                ИНН <b>{currentOrganisation.INN}</b>
-            </div>
-            <div>
-                КПП <b>{currentOrganisation.KPP}</b> Стр. <b>001</b>
-            </div>
-        </td>
-        <td width="1%">
-            <div style="white-space: nowrap; font-size: 8pt">
-                Приложение № 1 <br>
-                к приказу ФНС России <br>
-                от «08» ноября 2023 г. <br>
-                № ЕА-7-11/824
-            </div>
-        </td>
-    </tr>
-    <tr>
-        <td colspan="3"><b>Форма по КНД 1151156</b></td>
-    </tr>
-</table>
-
-<div align="center" class="h1">
-    Справка <br>
-    об оплате медицинских услуг для представления <br>
-    в налоговый орган
-</div>
-
-<br>
-
-<table width="100%" cellpadding="0" cellspacing="0" class="mB">
-    <tr>
-        <td class="pR">
-            <table cellpadding="0" cellspacing="0">
-                <tr>
-                    <td valign="middle" class="pR">Номер справки <b>{action[u'Номер медицинской справки'].value}</b></td>
-                </tr>
-            </table>
-        </td>
-        <td class="pR">
-            <table cellpadding="0" cellspacing="0">
-                <tr>
-                    <td valign="middle" class="pR">
-                        Номер корректировки
-                        <b>{'_'*15}</b>
-                    </td>
-
-                </tr>
-            </table>
-        </td>
-        <td align="right">
-            <table cellpadding="0" cellspacing="0">
-                <tr>
-                    <td valign="middle" class="pR">Отчетный год <b>{action[u'Отчетный год'].value}</b></td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-</table>
-
-<div>
-    Данные медицинской организации / индивидуального предпринимателя, осуществляющего медицинскую деятельность:
-</div>
-<p class="line"><b>{currentOrganisation.fullName}</b></p>
-
-<div>
-    Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее – налогоплательщик):
-</div>
+<div class="page page--front">
 
 
-<table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-        <td width="1%" style="white-space: nowrap">Фамилия&nbsp;</td>
-        <td><b>{payerLastName}</b></td>
-    </tr>
-    <tr>
-        <td width="1%" style="white-space: nowrap">Имя&nbsp;</td>
-        <td><b>{payerFirstName}</b></td>
-    </tr>
-    <tr>
-        <td width="1%" style="white-space: nowrap">Отчество&nbsp;</td>
-        <td><b>{payerPatrName}</b></td>
-    </tr>
-    <tr>
-        <td>ИНН<sup>2</sup></td>
-        <td><b>{'_'*15 if not action[u'ИНН'].value else action[u'ИНН'].value}</b></td>
-        <td width="50%">Дата рождения <b>{payerBirthDate.strftime('%d.%m.%Y')}</b></td>
-    </tr>
-</table>
-
-<div>Сведения о документе, удостоверяющем личность:</div>
-{: 
-docType_row = db.getRecordEx(stmt=u"""SELECT rbdoc.EGIZ_code, rbdoc.name FROM Client c JOIN ClientDocument cdoc ON c.id = cdoc.client_id JOIN rbDocumentType rbdoc ON cdoc.documentType_id = rbdoc.id WHERE c.id = {clientId}""".format(clientId=client.id))
-if docType_row:
-    docType = forceString(docType_row.value('EGIZ_code'))
-else:
-    docType = ''
-}
-<table width="100%" cellpadding="0" cellspacing="0" class="line">
-    <tr>
-        <td  style="white-space: nowrap;">Код вида документа&nbsp;</td>
-        <td width="19%"><b>{docType or client.document.documentTypeCode or '_'*15}</b></td>
-        <td>
-            Серия и номер <b>{payerDocumentSerial}</b>
-            № <b>{payerDocumentNumber}</b>
-        </td>
-    </tr>
-    <tr>
-        <td>Дата выдачи</td>
-        <td colspan="2"><b>{payerDocumentDate.strftime('%d.%m.%Y')}</b></td>
-    </tr>
-    <tr>
-        <td colspan="3">Налогоплательщик и пациент являются одним лицом <b>{taxpayer}</b></td>
-        <td ></td>
-    </tr>
-    <tr>{: 
-        paidSum = db.getRecordEx(stmt="""select sum(acc.payedSum - acc.refusedSum) as sum from Account acc
-                                                    inner join CashBoxExportInfo cash on acc.id = cash.account_id
-                                            where acc.deleted=0 and cash.client_id={clientID} limit 1;""".format(clientID=client.id))
-        }
-        {:
-            paid_sum = forceString(paidSum.value('sum')) if forceString(paidSum.value('sum')) else '0.00'
-        }
-        <td colspan="3">
-            Сумма расходов на оказанные медицинские услуги по коду услуги
-            "{1 if forceString(action[u'Код услуги'].value) == u'Медицинская услуга' else 2}"
-            <b>{action[u'Стоимость медицинских услуг'].value}</b></td>
-        <td></td>
-    </tr>
-</table>
-
-<table width="100%" cellpadding="5" cellspacing="0" border="1" class="line" >
-    <tr>
-        <!-- NOTE левая-->
-        <td width="50%" style="vertical-align: top;">
-            <div style="font-weight: 600" align="center">
-                Достоверность и полноту сведений, указанных <br>
-                в настоящей справке, подтверждаю:
-            </div>
-{:
-person = db.getRecordEx(stmt="""select p.lastName,p.firstName,p.patrName from Action a
-                                inner join Person p on a.person_id = p.id
-                                where a.id={actionID} limit 1;""".format(actionID=action.id))
-last_name = forceString(person.value('lastName'))
-first_name = forceString(person.value('firstName'))
-patr_name = forceString(person.value('patrName'))
-}
-            <div>
-                <b>{last_name}</b> <br>
-                <b>{first_name}</b> <br>
-                <b>{patr_name}</b>
-                
-            </div>
-            
-            <div align="center">
-            (фамилия, имя, отчество<sup>1</sup>)
-            </div>
-            <br/>
-            <div>
-                Подпись {'_' * 15} Дата <b>{currentDate}</b>
-            </div>
-            <div>
-                Справка составлена на <b>{pageAmount}</b> страницах
-            </div>
-        </td>
-        <!-- NOTE правая -->
-        <td style="vertical-align: top; text-align:center;">
-            <div class="qr-code-zone">
-                <b>Зона QR-кода</b>
-            </div>
-        </td>
-    </tr>
-</table>
-
-<div class="remark">
-    <div> <sup>1</sup> Отчество указывается при наличии (относится ко всем листам документа).</div>
-    <div> <sup>2</sup> ИНН указывается при наличии.</div>
-</div>
-
-
-
-
-<!-- NOTE Вторая страница Данные пациента -->
-
-{if: isTaxpayerSame == False}
-<div class="page-break"></div>
-<div class="hide">
-    <hr>
-</div>
+  <section id="card-top">
     <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-            <td width="25%">
-                <div class="barcode--custom">*26901015*</div>
-                <div>26901015</div>
-            </td>
-            <td width="59%">
-                <div>
-                    ИНН <b>{currentOrganisation.INN}</b>
-                </div>
-                <div>
-                    КПП <b>{currentOrganisation.KPP}</b> Стр. <b>002</b>
-                </div>
-            </td>
-        </tr>
+      <tr>
+        <td width="60%"></td>
+        <td width="40%" style="font-size:8pt">
+          Приложение № 13
+          <br>  к приказу Министерства здравоохранения Российской Федерации
+          <br>  от 15 декабря 2014 г. № 834н
+        </td>
+      </tr>
     </table>
 
     <br>
-    <div>
-        Данные физического лица, которому оказаны медицинские услуги<sup>1</sup> :
+
+    <!-- шапка -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:10pt">
+      <tr>
+        <td width="40%">
+          {currentOrganisation.fullName}
+          <br>
+          {currentOrganisation.address}
+        </td>
+        <td></td>
+        <td width="40%">
+          <div style="margin: 0 auto">
+            Код формы по ОКУД {'_' * 15}
+            <br>Код учреждения по ОКПО {'_' * 11}
+            <br>
+            <br>
+            Медицинская документация
+            <br>
+            Форма № 072/уУтверждена приказом Минздрава России
+            <br>
+            от 15 декабря 2014 г. № 834н
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div align="center" class="h1">
+      <b>Санаторно-курортная карта №{action[u'Номер документа']}</b>
+      <br>
+      <b>«{forceString(action.endDate.date.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.</b>
     </div>
+    <div style="font-size:10pt" align="center">
+      Выдается при предъявлении путевки на санаторно-курортное лечение. Без настоящей карты путевка недействительна.
+    </div>
+
+    <div>
+      <b>1. Фамилия, имя, отчество</b> {client.fullName}
+
+
+    <table cellpadding="0" cellspacing="0">
+      <tr>
+        <td>  <b>2. Пол</b></td>
+        <td>1. Мужской</td>
+        <td class="result-option">
+          <table border="1" cellpadding="2" cellspacing="0"><tr><td class="squre" style="line-height: 12px;">{stringMan}</td></tr></table>
+        </td>
+        <td>2. Женский</td>
+        <td class="result-option">
+          <table border="1" cellpadding="2" cellspacing="0"><tr><td class="squre" style="line-height: 12px;">{stringWoman}</td></tr></table>
+        </td>
+        <td><b>3. Дата рождения</b> {client.birthDate}</td>
+      </tr>
+    </table>
+
+
+      <div><b>4. Место регистрации: субъект Российской Федерации</b> {forceString(client.regAddress.region)[:-1]}</div>
+      <div>
+        {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        <br>
+        {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+      </div>
+    </div>
+
+    <div>
+      <b>5. Идентификационный номер в системе ОМС</b> {client.policy.number}
+    </div>
+
     <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-            <td width="1%" style="white-space: nowrap">Фамилия&nbsp;</td>
-            <td><b>{client.lastName}</b></td>
-        </tr>
-        <tr>
-            <td width="1%" style="white-space: nowrap">Имя&nbsp;</td>
-            <td><b>{client.firstName}</b></td>
-        </tr>
-        <tr>
-            <td width="1%" style="white-space: nowrap">Отчество&nbsp;</td>
-            <td><b>{client.patrName}</b></td>
-        </tr>
-        <tr>
-            <td>ИНН<sup>2</sup></td>
-           <td><b>{action[u'ИНН'].value if action[u'Услуга оказана налогоплательщику'].value and forceString(action[u'Услуга оказана налогоплательщику'].value) == u'да' and action[u'ИНН'].value else '_'*15}</b></td>
-            <td width="50%">Дата рождения <b>{client.birthDate}</b></td>
-        </tr>
+      <tr>
+        <td><b>6. Субъект Российской Федерации</b> {domesticRegionCode}</td>
+        <td><b>7. Ближайший субъект Российской Федерации</b> {closestRegionCode}</td>
+      </tr>
+      <tr>
+        <td><b>8. Климат в месте проживания</b> {action[u'Климат в месте проживания'].value.split(' ', 1)[0]}</td>
+        <td><b>9. Климатические факторы в месте проживания</b> {action[u'Климатические факторы в месте проживания'].value.split(' ', 1)[0]}</td>
+      </tr>
+      <tr>
+        <td><b>10. Код льготы</b> {forceString(action[u'Код льготы (для печати)'].value).split(' ', 1)[0]}</td>
+        <td><b>11. Сопровождение **</b> {action[u'Необходимость сопровождения пациента']}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>12. Документ, удостоверяющий право на получение набора социальных услуг</b></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td><b>Номер</b> {action[u'Номер документа, удостоверяющего право на получение набора социальных услуг']}</td>
+              <td><b>Серия</b> {action[u'Серия документа, удостоверяющего право на получение набора социальных услуг']}</td>
+              <td><b>Дата выдачи</b> {action[u'Дата выдачи документа']}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><b>13. СНИЛС</b></td>
+        <td>{client.SNILS}</td>
+      </tr>
     </table>
 
-    <div>Сведения о документе, удостоверяющем личность:</div>
-    <table width="100%" cellpadding="0" cellspacing="0" class="line">
+    <div><b>14. № номер медицинской карты пациента, получающего помощь в амбулаторных условиях</b> {client.id}</div>
+  </section>
+
+
+
+  <!--=================================== начало первой части обратного талона =============================================-->
+  <section class="return-ticket">
+    <div class="cut-line">
+    <div class="cut-line__title">Линия отреза</div>
+    <div class="cut-line__text">Подлежит возврату в медицинскую организацию, выдавшую санаторно-курортную карту</div>
+  </div>
+    <div align="center"><b>Обратный талон</b></div>
+
+  <div class="wrap-line" style="margin-bottom: 5px">
+    <span class="wrap-line_title">1. Санаторно-курортная организация</span>
+    <div class="wrap-line_line"></div>
+  </div>
+
+  <div>
+    <b>2. ОГРН СКО</b> &nbsp;&nbsp;&nbsp; {rendSquare(13)}
+  </div>
+  <div><b>3. Фамилия, имя, отчество пациента(ки)</b> {client.fullName}</div>
+  <div><b>4. Период санаторно-курортного лечения:</b>  c {rendSquare(5)} по {rendSquare(5)}</div>
+
+
+    <div><b>5. Диагноз, установленный направившей медицинской организацией:</b></div>
+    <table width="100%" cellpadding="3" cellspacing="0" border="0">
         <tr>
-            <td  style="white-space: nowrap;">Код вида документа&nbsp;</td>
-            <td width="19%"><b>{docType or client.document.documentTypeCode or '_'*15}</b></td>
+          <td width="75%">
+            <div class="wrap-line">
+              <span class="wrap-line_title">5.1. Основное заболевание</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+          <td width="25%">
+            <div class="wrap-line">
+              <span class="wrap-line_title">код по МКБ-10</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="wrap-line">
+              <span class="wrap-line_title">5.2. Сопутствующие заболевания:</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+          <td>
+            <div class="wrap-line">
+              <span class="wrap-line_title">код по МКБ-10</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+        </tr>
+        {for: _ in range(2)}
+          <tr>
+            <td><div class="wrap-line_line"></div></td>
             <td>
-                Серия и номер <b>{client.document.serial or '_'*15}</b> <b>{client.document.number or '_'*15}</b>
+              <div class="wrap-line">
+                <span class="wrap-line_title">код по МКБ-10</span>
+                <div class="wrap-line_line"></div>
+              </div>
             </td>
-        </tr>
+          </tr>
+        {end:}
+
         <tr>
-            <td>Дата выдачи </td>
-            <td colspan="2" align="left"><b> {client.document.date}</b></td>
+          <td width="75%">
+            <div class="wrap-line">
+              <span class="wrap-line_title">5.3 Заболевание, явившееся причиной инвалидности</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+          <td width="25%">
+            <div class="wrap-line">
+              <span class="wrap-line_title">код по МКБ-10</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
         </tr>
     </table>
-{end:}
 
-<div style="page-break-after: always"></div>
-<br>
-<br>
-<br>
-<hr>
-<h3>Список услуг оказанных пациенту</h3>
-
-<table width="100%" cellpadding="3" cellspacing="0" border="1">
-  <tr>
-      <td>Дата обращения</td>
-      <td>Название услуги</td>
-      <td>Цена услуги</td>
-      <td>Количество</td>
-      <td>Стоимость</td>
-  </tr>
-  {if: serviceRefList}
-    {: total = 0}
-    {for: serviceRef in serviceRefList}
-        {: servicePrice = forceInt(serviceRef.value('servicePrice'))}
-        {: serviceAmount = forceInt(serviceRef.value('serviceAmount'))}
-        {: total += (servicePrice * serviceAmount)}
-        <tr>
-            <td>{forceString(serviceRef.value('eventSetDateFormatted'))}&nbsp;</td>
-            <td>{forceString(serviceRef.value('serviceName'))}</td>
-            <td>{servicePrice}</td>
-            <td>{serviceAmount}</td>
-            <td>{servicePrice * serviceAmount}</td>
-        </tr>
-    {end:}
+    <div><b>6. Диагноз при выписке из санаторно-курортной организации:</b></div>
+    <table width="100%" cellpadding="3" cellspacing="0" border="0">
     <tr>
-        <td colspan="4" align="right"><b>Всего</b></td>
-        <td><b>{total}</b></td>
+      <td width="75%">
+        <div class="wrap-line">
+          <span class="wrap-line_title">6.1. Основное заболевание</span>
+          <div class="wrap-line_line"></div>
+        </div>
+      </td>
+      <td width="25%">
+        <div class="wrap-line">
+          <span class="wrap-line_title">код по МКБ-10</span>
+          <div class="wrap-line_line"></div>
+        </div>
+      </td>
     </tr>
-  {end:}
-</table>
+    <tr>
+      <td>
+        <div class="wrap-line">
+          <span class="wrap-line_title">6.2. Сопутствующие заболевания:</span>
+          <div class="wrap-line_line"></div>
+        </div>
+      </td>
+      <td>
+        <div class="wrap-line">
+          <span class="wrap-line_title">код по МКБ-10</span>
+          <div class="wrap-line_line"></div>
+        </div>
+      </td>
+    </tr>
+    {for: _ in range(2)}
+      <tr>
+        <td><div class="wrap-line_line"></div></td>
+        <td>
+          <div class="wrap-line">
+            <span class="wrap-line_title">код по МКБ-10</span>
+            <div class="wrap-line_line"></div>
+          </div>
+        </td>
+      </tr>
+    {end:}
+  </table>
+  </section>
 
+  <!-- конец  первой части обратного талона -->
+</div> <!--page end-->
+<div style="page-break-after: always"></div>
+<div class="page page--back">
+  <!-- вторая часть карты -->
+  <section id="card-bottom">
+    <div>
+      <b>15. Жалобы, длительность заболевания, анамнез, предшествующее лечение, в том числе санаторно-курортное</b>
+      {action[u'Жалобы']}; {action[u'Длительность заболевания']}
+    </div>
+    <div>
+      <b>16. Данные клинического, лабораторного, рентгенологического и других исследований (даты)</b>
+      <br>
+      {action[u'Данные исследований']:n}
+    </div>
+
+
+    <div><b>17. Диагноз:</b></div>
+    <table width="100%" cellpadding="3" cellspacing="0" border="0">
+      <tr>
+        <td width="75%"><b>17.1 Основное заболевание</b> {mkbName}</td>
+        <td width="25%" valign="top"><b>код по МКБ-10</b> {mkbCode}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>17.2 Сопутствующие заболевания:</b> </td>
+      </tr>
+      {if: len(dopDiagCodeList) > 0}
+        {for: dopDiagCodeRare in dopDiagCodeList}
+          {: dopDiagCode = forceString(dopDiagCodeRare).split(':')[1] }
+          <tr>
+            <td width="75%">{getMkbName(dopDiagCode)}</td>
+            <td width="25%" valign="top"><b>код по МКБ-10</b> {dopDiagCode}</td>
+          </tr>
+        {end:}
+      {else:}
+        <tr>
+          <td><div class="wrap-line_line"></div></td>
+          <td>
+            <div class="wrap-line">
+              <span class="wrap-line_title">код по МКБ-10</span>
+              <div class="wrap-line_line"></div>
+            </div>
+          </td>
+        </tr>
+      {end:}
+
+        <tr>
+          <td>
+            <b>17.3 Заболевание, явившееся причиной инвалидности</b> {invalidDiagName}
+          </td>
+          <td valign="top"><b>код по МКБ-10</b> {invalidDiagCode}</td>
+        </tr>
+    </table>
+
+    <div align="center"><b>ЗАКЛЮЧЕНИЕ</b></div>
+    <div>
+      <b>18. Название санаторно-курортной организации</b> {action[u'Название санаторно-курортной организации']}
+      <br><b>19. Лечение:</b> {action[u'Лечение']}
+      <br><b>20. Продолжительность курса лечения</b> {action[u'Продолжительность курса лечения (дней)']} дней.
+      <br><b>21. Путевка №</b> {action[u'Номер путевки']}
+    </div>
+    <div>
+      <b>22. Фамилия, имя, отчество лица, заполнившего карту</b> {action.person.longName}
+    </div>
+    <div>
+
+
+      <b>23. Заведующий отделением (председатель врачебной комиссии)*</b> {chief}
+    </div>
+
+    <br>
+    <div><b>М.П.</b></div>
+    <br>
+    <div style="font-size:8pt">* для лиц, имеющих право на получение набора социальных услуг</div>
+    <div>
+      <b>Карта действительна при условии четкого заполнения всех граф, фамилий, подписей, наличия печати. <br> Срок действия Карты 12 месяцев.</b>
+    </div>
+  </section>
+  <!-- конец второй части карты -->
+
+
+
+  <!-- вторая часть обратного талона -->
+  <section class="return-ticket">
+    <div class="cut-line">
+      <div class="cut-line__title">Линия отреза</div>
+      <div class="cut-line__text">Подлежит возврату в медицинскую организацию, выдавшую санаторно-курортную карту</div>
+    </div>
+    <div class="wrap-line">
+      <span class="wrap-line_title">7. Проведено лечение</span>
+      <div class="wrap-line_line"></div>
+    </div>
+    <div class="wrap-line_line"></div>
+    <div class="wrap-line_line"></div>
+    <div align="center"><sup>(виды лечения, количество процедур, их переносимость)</sup></div>
+
+    <div class="wrap-line">
+      <div class="wrap-line_title"><span>8. Эпикриз</span> <span style="font-size:8pt">(включая данные обследования)</span></div>
+      <div class="wrap-line_line"></div>
+    </div>
+    <div class="wrap-line_line"></div>
+    <div class="wrap-line_line"></div>
+
+    <table cellpadding="0" cellspacing="0">
+      <tr>
+        <td><b>9. Результаты лечения:</b>&nbsp;</td>
+        <td>
+          значительное улучшение
+        </td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+        <td>улучшение</td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+        <td>без перемен</td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+        <td>ухудшение</td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+      </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0">
+      <tr>
+        <td><b>10. Наличие обострений, потребовавших отмену процедур</b>&nbsp;</td>
+        <td>1. Да</td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+        <td>2. Нет</td>
+        <td class="result-option">
+          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
+        </td>
+      </tr>
+    </table>
+    <div>
+    </div>
+
+
+    <div class="wrap-line">
+      <span class="wrap-line_title">11. Рекомендации по дальнейшему лечению:</span>
+      <div class="wrap-line_line"></div>
+    </div>
+    <div class="wrap-line_line"></div>
+    <div class="wrap-line_line"></div>
+
+    <div class="wrap-line">
+      <span class="wrap-line_title">12. Лечащий врач</span>
+      <div class="wrap-line_line"></div>
+    </div>
+
+    <div class="wrap-line">
+      <span class="wrap-line_title">13. Главный врач санаторно-курортной организации</span>
+      <div class="wrap-line_line"></div>
+    </div>
+
+    <br>
+    <div><b>М.П.</b></div>
+  </section>
+
+  <!-- конец вторая часть обратного талона -->
+</div> <!--page end-->
+
+<!--NOTE подгонку высоты обратной стороны карты решил средствами css-->
+{:write("""
+<script>
+  window.addEventListener('beforeprint', () => {
+    setTimeout(() => {
+      const cardTop = document.querySelector('#card-top');
+      const cardBottom = document.querySelector('#card-bottom');
+
+      const {cardTopHeight, cardBottomHeight} = getHeight(cardTop, cardBottom);
+      console.log('cardTopHeight: ', cardTopHeight, 'cardBottomHeight: ', cardBottomHeight );
+
+      // setHeight(cardTop, cardBottom, cardTopHeight, cardBottomHeight);
+    }, 100);
+  })
+
+
+  function getHeight(cardTop, cardBottom) {
+    /*
+    * NOTE документ распечатывается с колонтитулом на первой странице.
+    *  С помощью переменной pageHeader вносим коррективы
+    */
+    const cardTopHeight = cardTop.offsetHeight;
+    const cardBottomHeight = cardBottom.offsetHeight ;
+    return {cardTopHeight, cardBottomHeight}
+  }
+
+  function setHeight(cardTop, cardBottom, cardTopHeight, cardBottomHeight) {
+    const pageHeader = 90;
+    cardTopHeight > cardBottomHeight ?
+    cardBottom.style.height = `${cardTopHeight + pageHeader }px`:
+    cardTop.style.height = `${cardBottomHeight - 25}px`;
+    console.log('cardTop.offsetHeight: ', cardTop.offsetHeight, 'cardBottom: ', cardBottom.offsetHeight)
+
+  }
+</script>
+""")}
 
 </body>
 </html>
 
 
-    
+

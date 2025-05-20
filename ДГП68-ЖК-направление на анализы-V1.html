@@ -1,0 +1,647 @@
+
+
+
+<!--Начальная дата разработки  г.-->
+<!--Версия 0.0.0.1, дата  г.-->
+<!--Разработка: Маракулин Максим Андреевич -->
+<!--Доработка: Холодов Александр Андреевич -->
+<!--Контекст печати: f030  -->
+<!--Задача:   -->
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+    <title>Направление</title>
+
+{setPageSize('A4')}
+{setOrientation('P')}
+{: setTopMargin(5) }
+{ :setBottomMargin(5) }
+{ :setRightMargin(5) }
+{ :setLeftMargin(5) }
+
+{: jobNow = None }
+{: from PyQt4 import QtGui }
+{: from library.Utils import forceString }
+{: db = QtGui.qApp.db }
+
+{:
+def renderHeader():
+    block = """
+        <tr>
+            <td align="center" COLSPAN=4><FONT SIZE>{currentOrganisation_shortName}</FONT></td>
+        </tr>
+        <tr>
+            <td align="center" COLSPAN=4>
+                <div><FONT SIZE><B>Направление на лабораторные исследования (Работа: {Act})</B></FONT></div>
+                <br>
+            </td>
+        </tr>
+    """.format(
+        currentOrganisation_shortName = currentOrganisation.shortName,
+        Act = Act,
+    )
+    write(block)
+}
+
+{:
+def renderClientInfo():
+    block = """
+        <div>
+            <div>ФИО: <FONT SIZE=+2>{client_fullName}</FONT></div>
+            <br/>
+            <div>Дата рожд. <b>{client_birthDate}</b>,&nbsp;Амб. карта {client_id}</div>
+            <div>Документ: <b>{client_document_serial} {client_document_number}</b> </div>
+            <div>Полис: <b>{client_policy}</b></div>
+            <div>Регистрация: {client_regAddress}</div>
+            <div>Проживание: <b>{client_locAddress}</b></div>
+            <div>Снилс: {client_SNILS}</div>
+        </div>
+    """.format(
+        client_fullName = client.fullName,
+        client_birthDate = client.birthDate,
+        client_id = client.id,
+        client_document_serial = client.document.serial,
+        client_document_number = client.document.number,
+        client_policy = client.policy,
+        client_regAddress = client.regAddress,
+        client_locAddress = client.locAddress,
+        client_SNILS = client.SNILS
+    )
+    write(block)
+}
+
+{:
+def renderTicketInfo():
+    block = """
+        <div style="margin: 0 auto">
+            <div>Дата: <FONT SIZE>{Ticket_date}</FONT></div>
+
+            <div>Время: <FONT SIZE>{Ticket_time}</FONT></div>
+            <div>Место: <FONT SIZE=-1>{Ticket_place}</FONT></div>
+        </div>
+    """.format(
+        Ticket_date=Ticket_date,
+        Ticket_time=Ticket_time,
+        Ticket_place=Ticket_place
+    )
+    write(block)
+}
+
+</head>
+<body style="font-family: Times New Roman; font-size: 9pt;">
+
+
+{: nomerok = []}
+{for: act in event.actions}
+    {if: act.class_ == 1}
+        {for: prop in act}
+            {if: (prop.name.lower() == u"номерок" or  prop.name.lower() == u"№ (номер)" or prop.name.lower() == u"направление") and prop.value}
+                {if: prop.value.jobType.code == '236'}
+                    {if: (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) not in nomerok}
+                        {: nomerok.append(str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                    {end:}
+                {end:}
+                {if: (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) not in nomerok}
+                    {: nomerok.append(str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+{end:}
+
+{for: act in event.actions}
+    {if: act.class_ == 1}
+        {for: prop in act}
+            {if: (prop.name.lower() == u"номерок" and prop.value) or (prop.name.lower() == u"направление" and prop.value)}
+                    {:prop.value.jobType.code}
+                {if: (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) not in nomerok}
+                    {: nomerok.append(str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+{end:}
+{: i = 0}
+{: jobFlag = 0}
+
+{for: n in nomerok}
+    {:i += 1}
+    {: flag = True}
+    {for: act in event.actions}
+        {for: prop in act}
+            {if: prop.name.lower() == u"номерок" or prop.name.lower() == u"№ (номер)" or prop.name.lower() == u"направление"}
+                {if: prop.value}
+                    {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) }
+                        {:Ticket_datetime = prop.value.datetime.toString(u"dd.MM.yyyy, hh:mm")}
+                        {:Ticket_date = prop.value.datetime.toString(u"dd.MM.yyyy")}
+                        {:Ticket_number = prop.value.idx+1}
+                        {:Ticket_time = prop.value.datetime.toString(u"hh:mm")}
+                        {:Ticket_id = prop.value.id}
+                        {:Ticket_place_full = unicode(prop.value).split(', ')[2].split('/')}
+                        {:Ticket_place =  unicode(prop.value).split('/')[-1]}
+                        {:Act = unicode(prop.value).split(', ')[0]}
+                        {if: jobFlag == 0}
+                            {:jobLast = prop.value.jobType.code}
+                            {:jobFlag = 1}
+                        {elif: jobFlag == 1}
+                            {:jobNow = prop.value.jobType.code}
+                        {end:}
+
+
+                        <!-- note new -->
+                        {if: act.group.name in (u'Мазок в КВД №8', u'КВД №8')}
+                            {:unique_form_id = u'9999'}
+                        {else:}
+                            {:unique_form_id = u''}
+                        {end:}
+                        <!-- note END new -->
+
+                        {if: prop.value.jobType.code == '04'}
+                            {:bruh = True}
+                        {else:}
+                            {:bruh = False}
+                        {end:}
+
+                        {if: prop.value.jobType.code == '236'}
+                            {:kek = True}
+                            {: kekName = act.name}
+                        {else:}
+                            {:kek = False}
+                        {end:}
+                        {if: prop.value.jobType.code == '6-1'}
+                            {:a = True}
+                            {: aName = act.name}
+                        {else:}
+                            {:a = False}
+                        {end:}
+                        {if: prop.value.jobType.code == '7'}
+                            {:kal = True}
+                        {else:}
+                            {:kal = False}
+                        {end:}
+                        {if: prop.value.jobType.code == '8'}
+                            {:mocha = True}
+                        {else:}
+                            {:mocha = False}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+
+
+    {:uniq_list=[]}
+    {for: act in event.actions}
+        {for: prop in act}
+            {if: prop.name.lower()==u'номерок'}
+                {if: prop.value.id not in uniq_list}
+                    {:uniq_list.append(prop.value.id)}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+
+    {for: i in uniq_list}
+        {:i}
+    {end:}
+
+
+<!-- код ниже добавляет в печать между анализами пустые листы-->
+<!--    {if: kek == True and nomerok.index(n) != 0}-->
+<!--        <div style="page-break-after: always"></div>-->
+<!--    {elif: jobLast and jobNow}-->
+<!--        {if: jobLast != jobNow}-->
+<!--            <div style="page-break-after: always"></div>-->
+<!--            {: jobLast = jobNow}-->
+<!--        {end:}-->
+<!--    {end:}-->
+
+
+<!-- это для всех тип работ кроме 6-1 и 04 -->
+    {if: bruh == False and kal == False and mocha == False and a == False}
+        <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0">
+            <tr>
+                <td COLSPAN=4 style="padding-top: 10px; padding-bottom: 10px">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td>
+                                <FONT FACE="Code 3 de 9" SIZE=+4>*{client.id}*</FONT>
+                                <FONT align="right" SIZE=+4>&nbsp;<b>{client.id}</b></FONT>
+                            </td>
+                            <td align="right">
+                                {if: unique_form_id != u''}
+                                    <FONT FACE="Code 3 de 9" SIZE=+4>*{unique_form_id}*</FONT>
+                                    <FONT align="right" SIZE=+4>&nbsp;<b>{unique_form_id}</b></FONT>
+                                {end:}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            {:renderHeader()}
+            <TR>
+                <TD COLSPAN=3 width=70%>
+                    {:renterClientInfo()}
+                </TD>
+                <td align="center" valign="middle" width="30%">
+                    {:renderTicketInfo()}
+                </td>
+            </TR>
+        </TABLE>
+
+
+        <FONT SIZE=-1>
+
+        {if: kek == True}
+            {: kek = False}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value }
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <div><font size>{act.name}</font></div>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {else:}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value}
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <div><font size>{act.name}</font></div>
+                        {else:}
+                            {if: not prop.value and flag == False}
+                                <div><font size>{act.name}</font></div>
+                            {end:}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+
+        </FONT>
+        <div><FONT FACE="Code 3 de 9" SIZE=+4>*{Ticket_id}*</FONT></div>
+        <p><font size=-1>Направил: {act.setPerson}</font></p>
+
+        <div style="page-break-after: always"></div>
+
+
+<!-- Это только для кала (код 7) -->
+
+    {elif: kal == True}
+        <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0">
+        <TR>
+        <TD COLSPAN=4 style="padding-top: 10px; padding-bottom: 10px"><FONT FACE="Code 3 de 9" SIZE=+4>*{client.id}*</FONT><FONT align="right" SIZE=+4>&nbsp;<b>{client.id}</b></FONT></TD>
+        </TR>
+        <TR>
+        <TD align="center" COLSPAN=4><FONT SIZE>{currentOrganisation.shortName}</FONT></TD>
+        </TR>
+        <TR>
+        <TD align="center" COLSPAN=4><FONT SIZE><B>Направление на лабораторные исследования (Работа: {Act})<BR></B></FONT></TD>
+        </TR>
+        <TR>
+        <TD COLSPAN=3 width=70%><p><BR/>
+        ФИО: <FONT SIZE>{client.fullName}</FONT><BR/>
+        <BR/>
+        Дата рожд.<FONT SIZE> {client.birthDate}</FONT>,&nbsp;Амб. карта {client.id}<BR/>
+        Документ:<FONT SIZE> {client.document.serial} {client.document.number}</FONT><BR/>
+        Полис: <FONT SIZE>{client.policy}</FONT><BR/>
+        Регистрация: {client.regAddress}<BR/>
+        Проживание:<FONT SIZE> {client.locAddress}</FONT><BR/>
+        Снилс: {client.SNILS}</p></TD>
+        <td align="center" width="30%"><p><br/>
+        Дата: <FONT SIZE>{Ticket_date}</FONT><br/>
+        <!--Номер: <FONT SIZE><b>{Ticket_number}</b></FONT><br/>-->
+        Время: <FONT SIZE>08:30-10:00</FONT><br/>
+        Место: <FONT SIZE=-1>{Ticket_place}</FONT>
+
+        </p></td>
+        </TR>
+        </TABLE>
+        <FONT SIZE=-1>
+        <table cellpadding=0 cellspacing=0 width=100% border="0">
+        {if: kek == True}
+            {: kek = False}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value }
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <tr>
+                                <td><font size>{act.name}</font></td>
+                            </tr>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {else:}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value}
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <tr>
+                                <td><font size>{act.name}</font></td>
+                            </tr>
+                        {else:}
+                            {if: not prop.value and flag == False}
+                                <tr>
+                                    <td><font size>{act.name}</font></td>
+                                </tr>
+                            {end:}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+        </table>
+        </FONT>
+        <FONT FACE="Code 3 de 9" SIZE=+4>*{Ticket_id}*</FONT>
+        <p><font size=-1>Направил: {act.setPerson}</font></p>
+
+        <div style="page-break-after: always"></div>
+
+<!-- Это только для мочи (код 8) -->
+
+    {elif: mocha == True}
+        <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0">
+        <TR>
+        <TD COLSPAN=4 style="padding-top: 10px; padding-bottom: 10px"><FONT FACE="Code 3 de 9" SIZE=+4>*{client.id}*</FONT><FONT align="right" SIZE=+4>&nbsp;<b>{client.id}</b></FONT></TD>
+        </TR>
+        <TR>
+        <TD align="center" COLSPAN=4><FONT SIZE>{currentOrganisation.shortName}</FONT></TD>
+        </TR>
+        <TR>
+        <TD align="center" COLSPAN=4><FONT SIZE><B>Направление на лабораторные исследования (Работа: {Act})<BR></B></FONT></TD>
+        </TR>
+        <TR>
+        <TD COLSPAN=3 width=70%><p><BR/>
+        ФИО: <FONT SIZE>{client.fullName}</FONT><BR/>
+        <BR/>
+        Дата рожд.<FONT SIZE> {client.birthDate}</FONT>,&nbsp;Амб. карта {client.id}<BR/>
+        Документ:<FONT SIZE> {client.document.serial} {client.document.number}</FONT><BR/>
+        Полис: <FONT SIZE>{client.policy}</FONT><BR/>
+        Регистрация: {client.regAddress}<BR/>
+        Проживание:<FONT SIZE> {client.locAddress}</FONT><BR/>
+        Снилс: {client.SNILS}</p></TD>
+        <td align="center" width="30%"><p><br/>
+        Дата: <FONT SIZE>{Ticket_date}</FONT><br/>
+        <!--Номер: <FONT SIZE><b>{Ticket_number}</b></FONT><br/>-->
+        Время: <FONT SIZE>08:30-10:00</FONT><br/>
+        Место: <FONT SIZE=-1>{Ticket_place}</FONT>
+
+        </p></td>
+        </TR>
+        </TABLE>
+        <FONT SIZE=-1>
+        <table cellpadding=0 cellspacing=0 width=100% border="0">
+        {if: kek == True}
+            {: kek = False}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value }
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <tr>
+                                <td><font size>{act.name}</font></td>
+                            </tr>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {else:}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value}
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                            <tr>
+                                <td><font size>{act.name}</font></td>
+                            </tr>
+                        {else:}
+                            {if: not prop.value and flag == False}
+                                <tr>
+                                    <td><font size>{act.name}</font></td>
+                                </tr>
+                            {end:}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+        </table>
+        </FONT>
+        <FONT FACE="Code 3 de 9" SIZE=+4>*{Ticket_id}*</FONT>
+        <p><font size=-1>Направил: {act.setPerson}</font></p>
+
+        <div style="page-break-after: always"></div>
+
+
+<!-- Это только для 04 -->
+
+    {elif: bruh == True}
+
+        <table width="100%">
+            <tr>
+                <td valign="middle" width="50%">Направление № {Ticket_number}</td>
+                <td align="right" width="50%"><font style="font-size: 7pt">{currentOrganisation.shortName}</font></td>
+            </tr>
+        </table>
+        <table border="1" cellpadding="3" cellspacing="0" width="100%">
+            <tr>
+                <td width="15%"></td>
+                <td width="60%" align="center" valign="middle" style="padding-top: 15px; padding-bottom: 15px"><font style="font-size: 23pt">Дата: {Ticket_datetime} Номер стекла:</font></td>
+                <td width="25%" align="center" valign="middle"><FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT><br><b>{client.id}</b></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <font style="font-size: 11pt">{client.fullName.upper()}</font><br>
+                    Дата рожд. <font style="font-size: 18pt">{client.birthDate}</font> № амб. карты <font style="font-size: 11pt">{client.id}</font><br>
+                    Паспорт гражданина РФ: {client.document.serial} {client.document.number} СНИЛС: {client.SNILS} Пол <font style="font-size: 11pt"><b>{if: client.sex == u'М'}мужской{end:}{if: client.sex == u'Ж'}женский{end:}</b></font><br>
+                    Полис: {client.policy} Телефон: {client.contact.contact}<br>
+                    Регистрация: {client.regAddress}<br>
+                    Проживание: {client.locAddress}
+                </td>
+                <td></td>
+            </tr>
+        </table>
+        <br>
+        <br>
+        <div><font style="font-size: 11pt">
+        Дата П.М.:<hr>
+        Диагноз:
+        {for: diag in event.diagnosises}
+            {if: diag.type.name == u"Основной"}
+                {diag.MKB} - {diag.MKB.descr}
+            {elif: diag.type.name == u"Заключительный"}
+                {diag.MKB} - {diag.MKB.descr}
+            {end:}
+        {end:}
+        <br>
+        Согласие на обработку персональных данных и забор жидкостной цитологии<br>
+        ____________________________/</font></div>
+        <table border="1" cellspacing="0" cellpadding="3" width="100%" style="font-size: 11pt">
+        {for: act in event.actions}
+            {for: prop in act}
+                {if: (prop.name.lower() == u"номерок" or prop.name.lower() == u"направление") and prop.value and bruh == True}
+                    {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                        <tr>
+                            <td>{act.code} - {act.name}</td>
+                        </tr>
+                    {else:}
+                        {if: not prop.value and flag == False}
+                            <tr>
+                                <td>{act.code} - {act.name}</td>
+                            </tr>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+        </table>
+        <br>
+        <br>
+        Направил: {act.setPerson} /________________________/
+
+<!-- Это только для 6-1 -->
+
+    {elif: a == True}
+        <div style="font-family: Times New Roman; font-size: 10pt;">
+        <div align="right"><font style="font-size: 8pt">Приложение<br>к приказу Министерства здравоохранения СССР<br>от 05.09.1988</font></div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="1"><tr><td valign="middle" style="padding-bottom: 10px; padding-top: 10px">Код формы по ОКУД</td>{for: i in range(10)}<td width="30" style="padding-bottom: 10px; padding-top: 10px"></td>{end:}<td></td></tr></table>
+        <font style="font-size: 8pt"><table><tr><td align="center" width="20%">Минздрав РФ<hr>{currentOrganisation.shortName}</td><td width="50%"></td><td width="30%" align="right">Медицинская документация<br><b>Форма № 264/у-88</b><br>Утверждена Минздравом СССР<br>05.09.1988 г. № 590</td></tr></table></font>
+        <div align="center"><b>НАПРАВЛЕНИЕ № {Ticket_number} <br>
+        на исследование образцов крови в ИФА на СПИД<br>
+        в</b></div>
+        <table border="1" cellpadding="3" cellspacing="0" style="width:100.0%;" width="100%">
+            <tbody>
+                <tr>
+                    <td style="width:5.72%;height:16px;">
+                        <p align="center">
+                        N<br>
+                        п/п
+                        </p>
+                    </td>
+                    <td style="width:8.62%;height:16px;">
+                        <p align="center">
+                        Регистра-<br>
+                        ционный<br>
+                        номер
+                        </p>
+                    </td>
+                    <td style="width:24.92%;height:16px;">
+                        <p align="center">
+                        Фамилия, имя,<br>
+                        отчество<br>
+                        (полностью)
+                        </p>
+                    </td>
+                    <td style="width:4.2%;height:16px;">
+                        <p align="center">пол</p>
+                    </td>
+                    <td style="width:8.2%;height:16px;">
+                        <p align="center">
+                        Год<br>
+                        рожд.
+                        </p>
+                    </td>
+                    <td style="width:26.72%;height:16px;">
+                        <p align="center">
+                        Домашний<br>
+                        адрес
+                        </p>
+                    </td>
+                    <td style="width:7.2%;height:16px;">
+                        <p align="center">
+                        Код<br>
+                        контин-<br>
+                        гента
+                        </p>
+                    </td>
+                    <td style="width:5.54%;height:16px;">
+                        <p align="center">
+                        Дата<br>
+                        забора<br>
+                        крови</p>
+                    </td>
+                    <td style="width:8.86%;height:16px;">
+                        <p align="center">Результат<br>
+                        исследо-<br>
+                        вания</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width:5.72%;">
+                        <p align="center">01</p>
+                    </td>
+                    <td style="width:8.62%;">
+                        <p align="center">02</p>
+                    </td>
+                    <td style="width:24.92%;">
+                        <p align="center">03</p>
+                    </td>
+                    <td style="width:4.2%;">
+                        <p align="center">04</p>
+                    </td>
+                    <td style="width:8.2%;">
+                        <p align="center">05</p>
+                    </td>
+                    <td style="width:26.72%;">
+                        <p align="center">06</p>
+                    </td>
+                    <td style="width:7.2%;">
+                        <p align="center">07</p>
+                    </td>
+                    <td style="width:5.54%;">
+                        <p align="center">08</p>
+                    </td>
+                    <td style="width:8.86%;">
+                        <p align="center">09</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width:5.72%;">
+                        <p align="center">1</p>
+                    </td>
+                    <td style="width:8.62%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:24.92%;">
+                        <p align="center">{client.fullName}</p>
+                    </td>
+                    <td style="width:4.2%;">
+                        <p align="center">{client.sex}</p>
+                    </td>
+                    <td style="width:8.2%;">
+                        <p align="center">{client.birthDate}</p>
+                    </td>
+                    <td style="width:26.72%;">
+                        <p align="center">{client.locAddress.street}&nbsp; дом &nbsp;{client.locAddress.number} &nbsp; кор. &nbsp; {client.locAddress.corpus} &nbsp; кв. &nbsp; {client.locAddress.flat}</p>
+                    </td>
+                    <td style="width:7.2%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:5.54%;">
+                        <p align="center">{Ticket_datetime}</p>
+                    </td>
+                    <td style="width:8.86%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+        Должность, фамилия, подпись лица, направляющего материал <b>{currentPerson.post} <br>
+        {currentPerson.longName}</b>
+        <hr>
+        <p>Дата <u>{currentDate},</u></p>
+        </div>
+    {end:}
+    {if: kek == True and nomerok.index(n) != (len(nomerok) - 1)}
+        <div style="page-break-after: always"></div>
+    {elif: kek == False and nomerok.index(n) != (len(nomerok) - 1)}
+        {if: i == 2}
+            <div style="page-break-after: always"></div>
+            {:i = 0}
+        {end:}
+    {end:}
+{end:}
+</body>
+</html>

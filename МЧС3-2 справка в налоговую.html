@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 19.05.2025 задача пока не доделал -->
 <!-- изменил Пулин дата 23.04.2025 задача  -->
 <!-- изменил Пулин дата 18.04.2025 задача  -->
 <!--Начальная дата разработки 20.03.2025 г.-->
@@ -49,6 +50,11 @@ body {
   font-size: 30px;
 }
 
+.tbl-main > td {
+    margin: 0;
+    padding: 0;
+}
+
 .remark {
     font-size: 8px;
 }
@@ -81,6 +87,13 @@ body {
 
 .square-base {
     padding: 1px 3px 0 3px;
+    font-family: 'monospace';
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.square-filled {
+    padding: 1px 2px 0 2px;
     font-family: 'monospace';
     font-size: 14px;
     text-transform: uppercase;
@@ -124,13 +137,15 @@ def rendLineEmptySquare(amount):
 def rendTextInSquare(text):
   for index, letter in enumerate(text):
     if letter == ' ':
-      newLetter = r'&nbsp;'
+      newLetter = r'A'
+      color = u'#fff'
     else:
       newLetter = letter
+      color = u'#000'
 
     write(r"""
-        <td class="square-base">{letter}</td>
-    """.format(letter=newLetter))
+        <td align="center" class="square-filled" style="margin-right: 1px; color: '{color}';">{letter}</td>
+    """.format(letter=newLetter, color=color))
 
 def rendEmptySquare(length):
   mokString = r''
@@ -139,7 +154,7 @@ def rendEmptySquare(length):
 
   for index, letter in enumerate(mokString):
     write(r"""
-        <td class="square-base">&nbsp;</td>
+        <td class="square-filled"  style="margin-right: 1px; color: #fff">Ш</td>
     """.format(letter=letter))
 }
 
@@ -200,8 +215,8 @@ def concatSerialAndNumber(serial, number):
 
 {:
 # <!-- note данные документа -->
-orgINN = u''
-orgKPP = u''
+orgINN = adjustRightString( u'7830001910',12)
+orgKPP = u'780101001'
 orgName = u'МСЧ №3 АО БАЛТИЙСКИЙ ЗАВОД'
 documentNumber = forceString(action[u'Номер справки'].value)
 documentCorrect = forceString(action[u'Номер корректировки'])
@@ -314,10 +329,12 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 <!-- @formatter:on -->
 </head>
 <body>
-<h2>{payerDocumentSerialAndNumber}</h2>
+
 <main class="main">
+
+
 <!--  note TABLE MAIN -->
-<table cellpadding="0" cellspacing="0">
+<table cellpadding="0" cellspacing="0" class="tbl-main">
   <tr>
       {: renderGrid(40)}
   </tr>
@@ -336,7 +353,9 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </table>
     </td>
     <td colspan="2" rowspan="2"></td>
+
     <td colspan="2" class="td-text">ИНН</td>
+
     <td colspan="12">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
@@ -349,11 +368,12 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </table>
     </td>
     <td colspan="2"></td>
-    <td colspan="13" rowspan="2"></td>
+    <td colspan="14" rowspan="2"></td>
   </tr>
 
   <tr>
     <td colspan="2" class="td-text">КПП</td>
+
     <td colspan="9">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
@@ -374,6 +394,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       </table>
     </td>
   </tr>
+
   <tr>
     <td colspan="40"><span class="vertical-spacer">&nbsp;</span></td>
   </tr>
@@ -490,7 +511,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
       <td colspan="36">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
           <tr>
-            {: rendTextInSquare(adjustString(text, 40))}
+            {: rendTextInSquare(adjustString(text, 36))}
           </tr>
         </table>
       </td>
@@ -509,14 +530,13 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
           {else:}
             {: rendEmptySquare(12)}
           {end:}
-
         </tr>
       </table>
     </td>
-    <td colspan="3"></td>
-    <td colspan="6" class="td-text">
+    <td align="right" colspan="9" class="td-text">
       Дата рождения
     </td>
+
     <td colspan="2">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
@@ -546,6 +566,8 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     </td>
 
     <td colspan="5"></td>
+
+
   </tr>
 
   <!-- note END Данные физического лица-->
