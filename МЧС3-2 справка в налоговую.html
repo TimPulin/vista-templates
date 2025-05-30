@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 21.05.2025 задача  -->
 <!-- изменил Пулин дата 19.05.2025 задача пока не доделал -->
 <!-- изменил Пулин дата 23.04.2025 задача  -->
 <!-- изменил Пулин дата 18.04.2025 задача  -->
@@ -37,7 +38,7 @@ write('''
 .h1 {
     text-align: center;
     margin-bottom: 18px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
 }
 body {
@@ -50,7 +51,7 @@ body {
   font-size: 30px;
 }
 
-.tbl-main > td {
+.tbl-main > tr > td {
     margin: 0;
     padding: 0;
 }
@@ -75,32 +76,35 @@ body {
     vertical-align: middle;
 }
 
+
 .line > td {
     padding-bottom: 5px;
 }
 
 .dot {
     vertical-align: bottom;
-    text-align: center;
-    font-weight: 900;
+
+    font-family: 'monospace';
+    font-size: 13px;
 }
 
 .square-base {
     padding: 1px 3px 0 3px;
     font-family: 'monospace';
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
 }
 
 .square-filled {
     padding: 1px 2px 0 2px;
     font-family: 'monospace';
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
 }
 
 .grid-item {
-    line-height: 1px;
+    font-size: 13px;
+    line-height: 0;
     color: #fff;
 }
 
@@ -119,25 +123,11 @@ body {
 ''')}
 
 {:
-# <!-- note  отрисовка линии пустых квадратов   -->
-def rendLineEmptySquare(amount):
-  for _ in range(amount):
-    write(r"""
-        <td width="1%">
-            <table cellpadding="0" cellspacing="0" border="1">
-                <tr>
-                    <td style="padding: 1px 0 0 1px">&nbsp;&nbsp;</td>
-                </tr>
-            </table>
-        </td>
-    """)
-
-
 # <!-- note квадраты с содержанием -->
 def rendTextInSquare(text):
   for index, letter in enumerate(text):
     if letter == ' ':
-      newLetter = r'A'
+      newLetter = r'Ш'
       color = u'#fff'
     else:
       newLetter = letter
@@ -340,7 +330,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
   </tr>
   <!-- note ШАПКА -->
   <tr class="line">
-    <td colspan="8" rowspan="2">
+    <td colspan="10" rowspan="2">
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td valign="top" class="black-square">■</td>
@@ -352,46 +342,61 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         </tr>
       </table>
     </td>
-    <td colspan="2" rowspan="2"></td>
+    <td colspan="1" rowspan="2"></td>
 
-    <td colspan="2" class="td-text">ИНН</td>
+    <td colspan="3" class="td-text">ИНН</td>
 
-    <td colspan="12">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+    <td colspan="14">
+      <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          {if: len(orgINN) > 0}
-            {: rendTextInSquare(orgINN)}
-          {else:}
-            {: rendEmptySquare(12)}
-          {end:}
+          <td colspan="12">
+            <table width="100%" cellpadding="0" cellspacing="0" border="1">
+              <tr>
+                {if: len(orgINN) > 0}
+                  {: rendTextInSquare(orgINN)}
+                {else:}
+                  {: rendEmptySquare(12)}
+                {end:}
+              </tr>
+            </table>
+          </td>
+          <td style="color: #fff">D</td>
+          <td style="color: #fff">D</td>
         </tr>
       </table>
     </td>
-    <td colspan="2"></td>
-    <td colspan="14" rowspan="2"></td>
+
+    <td colspan="12" rowspan="2"></td>
   </tr>
 
   <tr>
-    <td colspan="2" class="td-text">КПП</td>
+    <td colspan="3" class="td-text">КПП</td>
 
-    <td colspan="9">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+    <td colspan="14">
+      <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          {if: len(orgKPP) > 0}
-            {: rendTextInSquare(orgKPP)}
-          {else:}
-            {: rendEmptySquare(9)}
-          {end:}
+          <td colspan="9">
+            <table width="100%" cellpadding="0" cellspacing="0" border="1">
+              <tr>
+                {if: len(orgKPP) > 0}
+                  {: rendTextInSquare(orgKPP)}
+                {else:}
+                  {: rendEmptySquare(9)}
+                {end:}
+              </tr>
+            </table>
+          </td>
+          <td colspan="2" class="td-text" align="center">Стр.</td>
+          <td colspan="3">
+            <table width="100%" cellpadding="0" cellspacing="0" border="1">
+              <tr>
+                {: rendTextInSquare(u'001')}
+              </tr>
+            </table>
+          </td>
         </tr>
       </table>
-    </td>
-    <td colspan="2" class="td-text" align="center">Стр.</td>
-    <td colspan="3">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1">
-        <tr>
-          {: rendTextInSquare(u'001')}
-        </tr>
-      </table>
+
     </td>
   </tr>
 
@@ -423,7 +428,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="12">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {: rendTextInSquare(adjustString(documentNumber, 12))}
+          {: rendTextInSquare(adjustRightString(documentNumber, 12))}
         </tr>
       </table>
     </td>
@@ -432,12 +437,12 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="3">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {: rendTextInSquare(adjustString(documentCorrect, 3))}
+          {: rendTextInSquare(adjustRightString(documentCorrect, 3))}
         </tr>
       </table>
     </td>
-    <td colspan="2"></td>
-    <td colspan="5" class="td-text">Отчетный год</td>
+    <td colspan="1"></td>
+    <td colspan="6"  class="td-text">Отчетный год</td>
     <td colspan="4">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
@@ -464,12 +469,21 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="40">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
-          {: rendTextInSquare(adjustString(orgName, 40))}
+          {: rendTextInSquare(adjustString(u'АО БАЛТИЙСКИЙ ЗАВОД', 40))}
         </tr>
       </table>
     </td>
   </tr>
-  {for: _ in range(3)}
+    <tr class="line">
+    <td colspan="40">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1">
+        <tr>
+          {: rendTextInSquare(adjustString(u'МСЧ №3', 40))}
+        </tr>
+      </table>
+    </td>
+  </tr>
+  {for: _ in range(2)}
     <tr class="line">
       <td colspan="40">
         <table width="100%" cellpadding="0" cellspacing="0" border="1">
@@ -497,7 +511,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
   <tr class="line">
     <td colspan="40">
-      <div align="center">
+      <div>
         Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее - налогоплательщик)<sub>1</sub>
       </div>
     </td>
@@ -522,7 +536,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     <td colspan="4" class="td-text">
       ИНН
     </td>
-    <td colspan="12">
+    <td colspan="13">
       <table width="100%" cellpadding="0" cellspacing="0" border="1">
         <tr>
           {if: len(payerINN) > 0}
@@ -533,7 +547,7 @@ img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         </tr>
       </table>
     </td>
-    <td align="right" colspan="9" class="td-text">
+    <td align="right" colspan="8" class="td-text">
       Дата рождения
     </td>
 

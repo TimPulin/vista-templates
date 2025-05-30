@@ -1,673 +1,597 @@
-<!--Начальная дата разработки 13.02.2024 г.-->
-<!--Разработка: Пулин Тимур -->
-<!--Контекст печати: RSanCur -->
-<!--Задача: DEV_TEMP-3561 Доработать шаблон на сан.кур.карту -->
+<!-- изменил Пулин дата 01.04.2025 задача  -->
+<!-- изменил Пулин дата 22.01.2025 задача  -->
+<!-- изменил Пулин дата 21.01.2025 задача  -->
+<!-- изменил Пулин дата 16.12.2024 задача  -->
+<!-- изменил Салин дата 26.12.2024 задача  -->
+<!-- изменил Пулин дата 16.12.2024 задача  -->
+<!-- разработал Скопцов дата 17.11.2024 задача  -->
+<html>
+    <head>
+{: from library.Utils import forceString, forceInt }
+{: exec_date = forceString(event.setDate).split(' ')}
+{: month = [u'январь', u'февраль', u'март', u'апрель', u'май', u'июнь', u'июль', u'август', u'сентябрь', u'октябрь', u'ноябрь', u'декабрь']}
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import date, timedelta, datetime }
+{: from functools import reduce}
+{: import math }
 
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>СЭМД. Санаторно-курортная карта</title>
-<!-- @formatter:off -->
+{: clinic_diag = db.getRecordList(stmt=u"""
+    select rbdt.name type, ds.MKB mkb, mkb.DiagName name, ds.diagnos_string name_str from diagnostic dc
+        join diagnosis ds on dc.diagnosis_id = ds.id
+        join MKB mkb on mkb.DiagID = ds.MKB
+        join rbDiagnosisType rbdt on dc.diagnosisType_id = rbdt.id
+        where rbdt.code in (16, 17, 18, 19, 20, 21) and event_id = {e_id};""".format(e_id=event.id)) }
+
+    {: endOperDate = forceString(action.endDate or '___.__________._____').split(' ')[0].split('.') }
+    {: begOperDate = forceString(action.directionDate or '___.__________._____').split(' ')[0].split('.') }
+
+    {if: action[u'Время начала операции'].value and action[u'Время окончания операции'].value}
+        {: begOperTime = forceString(action[u'Время начала операции'].value).split(':')}
+        {: endOperTime = forceString(action[u'Время окончания операции'].value).split(':')}
+        {: beg = datetime(1, 1, 1, int(begOperTime[0]), int(begOperTime[1]))}
+        {: end = datetime(1, 1, 1, int(endOperTime[0]), int(endOperTime[1]))}
+        {: timedel = end - beg}
+        {: operH = timedel.seconds // 3600}
+        {: operM = (timedel.seconds % 3600) // 60}
+    {else:}
+        {: operH = '_'*3}
+        {: operM = '_'*3}
+    {end:}
+        {: month = [u'января', u'февраля', u'марта', u'апреля', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря'] }
+
+{:
+mainDiagRef = db.getRecordEx(stmt=u"""SELECT getEventDiagnosisDetails({eventId}) AS smth""".format(eventId=event.id))
+
+if mainDiagRef:
+  mainDiag = forceString(mainDiagRef.value('smth'))
+else:
+  mainDiag = ''
+}
+{:
+scaleRef = db.getRecordEx(stmt=u"""
+select c.name       as carn_name,
+        c.code       as carn_code,
+        e.name       as ecog_name,
+        e.code       as ecog_code,
+        tg.name      as g_name,
+        tg.code      as g_code,
+        tr.name      as r_name,
+        tr.code      as r_code,
+        stad.NAME    as stad_name,
+        T.NAME       as t_name,
+        N.NAME       as n_name,
+        M.NAME       as m_name,
+        z.Metastases as metastasesList,
+        rbCG.name    as clinicGroupName,
+                rbCG2.name    as clinicGroupCode_post,
+        rbCG.name    as clinicGroupCode
+from znoinfo z
+          left join zno_table_g tg on z.parameter_g = tg.id
+          left join zno_table_r tr on z.parameter_r = tr.id
+          left join SPRAV_ONK_STAD stad on z.stady = stad.ID_ST
+          left join sprav_onk_t T on z.stady_t = T.ID_T
+          left join sprav_onk_n N on z.stady_n = N.ID_N
+          left join sprav_onk_m M on z.stady_m = M.ID_M
+          left join znoinfo_clinical_group rbCG on z.clinical_group = rbCG.id
+          left join ZNOInfo_Clinical_Group rbCG2 on z.admissionClinicalGroup = rbCG2.id
+          left join rbcarnotianindex c on z.carnotian = c.id and deleted = 0
+          left join rbecog e on z.ecog = e.id
+where !z.deleted
+  and z.event_id = {eventId}
+group by T.ID_T, N.ID_N, M.ID_M;
+""".format(eventId=event.id))
+
+metastasesListIdRaw = []
+if scaleRef:
+    carn_name = forceString(scaleRef.value('carn_name'))
+    carn_code = forceString(scaleRef.value('carn_code'))
+    ecog_name = forceString(scaleRef.value('ecog_name'))
+    ecog_code = forceString(scaleRef.value('ecog_code'))
+
+    g_name = forceString(scaleRef.value('g_name'))
+    g_code = forceString(scaleRef.value('g_code'))
+    r_code = forceString(scaleRef.value('r_code'))
+
+    stad_name = forceString(scaleRef.value('stad_name'))
+    t_name = forceString(scaleRef.value('t_name'))
+    n_name = forceString(scaleRef.value('n_name'))
+    m_name = forceString(scaleRef.value('m_name'))
+    clinicGroupCode = forceString(scaleRef.value('clinicGroupCode'))
+    clinicGroupCode_post = forceString(scaleRef.value('clinicGroupCode_post'))
+    metastasesIdList = ','.join(forceString(scaleRef.value('metastasesList')).split(';'))
+    metastasesIdList = metastasesIdList.lstrip(',')
+else:
+    carn_name = ''
+    carn_code = ''
+    ecog_name = ''
+    ecog_code = ''
+
+    g_name = ''
+    g_code = ''
+
+    stad_name = ''
+    t_name = ''
+    n_name = ''
+    m_name = ''
+    clinicGroupCode = ''
+    clinicGroupCode_post = ''
+
+metastasisRefList = None
+if metastasesIdList:
+    metastasisRefList = db.getRecordList(stmt=u"""
+    select ui, name, TNM_name
+    from LocalMetastasis
+    where id in ({idList});
+    """.format(idList=metastasesIdList))
+}
+<!-- note Гистология -->
+{:
+histologyRefList2 = db.getRecordList(stmt=u"""
+    select
+        mkb_o_code as code,
+        mm.name as name,
+        study_number as studyNumber,
+        date_format(date, '%d.%m.%Y') as date,
+        concat_ws(' ', p.lastName, left(p.firstName, 1), left(p.patrName, 1)) as person,
+        result
+    from
+        сlient_histology c
+        left join mkb_morphology mm on concat('M',c.mkb_o_code) = mm.code
+        left join person p on c.createPerson_id = p.id and p.deleted = 0
+    where
+        c.deleted = 0
+        and client_id = {clientId} and DATE(date) <= (select Date(begDate) from action where id = {context_a})
+    GROUP BY mm.code
+    order by c.id desc
+""".format(clientId=event.client.id, context_a=action.id))
+}
 
 {:
 write('''
-  <style>
-    .h1 {
-        text-align: center;
-        margin-bottom: 20px;
-        font-size: 14pt;
-        font-weight: 900;
-    }
-    body {
-        font-family: 'Times New Roman';
-        font-size: 10pt;
-    }
-    .result-option {
-        padding-right: 15px;
-        padding-left: 5px;
-    }
-    .result-option:last-child {
-        padding-right: 0;
-    }
-    .squre {
-      width: 10px;
-      height: 10px;
-    }
-    .nbs {
-      display: inline-block;
-      width: 10px;
-    }
-    .cut-line {
-      position: relative;
-      margin-top: 10px;
-      margin-bottom: 10px;
-      border-top: 1px dashed black;
-      font-size: 12px;
-      font-weight: 400;
-    }
-    .cut-line__title {
-      position: absolute;
-      top: -8px;
-      padding-right: 5px;
-      background-color: #fff;
-    }
-    .cut-line__text {
-      text-align: center;
-    }
-    .wrap-line {
-      display: flex;
-      align-items: baseline;
-    }
-    .wrap-line_line {
-      display: inline-block;
-      width: 100%;
-      border-bottom: 1px solid black;
-    }
-    .wrap-line_title {
-      white-space: nowrap;
-      font-weight: 900;
-    }
-
-    .square {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 1px solid black;
-    }
-@media print {
-  .page {
-    position: relative;
-  }
-  .page--front {
-    height: calc(100vh - 90px);
-  }
-  .page--back {
-    height: calc(100vh - 65px);
-  }
-  .return-ticket {
-    width: 100%;
-    height: 380px;
-    position: absolute;
-    bottom: 0;
-  }
+<style>
+body {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+    margin-left: 5%;
 }
-  </style>
+</style>
 ''')}
 
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
 
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
 
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
-
+<!-- note END Гистология -->
 {:
-def getMkbName(mkbCode):
-  name = ''
-  ref = db.getRecordEx(stmt=u"""
-  select DiagName as name
-  from MKB
-  where DiagID = '{mkbCode}';
-  """.format(mkbCode=mkbCode))
-
-  if ref:
-    name = forceString(ref.value('name'))
-  return name
-}
-
-{:
-mkbCode = action[u'Основной диагноз']
-if mkbCode:
-  mkbName = getMkbName(mkbCode)
-else:
-  mkbName = ''
-}
-
-{:
-
-dopDiagCodeAction = action[u'Сопутствующие заболевания']
-if dopDiagCodeAction.value:
-  dopDiagCodeList = dopDiagCodeAction.value
-else:
-  dopDiagCodeList = []
-}
-{:
-invalidDiagCode = action[u'Заболевание, явившееся причиной инвалидности']
-if invalidDiagCode.value:
-  invalidDiagName = getMkbName(invalidDiagCode)
-else:
-  invalidDiagName = ''
-}
-
-{:
-def putElement(value):
-  return write(r'''
-  <span class="nbs">{value}</span>
-  '''.format(value = value))
-}
-
-{:
-stringMan = putElement('')
-stringWoman = putElement('')
-if client.sex == u'М':
-  stringMan = 'X'
-else:
-  stringWoman = 'X'
-}
-
-{:
-def getRegionCode(name):
-  ref = db.getRecordEx(stmt=u"""
-  select code from rbegiszregion where name = '{name}';
-  """.format(name = name))
-  if ref:
-    code = forceString(ref.value('code'))
-  else:
-    code = ''
-
-  return code
-}
-
-{:
-if action[u'Субъект Российской Федерации'].value:
-  domesticRegionCode = getRegionCode(action[u'Субъект Российской Федерации'].value)
-else:
-  domesticRegionCode = ''
-if action[u'Ближайший субъект Российской Федерации'].value:
-  closestRegionCode = getRegionCode(action[u'Ближайший субъект Российской Федерации'].value)
-else:
-  closestRegionCode = ''
-}
-
-{:
-chiefRef = db.getRecordEx(stmt=u"""
-select concat_ws(' ', p2.lastName, p2.firstName, p2.patrName) as fio
-from Person p1
-    join OrgStructure os on p1.orgStructure_id = os.id
-    join Person p2 on os.chief_id = p2.id
-where p1.id = {personId};
-""".format(personId=action.person.id))
-
-if chiefRef:
-  chief = forceString(chiefRef.value('fio'))
-else:
-  chief = '_____________________'
+osmortPervActList = filter(lambda x: x.name==u'Осмотр первичный в стационаре', event.actions)
+osmortPervAct = osmortPervActList[0] if len(osmortPervActList)>0 else None
 }
 
 
 {:
-def rendSquare(amount):
-  for _ in range(amount):
-    write(r"""
-    <span class="square"></span>
-    """)
+actDate = action.directionDate
+if action.endDate:
+    actDate = action.endDate
 }
-<!-- @formatter:on -->
-</head>
 
-<body>
-<div class="page page--front">
+    </head>
+    <body>
 
 
-  <section id="card-top">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="60%"></td>
-        <td width="40%" style="font-size:8pt">
-          Приложение № 13
-          <br>  к приказу Министерства здравоохранения Российской Федерации
-          <br>  от 15 декабря 2014 г. № 834н
-        </td>
-      </tr>
-    </table>
+{:
+possumList = filter(lambda x: x.flatCode == u'possum_calc', event.actions)
+possum = possumList[0] if len(possumList) > 0 else None
+}
 
-    <br>
+{:
+propertyRefList = None
+if possum:
+    propertyRefList = db.getRecordList(stmt=u"""
+        SELECT
+            ap.id,
+            name,
+            valueDomain AS guideName,
+            shortName AS type,
+            value AS guideId
+            FROM Action a
+                INNER JOIN ActionProperty ap
+                    ON a.id = ap.action_id
+                INNER JOIN ActionPropertyType apt
+                    ON ap.type_id = apt.id
+                INNER JOIN ActionProperty_Reference ap_r
+                    ON ap_r.id = ap.id
+            WHERE a.id = {actionId}
+                AND ap.deleted = 0
+                AND apt.deleted = 0
+                AND a.deleted = 0;
+    """.format(actionId=possum.id))
+}
 
-    <!-- шапка -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:10pt">
-      <tr>
-        <td width="40%">
-          {currentOrganisation.fullName}
-          <br>
-          {currentOrganisation.address}
-        </td>
-        <td></td>
-        <td width="40%">
-          <div style="margin: 0 auto">
-            Код формы по ОКУД {'_' * 15}
-            <br>Код учреждения по ОКПО {'_' * 11}
-            <br>
-            <br>
-            Медицинская документация
-            <br>
-            Форма № 072/уУтверждена приказом Минздрава России
-            <br>
-            от 15 декабря 2014 г. № 834н
-          </div>
-        </td>
-      </tr>
-    </table>
+{:
+def getScore(guideName, guideId):
+    ref = None
+    if guideName and guideId:
+        ref = db.getRecordEx(stmt=u"""
+            select score
+            from `{guideName}`
+            where id = {guideId};
+        """.format(guideName=guideName, guideId=guideId))
 
-    <div align="center" class="h1">
-      <b>Санаторно-курортная карта №{action[u'Номер документа']}</b>
-      <br>
-      <b>«{forceString(action.endDate.date.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.</b>
-    </div>
-    <div style="font-size:10pt" align="center">
-      Выдается при предъявлении путевки на санаторно-курортное лечение. Без настоящей карты путевка недействительна.
-    </div>
+    if ref:
+        return forceInt(ref.value('score'))
+    else:
+        return 0
+}
 
-    <div>
-      <b>1. Фамилия, имя, отчество</b> {client.fullName}
+{:
+physiologicalAssessment = []
+operationalAssessment = []
+if propertyRefList:
+  for propertyRef in propertyRefList:
+
+    type = forceString(propertyRef.value(u'type'))
+    guideName = forceString(propertyRef.value(u'guideName'))
+    guideId = forceString(propertyRef.value(u'guideId'))
+    score = getScore(guideName, guideId)
+
+    if type == u'physiological_':
+      physiologicalAssessment.append(score)
+    elif type == u'operational_':
+      operationalAssessment.append(score)
+
+physiologicalScore = reduce(lambda x, y: x + y, physiologicalAssessment, 0)
+operationalScore = reduce(lambda x, y: x + y, operationalAssessment, 0)
+}
+
+{:
+clientAge = forceInt(client.age.split(' ')[0])
+if clientAge <= 60:
+    physiologicalScore += 1
+elif 61 <= clientAge <= 71:
+    physiologicalScore += 2
+elif clientAge >= 71:
+    physiologicalScore += 4
+}
+
+{:
+lnRIncidence = -5.91 + (0.16 * physiologicalScore) + (0.19 * operationalScore)
+predictedIncidence = round((math.exp(lnRIncidence) / (1 + math.exp(lnRIncidence))) * 100, 2)
+
+lnRMortality = -7.04 + (0.13 * physiologicalScore) + (0.16 * operationalScore)
+projectedMortality = round((math.exp(lnRMortality) / (1 + math.exp(lnRMortality))) * 100, 2)
+
+physiologicalAssessment = physiologicalScore
+operationalAssessment = operationalScore
+predictedIncidence = predictedIncidence
+projectedMortality = projectedMortality
+}
 
 
-    <table cellpadding="0" cellspacing="0">
-      <tr>
-        <td>  <b>2. Пол</b></td>
-        <td>1. Мужской</td>
-        <td class="result-option">
-          <table border="1" cellpadding="2" cellspacing="0"><tr><td class="squre" style="line-height: 12px;">{stringMan}</td></tr></table>
-        </td>
-        <td>2. Женский</td>
-        <td class="result-option">
-          <table border="1" cellpadding="2" cellspacing="0"><tr><td class="squre" style="line-height: 12px;">{stringWoman}</td></tr></table>
-        </td>
-        <td><b>3. Дата рождения</b> {client.birthDate}</td>
-      </tr>
-    </table>
 
 
-      <div><b>4. Место регистрации: субъект Российской Федерации</b> {forceString(client.regAddress.region)[:-1]}</div>
-      <div>
-        {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+
+
+        <div align="center"><b>ПРОТОКОЛ ОПЕРАТИВНОГО ВМЕШАТЕЛЬСТВА (ОПЕРАЦИИ)</b> №
+          {if: action[u'Номер операции'].value}
+              <u>{action[u'Номер операции'].value}</u>
+          {else:}
+            {'_' * 10}
+          {end:}</div>
+
+        <div align="left">
+            <b>Сведения о пациенте:</b><br>
+            Фамилия, имя, отчество (при наличии) <u>{client.fullName}</u><br>
+            Дата рождения: <u>{client.birthDate}</u><br>
+            <!-- Дата и время поступления:
+            {if: len(exec_date) > 0}
+                <u>{exec_date[0]}</u>
+            {else:}
+                ____.____.____
+            {end:}
+            {if: len(exec_date) > 1}
+                время: <u>{exec_date[1]}</u>
+            {else:}
+                ____:____
+            {end:} -->
+        </div>
+        {: begOper = forceString(action[u'Время начала операции'].value or '___:___').split(':')}
+        <div align="left">
+            Дата и время начала оперативного вмешательства (операции): «{begOperDate[0]}» {month[int(begOperDate[1])-1] if '_' not in begOperDate[1] else begOperDate[1]} {begOperDate[2]}г. {int(begOper[0]) if '_' not in begOper[0] else begOper[0]} час. {int(begOper[1]) if '_' not in begOper[1] else begOper[1]} мин.
+        </div>
+        {: endOper = forceString(action[u'Время окончания операции'].value or '___:___').split(':')}
+        <div align="left">
+            Дата и время окончания оперативного вмешательства (операции): «{begOperDate[0]}» {month[int(begOperDate[1])-1] if '_' not in begOperDate[1] else begOperDate[1]} {begOperDate[2]}г. {int(endOper[0]) if '_' not in endOper[0] else endOper[0]} час. {int(endOper[1]) if '_' not in endOper[1] else endOper[1]} мин.
+        </div>
         <br>
-        {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-        {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
-      </div>
-    </div>
-
-    <div>
-      <b>5. Идентификационный номер в системе ОМС</b> {client.policy.number}
-    </div>
-
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td><b>6. Субъект Российской Федерации</b> {domesticRegionCode}</td>
-        <td><b>7. Ближайший субъект Российской Федерации</b> {closestRegionCode}</td>
-      </tr>
-      <tr>
-        <td><b>8. Климат в месте проживания</b> {action[u'Климат в месте проживания'].value.split(' ', 1)[0]}</td>
-        <td><b>9. Климатические факторы в месте проживания</b> {action[u'Климатические факторы в месте проживания'].value.split(' ', 1)[0]}</td>
-      </tr>
-      <tr>
-        <td><b>10. Код льготы</b> {forceString(action[u'Код льготы (для печати)'].value).split(' ', 1)[0]}</td>
-        <td><b>11. Сопровождение **</b> {action[u'Необходимость сопровождения пациента']}</td>
-      </tr>
-      <tr>
-        <td colspan="2"><b>12. Документ, удостоверяющий право на получение набора социальных услуг</b></td>
-      </tr>
-      <tr>
-        <td colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td><b>Номер</b> {action[u'Номер документа, удостоверяющего право на получение набора социальных услуг']}</td>
-              <td><b>Серия</b> {action[u'Серия документа, удостоверяющего право на получение набора социальных услуг']}</td>
-              <td><b>Дата выдачи</b> {action[u'Дата выдачи документа']}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-      <tr>
-        <td><b>13. СНИЛС</b></td>
-        <td>{client.SNILS}</td>
-      </tr>
-    </table>
-
-    <div><b>14. № номер медицинской карты пациента, получающего помощь в амбулаторных условиях</b> {client.id}</div>
-  </section>
-
-
-
-  <!--=================================== начало первой части обратного талона =============================================-->
-  <section class="return-ticket">
-    <div class="cut-line">
-    <div class="cut-line__title">Линия отреза</div>
-    <div class="cut-line__text">Подлежит возврату в медицинскую организацию, выдавшую санаторно-курортную карту</div>
-  </div>
-    <div align="center"><b>Обратный талон</b></div>
-
-  <div class="wrap-line" style="margin-bottom: 5px">
-    <span class="wrap-line_title">1. Санаторно-курортная организация</span>
-    <div class="wrap-line_line"></div>
-  </div>
-
-  <div>
-    <b>2. ОГРН СКО</b> &nbsp;&nbsp;&nbsp; {rendSquare(13)}
-  </div>
-  <div><b>3. Фамилия, имя, отчество пациента(ки)</b> {client.fullName}</div>
-  <div><b>4. Период санаторно-курортного лечения:</b>  c {rendSquare(5)} по {rendSquare(5)}</div>
-
-
-    <div><b>5. Диагноз, установленный направившей медицинской организацией:</b></div>
-    <table width="100%" cellpadding="3" cellspacing="0" border="0">
-        <tr>
-          <td width="75%">
-            <div class="wrap-line">
-              <span class="wrap-line_title">5.1. Основное заболевание</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-          <td width="25%">
-            <div class="wrap-line">
-              <span class="wrap-line_title">код по МКБ-10</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="wrap-line">
-              <span class="wrap-line_title">5.2. Сопутствующие заболевания:</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-          <td>
-            <div class="wrap-line">
-              <span class="wrap-line_title">код по МКБ-10</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-        </tr>
-        {for: _ in range(2)}
-          <tr>
-            <td><div class="wrap-line_line"></div></td>
-            <td>
-              <div class="wrap-line">
-                <span class="wrap-line_title">код по МКБ-10</span>
-                <div class="wrap-line_line"></div>
-              </div>
-            </td>
-          </tr>
-        {end:}
-
-        <tr>
-          <td width="75%">
-            <div class="wrap-line">
-              <span class="wrap-line_title">5.3 Заболевание, явившееся причиной инвалидности</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-          <td width="25%">
-            <div class="wrap-line">
-              <span class="wrap-line_title">код по МКБ-10</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-        </tr>
-    </table>
-
-    <div><b>6. Диагноз при выписке из санаторно-курортной организации:</b></div>
-    <table width="100%" cellpadding="3" cellspacing="0" border="0">
-    <tr>
-      <td width="75%">
-        <div class="wrap-line">
-          <span class="wrap-line_title">6.1. Основное заболевание</span>
-          <div class="wrap-line_line"></div>
+        <div align="left">
+            Продолжительность оперативного вмешательства (операции): {operH} час. {operM} мин.
         </div>
-      </td>
-      <td width="25%">
-        <div class="wrap-line">
-          <span class="wrap-line_title">код по МКБ-10</span>
-          <div class="wrap-line_line"></div>
+        <div align="left">
+            Код операции согласно номенклатуре услуг: <u>{action[u'Код операции согласно номенклатуре услуг'].value}</u>
         </div>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <div class="wrap-line">
-          <span class="wrap-line_title">6.2. Сопутствующие заболевания:</span>
-          <div class="wrap-line_line"></div>
+        <div align="left">
+            Наименование оперативного вмешательства: <u>{action[u'Наименование оперативного вмешательства'].value}</u>
         </div>
-      </td>
-      <td>
-        <div class="wrap-line">
-          <span class="wrap-line_title">код по МКБ-10</span>
-          <div class="wrap-line_line"></div>
-        </div>
-      </td>
-    </tr>
-    {for: _ in range(2)}
-      <tr>
-        <td><div class="wrap-line_line"></div></td>
-        <td>
-          <div class="wrap-line">
-            <span class="wrap-line_title">код по МКБ-10</span>
-            <div class="wrap-line_line"></div>
-          </div>
-        </td>
-      </tr>
+        <!-- <div align="left">
+            Порядковый номер операции: <u>{action[u'Номер операции'].value}</u>
+        </div> -->
+        <!-- <div align="left">
+          Клиническая группа: <u>{action[u'Клиническая группа'].value}</u>
+        </div> -->
+        <br>
+{:
+diag_12_records = db.getRecordList(stmt=u"""
+select
+    get_diagnostic_name_by_dc_id(id) as diag_name,
+    get_diagnostic_zno__by_dc_id(id) as diag_zno,
+    treatment_string as diag_tr,
+    get_mkb_o_info({clientId}, {actionId}) as mkb_o,
+    get_diagnostic_clinical_group_by_dc_id(id) as diag_clin,
+    get_diagnostic_clinical_group_post_dc_id(id) as diag_clin_post
+from diagnostic where id = (select actionproperty_reference.value from actionproperty
+         join actionproperty_reference on actionproperty_reference.id = actionproperty.id
+         where action_id={actionId} and type_id=27417 and deleted=0);
+""".format(actionId=action.id, clientId=event.client.id))
+}
+<div>
+  {if: diag_12_records}
+    {for: diag_rec in diag_12_records}
+            <b>Диагноз до оперативного вмешательства </b>{forceString(diag_rec.value('diag_name'))}{forceString(diag_rec.value('mkb_o'))} {forceString(diag_rec.value('diag_zno'))} {forceString(diag_rec.value('diag_tr'))} {forceString(diag_rec.value('diag_clin'))}<br>
     {end:}
-  </table>
-  </section>
-
-  <!-- конец  первой части обратного талона -->
-</div> <!--page end-->
-<div style="page-break-after: always"></div>
-<div class="page page--back">
-  <!-- вторая часть карты -->
-  <section id="card-bottom">
-    <div>
-      <b>15. Жалобы, длительность заболевания, анамнез, предшествующее лечение, в том числе санаторно-курортное</b>
-      {action[u'Жалобы']}; {action[u'Длительность заболевания']}
-    </div>
-    <div>
-      <b>16. Данные клинического, лабораторного, рентгенологического и других исследований (даты)</b>
-      <br>
-      {action[u'Данные исследований']:n}
-    </div>
-
-
-    <div><b>17. Диагноз:</b></div>
-    <table width="100%" cellpadding="3" cellspacing="0" border="0">
-      <tr>
-        <td width="75%"><b>17.1 Основное заболевание</b> {mkbName}</td>
-        <td width="25%" valign="top"><b>код по МКБ-10</b> {mkbCode}</td>
-      </tr>
-      <tr>
-        <td colspan="2"><b>17.2 Сопутствующие заболевания:</b> </td>
-      </tr>
-      {if: len(dopDiagCodeList) > 0}
-        {for: dopDiagCodeRare in dopDiagCodeList}
-          {: dopDiagCode = forceString(dopDiagCodeRare).split(':')[1] }
-          <tr>
-            <td width="75%">{getMkbName(dopDiagCode)}</td>
-            <td width="25%" valign="top"><b>код по МКБ-10</b> {dopDiagCode}</td>
-          </tr>
+    {end:}</div>
+{:
+    diag_ref_list = db.getRecordList(stmt=u"""
+select rbdiagnosistype.name as diag_type,
+       diagnosis.MKB as diag_mkb,
+     COALESCE(diagnostic.diagnostic_string, diagnosis.diagnos_string, MKB.DiagName) as diag_name
+from diagnostic
+join diagnosis on diagnostic.diagnosis_id = diagnosis.id
+join rbdiagnosistype on diagnostic.diagnosisType_id = rbdiagnosistype.id
+join MKB on MKB.DiagID = diagnosis.MKB
+where diagnostic.diagnosisType_id = 16 and diagnostic.event_id={eventId} and diagnosis.id != getEventDiagnosis({eventId}) and diagnosis.deleted=0 and diagnostic.deleted=0
+    """.format(eventId=event.id))
+    }
+    {if: diag_ref_list}
+<b>Осложнения заболевания</b>
+        {for: diag in diag_ref_list}
+        <div align="left">
+            {forceString(diag.value('diag_mkb'))} {forceString(diag.value('diag_name'))}
+        </div>
         {end:}
-      {else:}
-        <tr>
-          <td><div class="wrap-line_line"></div></td>
-          <td>
-            <div class="wrap-line">
-              <span class="wrap-line_title">код по МКБ-10</span>
-              <div class="wrap-line_line"></div>
-            </div>
-          </td>
-        </tr>
-      {end:}
+    {end:}
 
-        <tr>
-          <td>
-            <b>17.3 Заболевание, явившееся причиной инвалидности</b> {invalidDiagName}
-          </td>
-          <td valign="top"><b>код по МКБ-10</b> {invalidDiagCode}</td>
-        </tr>
-    </table>
+            {:
+    diag_ref_list = db.getRecordList(stmt=u"""
+select rbdiagnosistype.name as diag_type,
+       diagnosis.MKB as diag_mkb,
+     COALESCE(diagnostic.diagnostic_string, diagnosis.diagnos_string, MKB.DiagName) as diag_name
+from diagnostic
+join diagnosis on diagnostic.diagnosis_id = diagnosis.id
+join rbdiagnosistype on diagnostic.diagnosisType_id = rbdiagnosistype.id
+join MKB on MKB.DiagID = diagnosis.MKB
+where diagnostic.diagnosisType_id = 17 and diagnostic.event_id={eventId} and diagnosis.id != getEventDiagnosis({eventId}) and diagnosis.deleted=0 and diagnostic.deleted=0
+    """.format(eventId=event.id))
+    }
+    {if: diag_ref_list}
+<b>Сопутствующие заболевания</b>
+        {for: diag in diag_ref_list}
+        <div align="left">
+            {forceString(diag.value('diag_mkb'))} {forceString(diag.value('diag_name'))}
+        </div>
+        {end:}
+    {end:}
+        {if: clinic_diag}
+        <!--{for: diag in clinic_diag}-->
+        <!--<div align="left">-->
+        <!--    <b>{forceString(diag.value('type'))}</b> {forceString(diag.value('name_str')) or forceString(diag.value('name'))} код МКБ {forceString(diag.value('mkb'))}-->
+        <!--</div>-->
+        <!--{end:}{end:}-->
+        <b>Дополнительные сведения о заболевании:</b><br>
+        {:
+    histologyRefList2 = db.getRecordList(stmt=u"""
+        select
+            mkb_o_code as code,
+            mm.name as name,
+            study_number as studyNumber,
+            date_format(date, '%d.%m.%Y') as date,
+            'ГБУЗ КОД №1' as person,
+            result
+        from
+            сlient_histology c
+            left join mkb_morphology mm on concat('M',c.mkb_o_code) = mm.code
+            left join person p on c.createPerson_id = p.id and p.deleted = 0
+        where
+            c.deleted = 0
+        and client_id = {clientId} and DATE(date) <= (select Date(begDate) from action where id = {context_a})
+    GROUP BY mm.code
+    order by c.id desc
+""".format(clientId=event.client.id, context_a=action.id))
+    }
+    {if: histologyRefList2}
+        {for: histologyRef in histologyRefList2}
+        <div align="left">
+            <b>ПГИ</b> №<u>{forceString(histologyRef.value('studyNumber'))}</u> от <u>{forceString(histologyRef.value('date'))}</u>,
+            исполнитель: {forceString(histologyRef.value('person'))},
+            код: {forceString(histologyRef.value('code'))},
+            результат: {forceString(histologyRef.value('result'))}
+        </div>
+        {end:}
+    {end:}
+        <div align="left">
+            <b>Премедикация (наименование лекарственных препаратов, лекарственная форма, дозировка, способ введения):</b> <u>{action[u'Премедикация'].value}</u>
+        </div>
+        <div align="left"><b>POSSUM:</b></div>
 
-    <div align="center"><b>ЗАКЛЮЧЕНИЕ</b></div>
-    <div>
-      <b>18. Название санаторно-курортной организации</b> {action[u'Название санаторно-курортной организации']}
-      <br><b>19. Лечение:</b> {action[u'Лечение']}
-      <br><b>20. Продолжительность курса лечения</b> {action[u'Продолжительность курса лечения (дней)']} дней.
-      <br><b>21. Путевка №</b> {action[u'Номер путевки']}
-    </div>
-    <div>
-      <b>22. Фамилия, имя, отчество лица, заполнившего карту</b> {action.person.longName}
-    </div>
-    <div>
-
-
-      <b>23. Заведующий отделением (председатель врачебной комиссии)*</b> {chief}
-    </div>
-
-    <br>
-    <div><b>М.П.</b></div>
-    <br>
-    <div style="font-size:8pt">* для лиц, имеющих право на получение набора социальных услуг</div>
-    <div>
-      <b>Карта действительна при условии четкого заполнения всех граф, фамилий, подписей, наличия печати. <br> Срок действия Карты 12 месяцев.</b>
-    </div>
-  </section>
-  <!-- конец второй части карты -->
-
-
-
-  <!-- вторая часть обратного талона -->
-  <section class="return-ticket">
-    <div class="cut-line">
-      <div class="cut-line__title">Линия отреза</div>
-      <div class="cut-line__text">Подлежит возврату в медицинскую организацию, выдавшую санаторно-курортную карту</div>
-    </div>
-    <div class="wrap-line">
-      <span class="wrap-line_title">7. Проведено лечение</span>
-      <div class="wrap-line_line"></div>
-    </div>
-    <div class="wrap-line_line"></div>
-    <div class="wrap-line_line"></div>
-    <div align="center"><sup>(виды лечения, количество процедур, их переносимость)</sup></div>
-
-    <div class="wrap-line">
-      <div class="wrap-line_title"><span>8. Эпикриз</span> <span style="font-size:8pt">(включая данные обследования)</span></div>
-      <div class="wrap-line_line"></div>
-    </div>
-    <div class="wrap-line_line"></div>
-    <div class="wrap-line_line"></div>
-
-    <table cellpadding="0" cellspacing="0">
-      <tr>
-        <td><b>9. Результаты лечения:</b>&nbsp;</td>
-        <td>
-          значительное улучшение
-        </td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-        <td>улучшение</td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-        <td>без перемен</td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-        <td>ухудшение</td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-      </tr>
-    </table>
-
-    <table cellpadding="0" cellspacing="0">
-      <tr>
-        <td><b>10. Наличие обострений, потребовавших отмену процедур</b>&nbsp;</td>
-        <td>1. Да</td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-        <td>2. Нет</td>
-        <td class="result-option">
-          <table border="1" cellpadding="0" cellspacing="0"><tr><td style="line-height: 12px">&nbsp;&nbsp;&nbsp;</td></tr></table>
-        </td>
-      </tr>
-    </table>
-    <div>
-    </div>
+        {if: possum}
+            <div><b>Физиологическая оценка</b>: {physiologicalAssessment}</div>
+            <div><b>Операционная оценка тяжести</b>: {operationalAssessment}</div>
+            <div><b>Прогнозируемая заболеваемость</b>: {predictedIncidence}%</div>
+            <div><b>Прогнозируемая смертность</b>: {projectedMortality}%</div>
+        {end:}
 
 
-    <div class="wrap-line">
-      <span class="wrap-line_title">11. Рекомендации по дальнейшему лечению:</span>
-      <div class="wrap-line_line"></div>
-    </div>
-    <div class="wrap-line_line"></div>
-    <div class="wrap-line_line"></div>
+        <div align="left">
+          <b>Периоперационная антибиотикопрофилактика:</b> <u>{action[u'Периоперационная антибиотикопрофилактика'].value}</u>
+        </div>
+        <div align="left">
+            Группа крови <u>{action[u'Группа крови'].value}</u> резус-принадлежность <u>{action[u'Резус принадлежность'].value}</u> антиген K1 системы Kell <u>{action[u'Антиген'].value}</u> иные сведения групповой принадлежности крови (при наличии)
+        </div>
+        <div align="left">
+            <b>Степень риска оперативного вмешательства (операции):</b> {action[u'Степень риска оперативного вмешательства (операции)']}
+        </div>
+        <div align="left">
+            <b>План оперативного вмешательства (операции):</b> {action[u'План оперативного вмешательства (операции)']}
+        </div>
+		<div align="left">
+            <b>Класс операционной раны:</b> {action[u'Класс операционной раны']}
+        </div>
+        <div align="left">
+            <b>Описание оперативного вмешательства (операции):</b> {action[u'Описание хирургической операции'].value}
+        </div>
+        <div align="left">
+            <b>Осложнения, возникшие в ходе оперативного вмешательства (операции):</b> <u>{action[u'Осложнения, возникшие в ходе оперативного вмешательства (операции)'].value}</u>
+        </div>
+        <div align="left">
+            <b>Использование медицинских изделий (оборудования) :</b><u>{action[u'Использование медицинских изделий (оборудования)'].value}</u>
+        </div>
+        <div align="left">
+            <b>Подсчет операционного материала:</b> инструменты <u>{action[u'Подсчет инструментов'].value}</u> салфетки <u>{action[u'Подсчет салфеток'].value}</u>
+        </div>
+        <div align="left">
+            <b>Кровопотеря во время оперативного вмешательства (операции), мл.</b> <u>{action[u'Объем кровопотери (мл)'].value}</u>
+        </div>
+        <div align="left">
+            <b>Вид анестезиологического пособия:</b> <u>{action[u'Анестезия (наркоз)'].value}</u>
+        </div>
+{:
+diag_12_records = db.getRecordList(stmt=u"""
+select
+    get_diagnostic_name_by_dc_id(id) as diag_name,
+    get_diagnostic_zno__by_dc_id(id) as diag_zno,
+    treatment_string as diag_tr,
+    get_mkb_o_info({clientId}, {actionId}) as mkb_o,
+    get_diagnostic_clinical_group_by_dc_id(id) as diag_clin,
+    get_diagnostic_clinical_group_post_dc_id(id) as diag_clin_post
+from diagnostic where id = (select actionproperty_reference.value from actionproperty
+         join actionproperty_reference on actionproperty_reference.id = actionproperty.id
+         where action_id={actionId} and type_id=27418 and deleted=0);
+""".format(actionId=action.id, clientId=event.client.id))
+}
+<div>
+  {if: diag_12_records}
+    {for: diag_rec in diag_12_records}
+            <b>Диагноз после оперативного вмешательства </b>{forceString(diag_rec.value('diag_name'))}{forceString(diag_rec.value('mkb_o'))} {forceString(diag_rec.value('diag_zno'))} {forceString(diag_rec.value('diag_tr'))} {forceString(diag_rec.value('diag_clin'))}<br>
+    {end:}
+    {end:}</div>
+            {:
+    diag_ref_list = db.getRecordList(stmt=u"""
+select rbdiagnosistype.name as diag_type,
+       diagnosis.MKB as diag_mkb,
+     COALESCE(diagnostic.diagnostic_string, diagnosis.diagnos_string, MKB.DiagName) as diag_name
+from diagnostic
+join diagnosis on diagnostic.diagnosis_id = diagnosis.id
+join rbdiagnosistype on diagnostic.diagnosisType_id = rbdiagnosistype.id
+join MKB on MKB.DiagID = diagnosis.MKB
+where diagnostic.diagnosisType_id = 16 and diagnostic.event_id={eventId} and diagnosis.id != getEventDiagnosis({eventId}) and diagnosis.deleted=0 and diagnostic.deleted=0
+    """.format(eventId=event.id))
+    }
+    {if: diag_ref_list}
+<b>Осложнения заболевания</b>
+        {for: diag in diag_ref_list}
+        <div align="left">
+            {forceString(diag.value('diag_mkb'))} {forceString(diag.value('diag_name'))}
+        </div>
+        {end:}
+    {end:}
 
-    <div class="wrap-line">
-      <span class="wrap-line_title">12. Лечащий врач</span>
-      <div class="wrap-line_line"></div>
-    </div>
+            {:
+    diag_ref_list = db.getRecordList(stmt=u"""
+select rbdiagnosistype.name as diag_type,
+       diagnosis.MKB as diag_mkb,
+     COALESCE(diagnostic.diagnostic_string, diagnosis.diagnos_string, MKB.DiagName) as diag_name
+from diagnostic
+join diagnosis on diagnostic.diagnosis_id = diagnosis.id
+join rbdiagnosistype on diagnostic.diagnosisType_id = rbdiagnosistype.id
+join MKB on MKB.DiagID = diagnosis.MKB
+where diagnostic.diagnosisType_id = 17 and diagnostic.event_id={eventId} and diagnosis.id != getEventDiagnosis({eventId}) and diagnosis.deleted=0 and diagnostic.deleted=0
+    """.format(eventId=event.id))
+    }
+    {if: diag_ref_list}
+<b>Сопутствующие заболевания</b>
+        {for: diag in diag_ref_list}
+        <div align="left">
+            {forceString(diag.value('diag_mkb'))} {forceString(diag.value('diag_name'))}
+        </div>
+        {end:}
+    {end:}
 
-    <div class="wrap-line">
-      <span class="wrap-line_title">13. Главный врач санаторно-курортной организации</span>
-      <div class="wrap-line_line"></div>
-    </div>
-
-    <br>
-    <div><b>М.П.</b></div>
-  </section>
-
-  <!-- конец вторая часть обратного талона -->
-</div> <!--page end-->
-
-<!--NOTE подгонку высоты обратной стороны карты решил средствами css-->
-{:write("""
-<script>
-  window.addEventListener('beforeprint', () => {
-    setTimeout(() => {
-      const cardTop = document.querySelector('#card-top');
-      const cardBottom = document.querySelector('#card-bottom');
-
-      const {cardTopHeight, cardBottomHeight} = getHeight(cardTop, cardBottom);
-      console.log('cardTopHeight: ', cardTopHeight, 'cardBottomHeight: ', cardBottomHeight );
-
-      // setHeight(cardTop, cardBottom, cardTopHeight, cardBottomHeight);
-    }, 100);
-  })
-
-
-  function getHeight(cardTop, cardBottom) {
-    /*
-    * NOTE документ распечатывается с колонтитулом на первой странице.
-    *  С помощью переменной pageHeader вносим коррективы
-    */
-    const cardTopHeight = cardTop.offsetHeight;
-    const cardBottomHeight = cardBottom.offsetHeight ;
-    return {cardTopHeight, cardBottomHeight}
-  }
-
-  function setHeight(cardTop, cardBottom, cardTopHeight, cardBottomHeight) {
-    const pageHeader = 90;
-    cardTopHeight > cardBottomHeight ?
-    cardBottom.style.height = `${cardTopHeight + pageHeader }px`:
-    cardTop.style.height = `${cardBottomHeight - 25}px`;
-    console.log('cardTop.offsetHeight: ', cardTop.offsetHeight, 'cardBottom: ', cardBottom.offsetHeight)
-
-  }
-</script>
-""")}
-
-</body>
+        {:
+    histologyRefList2 = db.getRecordList(stmt=u"""
+        select
+            mkb_o_code as code,
+            mm.name as name,
+            study_number as studyNumber,
+            date_format(date, '%d.%m.%Y') as date,
+            'ГБУЗ КОД №1' as person,
+            result
+        from
+            сlient_histology c
+            left join mkb_morphology mm on concat('M',c.mkb_o_code) = mm.code
+            left join person p on c.createPerson_id = p.id and p.deleted = 0
+        where
+            c.deleted = 0
+        and client_id = {clientId} and DATE(date) <= (select Date(begDate) from action where id = {context_a})
+    GROUP BY mm.code
+    order by c.id desc
+""".format(clientId=event.client.id, context_a=action.id))
+    }
+    {if: histologyRefList2}
+         <b>Дополнительные сведения о заболевании:</b><br>
+        {for: histologyRef in histologyRefList2}
+        <div align="left">
+            <b>ПГИ</b> №<u>{forceString(histologyRef.value('studyNumber'))}</u> от <u>{forceString(histologyRef.value('date'))}</u>,
+            исполнитель: {forceString(histologyRef.value('person'))},
+            код: {forceString(histologyRef.value('code'))},
+            результат: {forceString(histologyRef.value('result'))}
+        </div>
+        {end:}
+    {end:}
+        <div align="left">
+            <b>Имплантированные медицинские изделия: </b>{action[u'Имплантированные медицинские изделия'].value}
+        </div>
+        <div align="left">
+            <b>Назначения:</b>{action[u'Назначения'].value}
+        </div>
+        <div align="left">
+            <b>Операционный материал, взятый для проведения морфологического исследования:</b>{action[u'Операционный материал, взятый для проведения морфологического исследования'].value}
+        </div>
+        <div align="left">
+            <b>Операционный материал направлен:</b>{action[u'Операционный материал направлен'].value}
+        </div>
+        <div align="left">
+            Персонал, участвующий при проведении оперативного вмешательства (операции) (фамилия, имя, отчество (при наличии), должность, специальность, подпись):
+        </div>
+        <div align="left">
+            состав оперирующей бригады:
+        </div>
+        <table>
+            <tr>
+                <td>оперирующий врач</td><td>{action[u'Хирург'].value}</td>
+            </tr>
+            <tr>
+                <td>ассистирующий врач</td><td>{action[u'Ассистент хирурга'].value}</td>
+            </tr>
+            <tr>
+                <td>операционная медицинская сестра</td><td>{action[u'Операционная сестра'].value}</td>
+            </tr>
+            <tr>
+                <td colspan="2">состав бригады анестезиологии-реанимации:</td>
+            </tr>
+            <tr>
+                <td>врач-анестезиолог-реаниматолог</td><td>{action[u'Анестезиолог'].value}</td>
+            </tr>
+            <tr>
+                <td>медицинская сестра-анестезист</td><td>{action[u'Сестра-анестезистка'].value}</td>
+            </tr>
+        </table>
+    </body>
 </html>
-
-
-

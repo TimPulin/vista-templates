@@ -1,10 +1,22 @@
+<!-- изменил Пулин дата 23.05.2025 задача DEV_TEMP-5398 В шаблоне на направлений на анализы добавить штрих код -->
 <html lang="ru">
 
 <head>
 	<title>Направление</title>
+
 {setPageSize('A5')}
 {setOrientation('P')}
-{setMargins(5)}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
 
 {:blood = dict()}
 {:flag = 0}
@@ -41,9 +53,16 @@ def renderClientInfo():
 }
 
 {:
-def get_form_id():
-
+def get_form_id(personId, clientId):
+  ref = db.getRecordEx(stmt=u"""
+    call getRefNumber_counterKVD8RefNumber({personId}, {clientId});
+  """.format(personId=personId, clientId=clientId ))
+  if ref:
+    return forceString(ref.value('new_ref_number'))
+  else:
+    return u''
 }
+
 
 
 {: count  = 0}
@@ -89,10 +108,6 @@ def get_form_id():
 
 
 
-key {key4}
-
-
-data key {data_key}
 
 {:f='0'}
 <!--
@@ -129,7 +144,7 @@ data key {data_key}
 		{:ticket = dt[i]}
 		{: actGroup = ticket.group.name}
 		{if: actGroup in (u'Мазок в КВД №8', u'КВД №8')}
-		    {:unique_form_id = u'3333'}
+		    {:unique_form_id = get_form_id(ticket.person.id, client.id)}
 		{else:}
 		    {:unique_form_id = u''}
 		{end:}
@@ -140,6 +155,7 @@ data key {data_key}
       <FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT>
       <font size="+6">{client.id}</font>
     </TD>
+    <!-- штрихкод в КВД-8 -->
     <TD COLSPAN=2 align="right">
       {if: unique_form_id != u''}
 				<div><FONT FACE="Code 3 de 9" SIZE=+6>*{unique_form_id}*</FONT></div>
@@ -164,9 +180,9 @@ data key {data_key}
     <td align="center" width="50%"><p><br/>
     Дата: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"dd.MM.yyyy"))}</b></FONT><br/>
     Номер: <FONT SIZE=+2><b>{ticket[u"Номерок"].value.idx+1}</b></FONT><br/>
-	{if: unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ мочи' and unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ кала'}
-		Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
-	{end:}
+    {if: unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ мочи' and unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ кала'}
+      Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
+    {end:}
     Место: <FONT SIZE=+1><b>{unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[1]}, {unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[2]}</b></FONT>
     </p></td>
   </TR>

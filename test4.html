@@ -1,238 +1,282 @@
-<!-- изменил Пулин дата 22.04.2025 задача DEV_TEMP-5363 Не распечатать направления на анализы -->
-<!-- изменил Пулин дата 18.04.2025 задача DEV_TEMP-5363 Не распечатать направления на анализы -->
-<!-- изменил Пулин дата 18.04.2025 задача SUP-51074 Поменяйте в направлении на анализы энтеробиоз кабинет -->
-<!-- Разработал: ??????????? -->
-<!-- Дата: ????????????? -->
-<!-- Изменил: Рыжко Назарий Олегович -->
-<!-- Задача: DEV_TEMP-781 -->
-<!-- Изменил Пулин Т дата 04.12.2023 задача SUP-40853 Проблемы с шаблонами в ДГП7 -->
+<!-- изменил Пулин дата 26.05.2025 задача DEV_TEMP-5447 При выписки анализов на кровь из вены почему то Клинический анализ крови (17 показателей) печатается на отдельном листе -->
+<!-- изменил Волков дата 23.05.2025 задача DEV_TEMP-5444 Изменился шаблон печати анализов у ЖК8 можно вернуть как было -->
+<!-- изменил Пулин дата 23.05.2025 задача DEV_TEMP-5398 В шаблоне на направлений на анализы добавить штрих код -->
 
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setMargins(5)}
+<html lang="ru">
+
+<head>
+	<title>Направление</title>
+
+{setPageSize('A4')}
+{setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+
+{:blood = dict()}
+{:flag = 0}
+{:T=0}
+{:F=0}
+{:per = u''}
+{: analCount = 0}
 
 {:
-def getOfficeNumber(ticket):
-  officeNumber = ''
-  if ticket:
-    actGroup = ticket.group.name
-    if 'энтеробиоз' in ticket.name.lower():
-      officeNumber = 113
-    elif actGroup in [u'анализы_минимум', u'Соскоб на энтеробиоз', u'Копрограмма', u'Моча']:
-      officeNumber = 119
-    elif actGroup in [u'биохимические исследования', u'гемостаз', u'гормоны щитовидной железы', u'гормоны', u'диагностика гепатита', u'диагностика сахарного диабета', u'иммунологические исследования', u'Кардиомаркеры', u'Антитела к инфекциям', u'КВД №1', u'КВД', u'Covid-19', u'Ф-50']:
-      officeNumber = 202
-    elif actGroup == u'Бактериология Боткина':
-      if u'кров' in act.name:
-        officeNumber = 202
-      else:
-        officeNumber = 113
-    elif actGroup in [u'гемостаз кабинет 119', u'Моча', u'исследования кала', u'клинический анализ крови', u'клинический анализ крови вечерний', u'Школьная сеть', u'Анализы дети до года']:
-      officeNumber = 119
-    elif actGroup == u'гемостаз кабинет 119':
-      officeNumber = 119
-    elif actGroup == u'Вирусология Боткина':
-      if act.name == u'Серологические исследования на вирусы респираторных инфекций':
-        officeNumber = 113
-      else:
-        officeNumber = 202
-    elif actGroup in [u'ПЦР Грипп', u'КДЦ']:
-      officeNumber = 113
-    elif u'биохимия' in actGroup.lower():
-      officeNumber = 119
-  return officeNumber
+def renderClientInfo():
+    block = """
+        <div>
+            <div>ФИО: <FONT SIZE=+2>{client_fullName}</FONT></div>
+            <br/>
+            <div>Дата рожд. <b>{client_birthDate}</b>,&nbsp;Амб. карта {client_id}</div>
+            <div>Документ: <b>{client_document_serial} {client_document_number}</b> </div>
+            <div>Полис: <b>{client_policy}</b></div>
+            <div>Регистрация: {client_regAddress}</div>
+            <div>Проживание: <b>{client_locAddress}</b></div>
+            <div>Снилс: {client_SNILS}</div>
+        </div>
+    """.format(
+        client_fullName = client.fullName,
+        client_birthDate = client.birthDate,
+        client_id = client.id,
+        client_document_serial = client.document.serial,
+        client_document_number = client.document.number,
+        client_policy = client.policy,
+        client_regAddress = client.regAddress,
+        client_locAddress = client.locAddress,
+        client_SNILS = client.SNILS
+    )
+    write(block)
+}
+
+{:
+def get_form_id(personId, clientId):
+  ref = db.getRecordEx(stmt=u"""
+    call getRefNumber_counterKVD8RefNumber({personId}, {clientId});
+  """.format(personId=personId, clientId=clientId ))
+  if ref:
+    return forceString(ref.value('new_ref_number'))
+  else:
+    return u''
 }
 
 
-{:nomerki = []}
-{:act_names = []}
-{:blood = dict()}
-{:flag = 0}
 
+{: count  = 0}
 {for: act in event.actions}
-    {if: act.class_ == 1}
-        {for: prop in act}
-            {if: prop.name.lower() == u'номерок'}
-            {:flag = 1}
+  	{if: act.class_ == 1 and act.name == u'Глюкоза [моль/объем] через 1 ч после нагрузки глюкозой в сыворотке или плазме крови'}a2
+      	{for: prop in act}
+          	{if: prop.name == u'Номерок'}
+              	{:flag = 1}
+		  			{end:}
+				{end:}
+
+				{if: flag == 1 and act.status != 2}
+						{:key = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
+						{:data_key = act}
+						{:blood.data.setdefault(key4, []).append(data_key)}
+				{end:}
+				{:flag = 0}
+		{end:}
+
+  	{if: act.class_ == 1 and act.name != u'Глюкоза [моль/объем] через 1 ч после нагрузки глюкозой в сыворотке или плазме крови'}a6
+      	{for: prop in act}a7
+          	{if: prop.name == u'Номерок'}
+              	{:flag = 1}
             {end:}
         {end:}
-        {if: flag == 1}
-            {for: prop in act}
-                {if: prop.name.lower() == u'номерок'}
-                    {:key = unicode(prop.value)+unicode(act.group.name)}
-                    {:key2 = unicode(act.group.name)}
-                    {:key3 = ''}
-                    {if: act.group.name == u'Группа крови'}
-                        {:key3 = unicode(prop.value)+unicode(act.group.name)}
-                    {else:}
-                        {:key3 = unicode(prop.value)}
-                    {end:}
-                    {:blood.data.setdefault(key3, []).append(act)}
-                {end:}
-            {end:}
+      	{if: flag == 1 and act.status != 2}
+          	{:key = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
+            {:key2 = unicode(act.group.name)}
+            {:key3 = ''}
+            {:key4 = 1}
 
+            {if: act.group.name == u'Группа крови' }
+              {:key3 = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
+            {else:}
+              {:key3 = unicode(act[u'Номерок'].value)}
+            {end:}
+            {:data_key = act}
+              {: count= count + 1 }
+          	{:blood.data.setdefault(count, []).append(data_key)}Б10
         {end:}
         {:flag = 0}
     {end:}
 {end:}
 
 
-{for: act_1 in event.actions}
-    {for: prop in act_1}
-            {if: prop.name.lower() == u'номерок'}
-                    {if: prop.value not in nomerki}
-                         {:nomerki.append(prop.value)}
-                    {end:}
-            {end:}
-    {end:}
-{end:}
-
-{: nomerki.insert(0,'Все')}
-
-{:dial = dialogs.dialList(u"Выберите вариант", nomerki, 0)}
-{: valuese = dial.getVar()}
-
-{:act_inic_list = []}
 
 
-{for: act_unic in event.actions}
-    {if: act_unic.class_== 1}
-        {for: prop in act_unic}
-            {if: prop.name.lower() == u'номерок' and prop.value == nomerki[valuese]}
-                {:act_inic_list.append(act_unic)}
-            {end:}
-        {end:}
-    {end:}
-{end:}
+{:f='0'}
 
-<body STYLE="font-family: Arial; font-size: 9pt;">
-
-{if: nomerki[valuese] != u'Все'}
-
-  {:office = u''}
-  {for: act in event.actions}
-    {for: prop in act}
-      {if:prop.name.lower() == u'номерок' and prop.value == nomerki[valuese]}
-        {:office = prop.value.orgStructure.name}
-        {: ticket = act}
-      {end:}
-    {end:}
+<!--	note я хз, что это за фигня, но без нее не работает -->
+{for: act in event.actions}b1
+ 	{act.name} {act.flatCode}
+  {if: act.class_ == 1 and (act.name != u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' and act.name != u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно')}b2
+			{act.name} {act.flatCode}<br>
+      {for: prop in act}b3 <br>
+          {if: prop.name == u'Номерок'}b4
+							{:f='1'}
+					{end:}
+			{end:}
   {end:}
+{end:}
+
+</head>
+<body>
 
 
+{: dt = []}
 
-  <table BORDER=1 WIDTH="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="left" COLSPAN=3><FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT><FONT align="right" SIZE=+4>&nbsp;<b></b></FONT></td>
-      <td align="right"><font size = 4><br>
-      {:officeNumber = getOfficeNumber(ticket)}
-      <b>каб {officeNumber}</b>
-      </font></td>
-    </tr>
-    <tr>
-      <td align="center" COLSPAN=4><FONT SIZE=+1><B>СПб ГБУЗ "ДЕТСКАЯ ГОРОДСКАЯ ПОЛИКЛИНИКА №7"</B></FONT></td>
-    </tr>
-    <tr>
-      <td align="center" COLSPAN=4><FONT SIZE=+1><B>Направление на лабораторные исследования (Работа:{:lim = 0}{for: act in event.actions}{for: prop in act}{if:prop.name.lower() == u'номерок' and prop.value == nomerki[valuese] and lim < 1}
-         {:lim += 1}  {:Act = unicode(prop.value).split(', ')[0]}
-      {Act}{prop.value.orgStructure.name}{end:}{end:}{end:})<BR></B></FONT></td>
-    </tr>
-    <tr>
-      <td align="left" COLSPAN=3><p><br/>
-      ФИО: <FONT SIZE=+2><B>{client.fullName}</B></FONT><br/>
-      <br/>
-      Дата рожд. <B>{client.birthDate}</B>,&nbsp;Амб. карта <B>{client.id}</B><br/>
-      Документ: <B>{client.document.serial} {client.document.number}</B><br/>
-      Полис: <B>{client.policy}</B><br/>
-      Регистрация: <B>{client.regAddress}</B><br/>
-      Проживание: <B>{client.locAddress}</B><br/>
-      Снилс: <B>{client.SNILS}</B></p></td>
-      <td align="center" width="50%"><p><br/>
-
-      Дата: <FONT SIZE=+2><b>{:lim = 0}{for: act in event.actions}{for: prop in act}{if: prop.name.lower() == u'номерок'  and prop.value == nomerki[valuese] and lim < 1}{:lim += 1}   {prop.value.datetime.toString(u"dd.MM.yyyy")}{end:}{end:}{end:}
-      </b></FONT><br/>
-      Номер: <FONT SIZE=+2><b>{:lim = 0}{for: act in event.actions}{for: prop in act}{if: prop.name.lower() == u'номерок' and prop.value == nomerki[valuese]and lim < 1}{:lim += 1}{prop.value.idx+1}{end:}{end:}{end:}</b></FONT><br/>
-      Время: <FONT SIZE=+2><b>{:lim = 0}{for: act in event.actions}{for: prop in act}{if: prop.name.lower() == u'номерок' and prop.value == nomerki[valuese]and lim < 1}{:lim += 1}{prop.value.datetime.toString(u"hh:mm")}{end:}{end:}{end:}</b></FONT><br/>
-      Место: <FONT SIZE=+1><b>{:lim = 0}{for: act in event.actions}{for: prop in act}{if: prop.name.lower() == u'номерок' and prop.value == nomerki[valuese]and lim < 1}{:lim += 1}
-     {:Ticket_place = unicode(prop.value).split(', ')[2].split('/', 1)}{:Ticket_placeStr = Ticket_place[0] + ', ' + Ticket_place[1] }{Ticket_placeStr} {end:}{end:}{end:}</b></FONT>
-      </p></td>
-    </tr>
-  </table>
-    {for: act in act_inic_list}
-
-                    {act.name}  <br>
+{for: value in blood.data.keys()}
+	{if: blood.data[value][0].group.id not in [d.group.id for d in dt]}
+		{: dt.append(blood.data[value][0])}
+	{end:}
+{end:}
 
 
-    {end:}   <br>
-  {if: event.execPerson} {event.execPerson}{end:}
+{if: f=='1'}
+	{for: i in range(len(dt))}
+		{if: i > 0}
+			<hr/>
+		{end:}
+		{:ticket = dt[i]}
+		{: actGroup = ticket.group.name}
+		{if: actGroup in (u'Мазок в КВД №8', u'КВД №8')}
+		    {:unique_form_id = get_form_id(ticket.person.id, client.id)}
+		{else:}
+		    {:unique_form_id = u''}
+		{end:}
 
-
-{else:}
-
-
-
-  {for: i, analKey in enumerate(blood.data.keys())}
-    {if: i > 0}
-      <br/><hr/><br/>
+<TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt;">
+  <TR>
+    <TD COLSPAN=2>
+      <FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT>
+      <font size="+6">{client.id}</font>
+    </TD>
+    <!-- штрихкод в КВД-8 -->
+    <TD COLSPAN=2 align="right">
+      {if: unique_form_id != u''}
+				<div><FONT FACE="Code 3 de 9" SIZE=+6>*{unique_form_id}*</FONT></div>
+				<div><font>{unique_form_id}</font></div>
+      {end:}
+    </TD>
+  </TR>
+  <TR>
+    <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Женская консультация №8</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD align="center" COLSPAN=4><FONT SIZE=+1>
+      <B>Направление на лабораторные исследования (работа: {unicode(ticket[u'Номерок'].value).split(', ')[0]})<BR>
+        Просьба иметь при себе паспорт.</B>
+    </FONT>
+    </TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=3>
+			{:renderClientInfo()}
+    </TD>
+    <td align="center" width="50%"><p><br/>
+    Дата: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"dd.MM.yyyy"))}</b></FONT><br/>
+    Номер: <FONT SIZE=+2><b>{ticket[u"Номерок"].value.idx+1}</b></FONT><br/>
+    {if: unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ мочи' and unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ кала'}
+      Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
     {end:}
+    Место: <FONT SIZE=+1><b>{unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[1]}, {unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[2]}</b></FONT>
+    </p></td>
+  </TR>
+</TABLE>
 
-    {:item = blood.data[analKey]}
+
+{:gr = ''}
+
+	{if: ticket.name not in (u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа', u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно')}
+		{if: ticket.group.name != gr}
+			{:gr = ticket.group.name}
+			{:per=ticket.person}
+		{end:}
+		{for: ac in event.actions}
+			{if: ac.group.id == ticket.group.id}
+				<div align="center"><font size=+1><b>{ac.name}</b></font></div>
+			{end:}
+		{end:}
+
+	{end:}
+
+
+
+<p><font size=+1>Направил {per}</font></p>
+{: analCount = analCount + 1}
+
+
+
+
+{end:}
+{end:}
+
+
+{for: act in event.actions}
+  {if: act.name == u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' or act.name == u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно'}
+    {:F=1}
+  {end:}
+{end:}
+
+{if: F==1}
+    <p style="page-break-after: always"></p>
+    {for: i, value in enumerate(blood.data.keys())}
+      {if: i > 0}
+    <br/><hr/><br/>
+      {end:}
+    {:item = blood.data[value]}
     {:ticket = item[0]}
     {: actGroup = ticket.group.name}
 
-    <table BORDER=1 WIDTH="100%" cellpadding="0" cellspacing="0">
-        <tr>
-        <td align="left" COLSPAN=3><FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT><FONT align="right" SIZE=+4>&nbsp;<b></b></FONT></td>
 
-        <td align="right">
-
-          {:officeNumber = ''}
-          {:officeNumber = getOfficeNumber(ticket)}
-
-          <font size = 4><br><b>{officeNumber} каб.</b></font>
-        </td>
-        </tr>
-        <tr>
-          <td align="center" COLSPAN=4><FONT SIZE=+1><B>СПб ГБУЗ "ДЕТСКАЯ ГОРОДСКАЯ ПОЛИКЛИНИКА №7"</B></FONT></td>
-        </tr>
-        <tr>
-        <td align="center" COLSPAN=4><FONT SIZE=+1><B>Направление на лабораторные исследования{if: ticket.name.lower() == u'номерок'} (Работа:{unicode(ticket[u'Номерок'].value).split(', ')[0]}){end:}<BR></B></FONT></td>
-        </tr>
-        <tr>
-        <td align="left" COLSPAN=3><p><br/>
-        ФИО: <FONT SIZE=+2><B>{client.fullName}</B></FONT><br/>
-        <br/>
-        Дата рожд. <B>{client.birthDate}</B>,&nbsp;Амб. карта <B>{client.id}</B><br/>
-        Документ: <B>{client.document.serial} {client.document.number}</B><br/>
-        Полис: <B>{client.policy}</B><br/>
-        Регистрация: <B>{client.regAddress}</B><br/>
-        Проживание: <B>{client.locAddress}</B><br/>
-        Снилс: <B>{client.SNILS}</B></p></td>
+    <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt;">
+      <TR>
+        <TD   COLSPAN=4>&nbsp;&nbsp;<FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT></TD>
+      </TR>
+      <TR>
+        <TD align="center" COLSPAN=4><B>СПб ГУЗ "КОЖНО-ВЕНЕРОЛОГИЧЕСКИЙ ДИСПАНСЕР №2" Серологическая лаборатория</B></TD>
+      </TR>
+      <TR>
+        <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Направление на лабораторные исследования (работа: {unicode(ticket[u'Номерок'].value).split(', ')[0]})<BR>Просьба иметь при себе паспорт.</B></FONT></TD>
+      </TR>
+      <TR>
+        <TD COLSPAN=3>
+          {:renderClientInfo()}
+        </TD>
         <td align="center" width="50%"><p><br/>
-
-        Дата: <FONT SIZE=+2><b>{for: prop in ticket}{if: prop.name.lower() == u'номерок'}{unicode(prop.value.datetime.toString(u"dd.MM.yyyy"))}{end:}{end:}
-        </b></FONT><br/>
-        Номер: <FONT SIZE=+2><b>{for: prop in ticket}{if: prop.name.lower() == u'номерок'}{prop.value.idx+1}{end:}{end:}</b></FONT><br/>
-        Время: <FONT SIZE=+2><b>{for: prop in ticket}{if: prop.name.lower() == u'номерок'}{unicode(prop.value.datetime.toString(u"hh:mm"))}{end:}{end:}</b></FONT><br/>
-        Место: <FONT SIZE=+1><b>{for: prop in ticket}{if: prop.name.lower() == u'номерок'}{unicode(prop.value).split(', ')[2]}{end:}{end:}</b></FONT>
+        Дата: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"dd.MM.yyyy"))}</b></FONT><br/>
+        Номер: <FONT SIZE=+2><b>{ticket[u"Номерок"].value.idx+1}</b></FONT><br/>
+        Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
+        Место: <FONT SIZE=+1><b>{unicode(ticket[u'Номерок'].value).split(', ')[2]}</b></FONT>
         </p></td>
-        </tr>
-        </table>
+      </TR>
+    </TABLE>
+      <FONT SIZE=-1>
+     <table cellpadding=0 cellspacing=0 width=100% border="0">
+        <tr><td align="center"><b>факторы безопастности</b></td></tr>
+      {for: act in event.actions}
 
-    {:gr = ''}
-    {for: v in item}
-      {if: v.group.name != gr}
-        {:gr = v.group.name}
-        <div>{gr}</div>
-      {end:}
-
-      <div>{v.name}</div>
+  {if: act.name == u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' or act.name == u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно'}{:per=act.person}
+         <tr><td>{act.name}</td> </tr>
+         {end:}{end:}
+    </table>
+    </FONT>
+    <p>Направил {per}</p>
+    <br>
     {end:}
-    {if: event.execPerson} <div>{event.execPerson}</div>{end:}
-
-  {end:}
 
 
 {end:}
 
+
 </body>
+</html>
