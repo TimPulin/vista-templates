@@ -1,0 +1,409 @@
+<!--Начальная дата разработки 05.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: osm_neonatolog -->
+<!--Задача: SUP-51758 Сохранение данных об электронной подписи при подписании -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ПЕРВИЧНЫЙ  ОСМОТР  НЕОНАТОЛОГА в родзале / операционной</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <div>
+    Дата и время: {action.endDate.toString('dd.MM.yyyy hh:mm')}
+  </div>
+  <div align="center" class="h1">ПЕРВИЧНЫЙ  ОСМОТР  НЕОНАТОЛОГА в родзале / операционной</div>
+
+<div>
+  Дата и время: {'_' * 10}
+</div>
+<div>
+  Состояние ребенка при рождении:
+  {if: action[u'Состояние ребенка при рождении'].value}
+    {action[u'Состояние ребенка при рождении']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  обусловленное:
+  {if: action[u'Причины состояния ребенка'].value}
+    {action[u'Причины состояния ребенка']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  t*C: {'_' * 10}
+</div>
+<div>
+  Закричал: {'_' * 10} <br>
+  Крик: {'_' * 10}
+</div>
+<div>
+  Двигательная активность:
+  {if: action[u'Двигательная активность'].value}
+    {action[u'Двигательная активность']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Кожные покровы и видимые слизистые:
+  {if: action[u'Кожные покровы и видимые слизистые'].value}
+    {action[u'Кожные покровы и видимые слизистые']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Пуповинный остаток:
+  {if: action[u'Пуповинный остаток'].value}
+    {action[u'Пуповинный остаток']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Голова:
+  {if: action[u'Голова'].value}
+    {action[u'Голова']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Кости черепа:
+  {if: action[u'Кости черепа'].value}
+    {action[u'Кости черепа']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Родовая опухоль:
+  {if: action[u'Родовая опухоль'].value}
+    {action[u'Родовая опухоль']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Б.Р.: {'_' * 10} <br>
+  М.Р.: {'_' * 10}
+</div>
+<div>
+  Швы:
+  {if: action[u'Швы'].value}
+    {action[u'Швы']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Глазная симптоматика:
+  {if: action[u'Глазная симптоматика'].value}
+    {action[u'Глазная симптоматика']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Мышечный тонус:
+  {if: action[u'Мышечный тонус'].value}
+    {action[u'Мышечный тонус']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Рефлексы н/р:
+  {if: action[u'Рефлексы н/р'].value}
+    {action[u'Рефлексы н/р']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+
+<div><b>Границы относительной сердечной тупости:</b></div>
+<div>
+  правая
+  {if: action[u'правая'].value}
+    {action[u'правая']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  левая
+  {if: action[u'левая'].value}
+    {action[u'левая']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  верхняя
+  {if: action[u'верхняя'].value}
+    {action[u'верхняя']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Тоны сердца:
+  {if: action[u'Тоны сердца'].value}
+    {action[u'Тоны сердца']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  {if: action[u'ЧСС'].value}
+    {action[u'ЧСС']}
+  {else:}
+    {'_' * 10}
+  {end:}
+  {if: action[u'ЧД'].value}
+    {action[u'ЧД']}
+  {else:}
+    {'_' * 10}
+  {end:}
+</div>
+<div>
+  Дыхание через нос:
+  {if: action[u'Дыхание через нос'].value}
+    {action[u'Дыхание через нос']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Грудная клетка: 
+  {if: action[u'Грудная клетка'].value}
+      {action[u'Грудная клетка']}
+  {else:}
+    {'_' * 10}
+  {end:}
+   формы: 
+  {if: action[u'Форма грудной клетки']}
+      {action[u'Форма грудной клетки']}
+  {else:}
+    {'_' * 10}
+  {end:}
+</div>
+<div>
+  Ключицы (пальпаторно):
+  {if: action[u'Ключицы (пальпаторно)'].value}
+    {action[u'Ключицы (пальпаторно)']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Перкуторно над легкими:
+  {if: action[u'Перкуторно над легкими'].value}
+    {action[u'Перкуторно над легкими']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Аускультативно дыхание:
+  {if: action[u'Аускультативно дыхание'].value}
+    {action[u'Аускультативно дыхание']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Живот:
+  {if: action[u'Живот'].value}
+    {action[u'Живот']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Печень:
+  {if: action[u'Печень'].value}
+    {action[u'Печень']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Селезенка:
+  {if: action[u'Селезенка'].value}
+    {action[u'Селезенка']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Половые органы:
+  {if: action[u'Половые органы'].value}
+    {action[u'Половые органы']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Мочеиспускание:
+  {if: action[u'Мочеиспускание'].value}
+    {action[u'Мочеиспускание']}
+  {else:}
+    {'_' * 10}
+  {end:}
+
+  <br>
+  анус
+  {if: action[u'анус'].value}
+    {action[u'анус']}
+  {else:}
+    {'_' * 10}
+  {end:}
+</div>
+<div>
+  Меконий:
+  {if: action[u'Меконий'].value}
+    {action[u'Меконий']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  С-м Маркса:
+  {if: action[u'С-м Маркса'].value}
+    {action[u'С-м Маркса']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Кожные складки на бедрах:
+  {if: action[u'Кожные складки на бедрах'].value}
+    {action[u'Кожные складки на бедрах']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Учитывая течение данной беременности:
+  {if: action[u'Учитывая течение данной беременности'].value}
+    {action[u'Учитывая течение данной беременности']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  Родов:
+  {if: action[u'Родов'].value}
+    {action[u'Родов']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+
+<div>
+  Рождение ребенка весом: 
+  {if: action[u'вес'].value}
+      {action[u'вес']}
+  {else:}
+    {'_' * 10}
+  {end:}
+   г, 
+  ростом: 
+  {if: action[u'рост'].value}
+    {action[u'рост']}
+  {else:}
+    {'_' * 10}
+  {end:}
+  см, 
+  по Апгар: 
+  {if: action[u'баллов по Апгар'].value}
+    {action[u'баллов по Апгар']}
+  {else:}
+    {'_' * 10}
+  {end:}
+  баллов
+</div>
+<div>
+  Данные объективного статуса, выставляется предварительный диагноз:
+  {if: action[u'Данные объективного статуса, выставляется предварительный диагноз'].value}
+    {action[u'Данные объективного статуса, выставляется предварительный диагноз']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+<div>
+  План обследования:
+  {if: action[u'План обследования'].value}
+    {action[u'План обследования']}
+  {else:}
+    {'_' * 40}
+  {end:}
+</div>
+  
+  
+<p style="font-weight: 900;">
+  Допущен(а) к вакцинации против гепатита В 0,5  в/м серия:
+  серия
+  {if: action[u'серия'].value}
+    {action[u'серия']}
+  {else:}
+    {'_' * 10}
+  {end:}
+  с.г.до
+  {if: action[u'с.г.до'].value}
+    {action[u'с.г.до']}
+  {else:}
+    {'_' * 10}
+  {end:}
+</p>
+  
+<div>
+  Врач-неонатолог: <b>{action.person.fullName}</b>
+</div>
+
+
+
+</div>
+</body>
+</html>

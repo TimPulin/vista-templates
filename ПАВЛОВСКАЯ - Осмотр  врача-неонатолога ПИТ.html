@@ -1,0 +1,166 @@
+<!-- изменил Пулин дата 27.06.2025 задача  -->
+<!-- изменил Пулин дата 26.06.2025 задача  -->
+<!--Начальная дата разработки 25.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: neo_exam_pit -->
+<!--Задача: DEV_TEMP-5546 Осмотр врача-неонатолога ПИТ -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Осмотр  врача-неонатолога</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime, timedelta}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.tbl-params {
+    float: left;
+    margin-right: 10px;
+}
+</style>
+''')}
+
+{:
+def format_prop_value(prop_name):
+  if action[prop_name].value:
+    return action[prop_name].value
+  else:
+    return u'_' * 10
+}
+
+{:
+def ageIn24Hours(birthDate):
+  now = datetime.now()
+  birthDate = datetime.strptime(client.birthDate.toString('dd.MM.yyyy'), '%d.%m.%Y')
+  return (now - birthDate).days
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ДНЕВНИК  НАБЛЮДЕНИЯ  в  ПИТ </div>
+  <div>
+    {action[u'Дата и время осмотра']}
+    возраст пациента <b>{action[u'Возраст пациента']}</b> суток
+  </div>
+
+  <div align="center">Осмотр врача-неонатолога</div>
+  
+  <div>
+    Ребенок в <b>{format_prop_value(u'Размещение ребенка')}</b>,
+    t обогрева <b>{format_prop_value(u't обогрева')}</b> <sup>0</sup>C,
+    <b>{action[u'Подача O2']}</b>
+  </div>  
+  
+  <table width="100%" cellpadding="0" cellspacing="5">
+    <tr>
+      <td width="1%">
+        <table cellpadding="3" cellspacing="0" border="1">
+            <tr>
+              <td>
+                <table cellpadding="0" cellspacing="0">
+                  {: propList = [[u'ЧД', u'в мин'], [u'Ps', u'в мин'], [u't тела', u'С'],  [u'SpO2', u'%'], [u'Вес', '']]}
+                  {for: propName, unit in propList}
+                    <tr>
+                      <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+                      <td><b>{format_prop_value(propName)}&nbsp;</b></td>
+                      <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+                    </tr>
+                  {end:}
+
+                  <tr><td colspan="">&nbsp;</td></tr>
+                  <tr>
+                    <td colspan="3">Введено:</td>
+                  </tr>
+                  {: propList = [[u'в/в', u'мл'], [u'per os', u'мл']]}
+                  {for: propName, unit in propList}
+                    <tr>
+                      <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+                      <td><b>{format_prop_value(propName)}</b></td>
+                      <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+                    </tr>
+                  {end:}
+
+                  <tr><td colspan="">&nbsp;</td></tr>
+                  <tr>
+                    <td colspan="3">Выделено:</td>
+                  </tr>
+                  {: propList = [[u'Моча', u'мл'], [u'Диурез', u'мл/кг/ч']]}
+                  {for: propName, unit in propList}
+                    <tr>
+                      <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+                      <td><b>{format_prop_value(propName)}</b></td>
+                      <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+                    </tr>
+                  {end:}
+                </table>
+              </td>
+            </tr>
+          </table>
+      </td>
+      <td>
+        {: basePropNameList = [u'Отеки', u'Крик', u'Мышечный тонус', u'Рефлексы', u'Судороги', u'Б. Р.', u'Кормление', u'Срыгивание', u'Застой в желудке', u'Грудная клетка', u'Дыхание', u'Аускультативная картина', u'Перкуторно', u'Хрипы', u'Сердце', u'Шумы', u'Живот', u'Печень', u'Селезенка', u'Пупочный остаток', u'Пупочная ранка', u'Мочится', u'Стул', u'Инфузионная терапия', u'Заключение']}
+        <div>
+          <b>Состояние</b>: {action[u'Состояние']};
+          <b>Тепло</b>: {action[u'Тепло']};
+          <b>Кожные покровы</b>: {action[u'Кожные покровы']};
+        </div>
+        <div>
+          <b>Желтуха</b>: {action[u'Желтуха']}
+          <b>Сыпь</b>: {action[u'Сыпь']}
+        </div>
+
+          {for: prop in action}
+            {if: prop.name in basePropNameList}
+              <div>
+                <b>{prop.name}</b>: {prop.value}
+              </div>
+            {end:}
+          {end:}
+
+          {: recommendationPropNameList = [u'Обследование', u'Кормление', u'Антибактериальная терапия', u'Инфуз. терапия', u'Прочее']}
+          <div><b>Рекомендации</b></div>
+          {for: propName in recommendationPropNameList}
+            <div>
+              <b>{propName}</b>: {action[propName]}
+            </div>
+          {end:}
+      </td>
+    </tr>
+  </table>
+
+
+
+  <div align="right">
+    Врач: {'_' * 20} {action.person}
+  </div>
+</div>
+</body>
+</html>

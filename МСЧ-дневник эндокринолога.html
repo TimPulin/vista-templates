@@ -1,0 +1,89 @@
+<!--Начальная дата разработки 17.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: endokrin -->
+<!--Задача: DEV_TEMP-5520 В шаблоне приема врача эндокринолога необходимо внести изменения  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>дневник эндокринолога</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Прием эндокринолога</div>
+
+  <br>
+
+  <div>
+    ФИО: <b>{client.fullName}</b>
+    Дата рождения: <b>{client.birthDate}</b>
+  </div>
+
+  <div>
+    Статус: {action[u'Статус']}
+  </div>
+
+  <br>
+  {for: prop in act}
+    {if: prop.name not in [u'Статус'] and prop.value}
+      <div>
+        <b>{prop.name}</b> {prop.value}
+      </div>
+    {end:}
+  {end:}
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">
+        Врач ________ <b>{action.person.fullName}</b>
+      </td>
+      <td width="50%" align="right">
+        Дата <b>{action.endDate.toString('dd.MM.yyyy') if action.endDate else action.begDate.toString('dd.MM.yyyy')}</b>
+      </td>
+    </tr>
+  </table>
+
+
+
+</div>
+</body>
+</html>

@@ -1,114 +1,340 @@
-<!-- изменил Пулин дата 19.03.2024 задача DEV_TEMP-3576 Шаблоны печати в КВД -->
-<div align = "center"> <b>{action.name}</b> </div>
-<div>
-Дата обследования: {action.endDate.toString('dd.MM.yyyy')}
+<!--Начальная дата разработки 00/00/0000 г.--> 
+<!--Версия 0.0.0.2, дата 29.05.2021 г.-->
+<!--Разработка: Солтанов Алекснадр Назимович-->
+<!--Контекст печати: f131pe -->
+<!-- Задача: SUP-17123 -->
+<!-- 35 ддд -->
 
-ФИО: {client.fullName}<br>
+<html>
+<head>
+{ setPageSize('A5') }
+{ setOrientation('P') }
+{ setLeftMargin(10.0) }
+{ setTopMargin(2.0) }
+{ setRightMargin(10.0) }
+{ setBottomMargin(2.0) }
 
-Возраст: {client.birthDate} ({client.age})<br>
-Пол: {if: client.sex == u'М'}Мужской {else:} Женский {end:}<br>
+</head>
 
-</div>
-{for: prop in action}
-<div> {prop.name}: {prop.value}</div> {end:}
-<br>
-<div>ФИО врача: {action.person.shortName} <br> Подпись врача: _____________ </div>
 
-<section>
-<!-- @formatter:off -->
-{: from library.Utils import forceString }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
 
-{:
-if action.id:
-  sgn_action = db.getRecordEx(stmt="""
-    select html as h
-    from SignedIEMKDocument
-    where sign_date is not null
-      and sign_path is not null
-      and action_id = {actionId}
-      and person_id != 0
-      and template_id = 220
-      and deleted = 0
-    limit 1;
-  """.format(actionId=action.id))
-}
+<body style="font-family: 'MS Shell Dlg 2'; font-size: 9pt; font-weight: 400; font-style: normal;">
 
-{: flag_sgn = False}
-{: resultList = False}
+<nobr><span style="white-space: pre"><strong><font style="font-size: 14pt"> кабинет <b> 206, 8:30-11:00</b> </font></strong></span></nobr>
 
-{:
-if sgn_action:
-  import paramiko
-  import re
+<table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;font-size: 7pt; " width="100%">
+<tr>
+    <td width="90%" align="left">
+    <nobr><span style="white-space: pre">     МИНЗДРАВ РФ</span></nobr>
+    </td>
+    <td width="10%" align="left">
+    <nobr><font size="70%">Код формы по ОКУД ________</font></nobr>
+    </td>
+</tr>
+<tr>
+    <td width="90%" align="left"></td>
+    <td width="10%" align="left">
+    <font size="70%"><nobr>Код формы по ОКПО <u>{currentOrganisation.OKPO}</u></nobr></font>
+    </td>
+</tr>
+</table>
 
-  flag_sgn = True
-  host = u'kvd2'
-  port = 22
-  username = 'root'
-  password = 'shedF34A'
-  ssh = paramiko.SSHClient()
-  ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-  ssh.connect(host, port=port, username=username, password=password)
-  snils = forceString(action.person.SNILS).replace('-', ' ').replace(' ', '')
-  ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("""/opt/cprocsp/bin/amd64/certmgr -list -dn='{snils}'""".format(snils=snils))
-  ssh_stdout.channel.recv_exit_status()
-  lines = ssh_stdout.readlines()
-  result = ''.join(lines).decode('utf-8', 'ignore')
+<table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;font-size: 7pt;" width="100%">
+<tr>
+    <td width="90%" align="left">
+        <font size="70%"><nobr> Наименование учреждения</nobr></font>
+    </td>
+    <td width="10%" align="center">
+        <font size="70%"><nobr>Медицинская документация<br>Форма № 224/у</nobr></font>
+    </td>
+</tr>
+<tr>
+    <td align="left">
+        <font size="70%"><nobr> Лаборатория</nobr></font>
+    </td>
+    <td align="center">
+        <font size="70%"><nobr>Утверждена Минздравом СССР<br>04.10.80 № 1030</nobr></font>
+    </td>
+</tr>
+</table>
 
-  resultList = lines
+<center>
+    <nobr><strong>АНАЛИЗ КРОВИ №</strong></nobr><br>
+    <nobr><u> «_____»  «___________»  20___г.</u></nobr><br>
+    <nobr><font style="font-size: 4pt">Дата взятия биоматериала</font></nobr>
+</center>
 
-  subject = ''
-  certificate = ''
-  beg_valid_date = ''
-  end_valid_date = ''
+<table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
+<tr>
+    <td colspan="2"><nobr>Ф.И.О. <font style="font-size: 14pt"><b>{client.fullName}</b></font></nobr></td>
+</tr>
+<tr>
+    <td colspan="2"><nobr>Возраст <u>{if: client.birthDate and len(client.age.split()) <= 2} {client.age}{else:}{end:}</u></nobr><br>Дата рождения <u>{client.birthDate}</u></td>
+</tr>
+<tr>
+    <td colspan="2"><nobr>Учреждение <font style="font-size: 14pt"><b>{client.work}</b></font></nobr></td>
+</tr>
+<tr>
+    <td width="40%">Участок ____________________</td>
+    <td> Медицинская карта № ____________________</td>
+</tr>
+</table>
 
-  beg_valid_pattern = [u'Выдан', u'Not valid before']
-  end_valid_pattern = [u'Истекает', u'Not valid after']
-  subject_pattern = [u'Субъект', u'Subject']
-  certificate_pattern =  [u'Серийный номер', u'Serial']
-
-  if resultList:
-      for item in resultList:
-        if certificate_pattern[0] in item or certificate_pattern[1] in item:
-            certificate = forceString(item).split(':')[1].strip()
-            certificate = certificate.split(u'0x', 1)[1]
-        if beg_valid_pattern[0] in item or beg_valid_pattern[1] in item:
-            beg_valid_date = forceString(item).split(':', 1)[1].strip().split(' ', 1)[0].replace('/', '')
-            beg_valid_date = beg_valid_date[0: 2] + '.' + beg_valid_date[2: 4] + '.' + beg_valid_date[4:]
-        if end_valid_pattern[0] in item or end_valid_pattern[1] in item:
-            end_valid_date = forceString(item).split(':', 1)[1].strip().split(' ', 1)[0].replace('/', '')
-            end_valid_date = end_valid_date[0: 2] + '.' + end_valid_date[2: 4] + '.' + end_valid_date[4:]
-        if subject_pattern[0] in item or subject_pattern[1] in item:
-            for elem in item.split(', '):
-                key, value = elem.split('=')
-                if key == 'CN':
-                    name = value
-                elif key == 'O':
-                    organisation = value
-}
-<!-- @formatter:on -->
-
-{if: flag_sgn}
-    <table align="center">
-        <tr>
-            <td>
-              <table border="1" cellpadding="3" cellspacing="0">
-                  <tr>
-                      <td>
-                          <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt; color: black">
-                              <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
-                              <tr><td>Сертификат: {certificate}</td></tr>
-                              <tr><td>Владелец: {name}</td></tr>
-                              <tr><td>Организация: СПб ГБУЗ КВД №2</td></tr>
-                              <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
-                          </table>
-                      </td>
-                  </tr>
-              </table>
-          </td>
-        </tr>
+<table cellpadding="0" cellspacing="0" border="1" style="border-style: solid;" width="100%">
+<tr>
+    <td align="left"   width="30%" rowspan="2" colspan="2"></td>
+    <td align="center" width="15%" rowspan="2">Результат</td>
+    <td align="center" width="55%" colspan="4">Норма</td>
+</tr>
+<tr>
+    <td align="center" colspan="2" width="30%"><nobr>Единицы СИ</nobr></td>
+    <td align="center" colspan="2" width="30%"><nobr>Един., подлеж. замене</nobr></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">
+    <table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
+    <tr>
+        <td>Гемоглобин</td>
+        <td><font size="30%">М<br>Ж</font></td>
+    </tr>
     </table>
+    <td align="left"></td>
+    <td align="center" width="20%"><font size="30%">130,0-160,0<br>120,0-140,0</font></td>
+    <td align="center"><font size="30%">г/л</font></td>
+    <td align="center"><font size="30%">13,0-16,0<br>12,0-14,0</font></td>
+    <td align="center" width="20%"><font size="30%">г%</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">
+    <table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
+    <tr>
+        <td>Эритроциты</td>
+        <td><font size="30%">М<br>Ж</font></td>
+    </tr>
+    </table>
+    </td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">4,0-5,0<br>3,9-4,7</font></td>
+    <td align="center"><font size="30%">.10 12/л</font></td>
+    <td align="center"><font size="30%">4,0-5,0<br>3,9-4,7</font></td>
+    <td align="center"><font size="30%">млн<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">Цветовой показатель</td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">0,85-1,05</font></td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">0,85-1,05</font></td>
+    <td align="center"></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">
+    <font size="70%"><nobr>Среднее содержание<br>гемоглобина в 1 эритроците</nobr></font>
+    </td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">30-35</font></td>
+    <td align="center"><font size="30%">пг</font></td>
+    <td align="center"><font size="30%">30-35</font></td>
+    <td align="center"><font size="30%">пг</font></td>
+</tr>
+{: flag = True}
+{for: action in event.actions} {if: action.code == u'14204' and flag == True}
+<tr>
+    <td align="left" colspan="2"> <b>Ретикулоциты</b></td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">2-10</font></td>
+    <td align="center"><font size="30%">‰</font></td>
+    <td align="center"><font size="30%">2-10</font></td>
+    <td align="center"><font size="30%"><‰</font></td>
+</tr>
+{:flag = False}
+{end:}{end:}
+{: flag = True}
+{for: action in event.actions} {if: action.code == u'14204' or action.code == u'14222' and flag == True}
+<tr>
+    <td align="left" colspan="2"><b>Тромбоциты</b></td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">180,0-320,0</font></td>
+    <td align="center"><font size="30%">.10 9/л</font></td>
+    <td align="center"><font size="30%">180,0-320,0</font></td>
+    <td align="center"><font size="30%">тыс.<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+{:flag = False}
+{end:}{end:}
+<tr>
+    <td align="left" colspan="2">Лейкоциты</td>
+    <td align="left"></td>
+    <td align="center"><font size="30%">4,0-9,0</font></td>
+    <td align="center"><font size="30%">.10 9/л</font></td>
+    <td align="center"><font size="30%">4,0-9,0</font></td>
+    <td align="center"><font size="30%">тыс.<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+{: flag = True}
+{for: action in event.actions} {if: action.code == u'14205' and flag == True}
+<tr>
+    <td align="left" colspan="2"><b>Метгемоглобин</b></td>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+</tr>
+{:flag = False}
+{end:}{end:}
+{: flag = True}
+{for: action in event.actions} {if: action.code == u'14213' and flag == True}
+<tr>
+    <td align="left" colspan="2"><b>Карбоксигемоглобин</b></td>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+</tr>
+{:flag = False}
+{end:}{end:}
+{: flag = True}
+{for: action in event.actions} {if: action.code == u'14559' and flag == True}
+<tr>
+    <td align="left" colspan="2"><b>ВСК</b></td>
+    <td align="left"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+</tr>
+{:flag = False}
+{end:}{end:}
+
+<tr>
+    <td align="center" rowspan="4" width="5%">Ней<br>тро<br>филы</td>
+    <td align="left" width="25%">Миелоциты</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" >Метамиелоциты</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left">Палочкоядерные</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">1-6<br>0,040-0,300</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">1-6<br>40-300</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left">Сегментоядерные</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">47-72<br>2,000-5,500</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">47-72<br>2000-5500</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">Эозинофилы</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">0,5-5<br>0,020-0,300</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">0,5-5<br>20-300</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">Базофилы</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">0-1<br>0-0,065</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">0-1<br>0-65</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">Лимфоциты</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">19-37<br>1,200-3,000</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">19-37<br>1200-3000</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">Моноциты</td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">3-11<br>0,090-0,600</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">3-11<br>90-600</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">
+    <font size="30%"><nobr>Плазматические клетки</nob></font>
+    </td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>.10 9./л</font></td>
+    <td align="center"><font size="30%">.<br>.</font></td>
+    <td align="center"><font size="30%">%<br>в 1 мм<sup>3</sup>(мкл)</font></td>
+</tr>
+<tr>
+    <td align="left" colspan="2">
+    <table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
+    <tr>
+        <td align="left">
+        <font size="30%"><nobr>Скорость (реакция)<br>оседания эритроцитов</nobr></font>
+        </td>
+        <td align="left"><font size="30%">М<br>Ж</font></td>
+    </tr>
+    </table>
+    </td>
+    <td align="center"></td>
+    <td align="center"><font size="30%">2-10<br>2-15</font>
+    </td>
+    <td align="center"><font size="30%">мм/ч</font>
+    </td>
+    <td align="center"><font size="30%">2-10<br>2-15</font>
+    </td>
+    <td align="center"><font size="30%">мм/ч</font>
+    </td>
+</tr>
+</table>
+
+
+<!-- Флюшка -->
+
+<div style="page-break-after:always;"></div>
+<TABLE BORDER=0 WIDTH="100%" cellpadding="0" cellspacing="0" STYLE="font-family: Arial; font-size: 10pt; color: black" BORDER =0>
+<br><br><tr><td align=center> АO  Балтийский завод</td></tr>
+<tr><td align=center> Медико-санитарная часть №3</td></tr>
+<tr><td align=center> <big><b> НАПРАВЛЕНИЕ В ФЛЮОРОКАБИНЕТ</b></big></td></tr>
+<tr><td align=center><b><font style="font-size: 14pt">
+{:office = ''}
+{for: action in event.actions}
+  {if: action.code in (u'14023')} 
+    {:office = action._action.getType().office}
+  {end:}
 {end:}
-</section>
+Кабинет 
+{if: office}
+  {office}
+{else:}
+  Кабинет 104 ,  9:30 - 11:00
+{end:}
+<br>
+</td></tr>
+<tr><td> ФИО <font style="font-size: 14pt"><b><i>{client.fullName}</i></b></font><hr></td></tr>
+<tr><td> Дата рождения  <i> {client.birthDate} </i> Возраст {if: client.birthDate and len(client.age.split()) <= 2} {client.age}{else:}{end:}<hr></td></tr>
+<tr><td> Адрес регистрации  <i> {client.regAddress} </i><hr></td></tr>
+<tr><td> Адрес проживания  <i> {client.locAddress} </i><hr></td></tr>
+<tr><td> Телефон  <i> {client.phones}</i> <hr></td></tr>
+<tr><td> Место работы   <font style="font-size: 14pt"><b><i>{client.work.shortName} </i></b></font><hr></td></tr>
+
+</table>
+ 
+</body>
+</html>

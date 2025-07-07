@@ -1,0 +1,228 @@
+<!-- изменил Пулин дата 09.06.2025 задача KPTD-1186 Внести изменения в протокол трансфузии при этом не сломать СЭМД -->
+<!-- Разработал: Васильев Андрей Денисович -->
+<!-- Дата: 29.03.2022 -->
+<!-- Задача: DEV_TEMP-195 -->
+<!-- Изменил: Васильев Андрей Денисович. Дата: 19.09.2022. Задача: DEV_TEMP-1204 -->
+<!-- Изменил: Васильев Андрей Денисович. Дата: 19.09.2022. Задача: DEV_TEMP-1336 -->
+
+<html lang="ru">
+
+    <head>
+      <meta charset="UTF-8">
+    <title>протокол трансфузии</title>
+        {setPageSize('A4')}
+        {setOrientation('P')}
+        {setTopMargin(10)}
+        {setBottomMargin(10)}
+        {setRightMargin(10)}
+        {setLeftMargin(10)}
+
+        {if: event.client and event.client.bloodType}
+            {:groupBlood = unicode(event.client.bloodType).split('R')[0]}
+            {:rezusFactor = unicode(event.client.bloodType).split(')')[1]}
+        {else:}
+            {:groupBlood = action[u'Группа крови реципиента АВ0']}
+            {:rezusFactor = action[u'Резус-принадлежность реципиента']}
+        {end:}
+    </head>
+
+
+<body STYLE="font-family: Times New Roman; font-size: 10pt;">
+
+
+    {if: (action[u'Дата заготовки:'].value) > (currentDate)}
+        <h1 align="center">Дата в поле "Дата заготовки" не может быть больше текущей даты</h1>
+
+        {else:}
+    {if: (action[u'Срок годности компонента:'].value) < (action.begDate)}
+        <h1 align="center">Дата в поле "Срок годности компонента" не может быть меньше или быть равна текущей дате</h1>
+
+        {else:}
+    {if: ((action[u'Срок годности цоликлон ани-А'].value) < (action.begDate)) or ((action[u'Срок годности цоликлон ани-В'].value) < (action.begDate)) or ((action[u'Срок годности цоликлон ани-АВ'].value) < (action.begDate)) or ((action[u'Срок годности цоликлон ани-D'].value) < (action.begDate))}
+        <h1 align="center">Дата в поле "Срок годности реагента" не может быть меньше или быть равна текущей дате</h1>
+
+        {else:}
+{if: event.client}
+  <table align = "center" border="1" cellpadding="2" cellspacing="0" width="100%" STYLE="font-size: 11pt;">
+        <tr>
+            <th colspan = "6">ПРОТОКОЛ ТРАНСФУЗИИ</th>
+        </tr>
+        <tr>
+            <td>ФИО реципиента: {event.client.fullName}</td>
+            <td colspan = "3">Дата и время подачи заявки: {action[u'Дата подачи заявки'].value} {action[u'Время подачи заявки'].value}</td>
+            <td colspan = "2">Дата трансфузии: {action[u'Дата трансфузии'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "3">Отделение: {currentOrgStructure.name}</td>
+            <td>№ и/б: {event.externalId}</td>
+            <td colspan = "2">
+              Время начала: {action[u'Время начала трансфузии'].value}<br>
+              Время окончания: {action[u'Время окончания трансфузии'].value}
+            </td>
+        </tr>
+        <tr>
+            <th colspan = "6">Данные медицинского обследования реципиента</th>
+        </tr>
+        <tr>
+            <td colspan = "3">Группа крови реципиента АВ0:
+                                {if: action[u"Группа крови реципиента АВ0"].value}
+                                    {action[u"Группа крови реципиента АВ0"].value}
+                                {else:}
+                                {groupBlood}
+                                {end:}</td>
+            <td colspan = "3">Резус-принадлежность:
+                                {if: action[u"Резус-принадлежность реципиента"].value}
+                                    {action[u"Резус-принадлежность реципиента"].value}
+                                {else:}
+                                {rezusFactor}
+                                {end:}</td>
+        </tr>
+        <tr>
+            <td colspan = "3">Антигены С, с, Е, е, К: {action[u'Антигены реципиента С, с, Е, е'].value}, {action[u'Антиген реципиента К'].value}</td>
+            <td colspan = "3">Аллоимунные антитела: {action[u'Аллоимунные антитела реципиента'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Показания к трансфузии</th>
+        </tr>
+        <tr>
+            <td colspan = "6">{action[u'Показания к трансфузии'].value}
+            	{for: prop in action}
+            		{if: (prop.name == u'Hb г/л' or prop.name == u'Ht') and prop.value}
+            			,&nbsp;{prop.name}={prop.value}
+            		{end:}
+            	{end:}
+            </td>
+        </tr>
+        <tr>
+            <th colspan = "6">Анамнез реципиента</th>
+        </tr>
+        <tr>
+            <td colspan="2">Трансфузии компонентов крови в анамнезе: {action[u'Трансфузии компонентов крови в анамнезе'].value}</td>
+            <td colspan = "2">Реакции и осложнения на трансфузии в анамнезе: {action[u'Реакции и осложнения на трансфузии в анамнезе'].value}</td>
+            <td colspan = "2">Трансфузии по индивидуальному подбору: {action[u'Трансфузии по индивидуальному подбору'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Данные о донорской крови или ее компоненте</th>
+        </tr>
+        <tr>
+            <td colspan = "3">Наименование компонента: {action[u'Наименование компонента донорской крови'].value}</td>
+            <td colspan = "3">Наименование организации, осуществившей заготовку: {action[u'Наименование организации, осуществившей заготовку'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "3">Группа крови донора АВ0: {action[u'Группа крови донора АВ0'].value}</td>
+            <td colspan = "3" rowspan = "2">Антигены эритроцитов донора С, с, Е, е, К: {action[u'Антигены эритроцитов донора С, с, Е, е'].value}, {action[u'Антиген эритроцитов донора К'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "1">№ единицы компонента крови: {if: action[u'№ единицы компонента крови'].value}{"%.0f" % float(action[u'№ единицы компонента крови'].value)}{end:}</td>
+            <td colspan = "2">Количество (мл): {action[u'Количество (мл):'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "3">Дата заготовки: {action[u'Дата заготовки:'].value}</td>
+            <td colspan = "3">Срок годности компонента: {action[u'Срок годности компонента:'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Результаты индивидуального подбора</th>
+        </tr>
+        <tr>
+            <td colspan = "6">Наименование медицинской организации, осуществившей индивидуальный подбор: {action[u'Наименование медицинской организации, осуществившей индивидуальный подбор'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "6">Дата исследования: {if: action[u'Дата исследования:'].value}{action[u'Дата исследования:'].value}{else:}-{end:}
+            </td>
+        </tr>
+        <tr>
+            <td colspan = "3">ФИО ответственного лица: {action[u'ФИО ответственного лица'].value}</td>
+            <td colspan = "3">Заключение: {action[u'Заключение'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Пробы на индивидуальную совместимость в отделении</th>
+        </tr>
+        <tr>
+            <td colspan = "6">Наименование реагентов: {action[u'Наименование реагентов'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "3">№ серии реагента:
+            1.{action[u'№ серии цоликлон ани-А'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            2.{action[u'№ серии цоликлон ани-В'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            3.{action[u'№ серии цоликлон ани-АВ'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            4.{action[u'№ серии цоликлон ани-D'].value}</td>
+            <td colspan = "3">Срок годности реагента:
+            1.{action[u'Срок годности цоликлон ани-А'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            2.{action[u'Срок годности цоликлон ани-В'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            3.{action[u'Срок годности цоликлон ани-АВ'].value}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            4.{action[u'Срок годности цоликлон ани-D'].value}<br></td>
+        </tr>
+        <tr>
+            <td colspan = "3"><b>Проба на плоскости:</b> {action[u'Проба на плоскости'].value}</td>
+            <td colspan = "3"><b>Биологическая проба:</b> {action[u'Биологическая проба'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Реакции и осложнения</th>
+        </tr>
+        <tr>
+            <td colspan = "3">Основные симптомы: {action[u'Основные симптомы реакций и осложнений'].value}</td>
+            <td colspan = "3">Степень тяжести: {action[u'Степень тяжести'].value}</td>
+        </tr>
+        <tr>
+            <th colspan = "6">Наблюдение за состоянием реципиента</th>
+        </tr>
+
+
+
+        <tr>
+            <td align = "center" width="25%">Трансфузии компонентов крови</td>
+            <td align = "center" width="15%">АД (мм.рт.ст.)</td>
+            <td align = "center" width="15%">Частота пульса (уд/мин)</td>
+            <td align = "center" width="15%">ЧДД</td>
+            <td align = "center" width="15%">Температура (С)</td>
+            <td align = "center" width="15%">Диурез, цвет мочи</td>
+        </tr>
+        <tr>
+            <td align = "center">Перед началом переливания</td>
+            <td align = "center">{action[u'АД (перед началом переливания)'].value}</td>
+            <td align = "center">{action[u'Частота пульса (перед началом переливания)'].value}</td>
+
+            <td align = "center">{action[u'ЧДД (перед началом переливания)'].value}</td>
+
+
+            <td align = "center">{action[u'Температура (перед началом переливания)'].value}</td>
+            <td align = "center">{action[u'Диурез, цвет мочи (перед началом переливания)'].value}</td>
+        </tr>
+        <tr>
+            <td align = "center">Через 1 час после переливания</td>
+            <td align = "center">{action[u'АД (через 1 час)'].value}</td>
+            <td align = "center">{action[u'Частота пульса (через 1 час)'].value}</td>
+
+            <td align = "center">{action[u'ЧДД (через 1 час)'].value}</td>
+
+
+            <td align = "center">{action[u'Температура (через 1 час)'].value}</td>
+            <td align = "center">{action[u'Диурез, цвет мочи (через 1 час)'].value}</td>
+        </tr>
+        <tr>
+            <td align = "center">Через 2 часа после переливания</td>
+            <td align = "center">{action[u'АД (через 2 часа)'].value}</td>
+            <td align = "center">{action[u'Частота пульса (через 2 часа)'].value}</td>
+
+            <td align = "center">{action[u'ЧДД (через 2 часа)'].value}</td>
+
+
+            <td align = "center">{action[u'Температура (через 2 часа)'].value}</td>
+            <td align = "center">{action[u'Диурез, цвет мочи (через 2 часа)'].value}</td>
+        </tr>
+        <tr>
+            <td colspan = "6"><b>Врач, осуществивший трансфузию:</b> {currentPerson.shortName}</td>
+        </tr>
+
+</table>
+{end:}
+{end:}{end:}{end:}
+
+</body>
+</html>

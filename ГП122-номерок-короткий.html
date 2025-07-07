@@ -1,0 +1,247 @@
+<!-- изменил Пулин дата 05.06.2025 задача DEV_TEMP-5479 Изменить форму печати талонов к врачам -->
+<!-- Сделал правильный выбор врача Кириенко 27.01.2025 в рамках задачи DEV_TEMP-3984 При распечатке неправильно указан номер кабинета -->
+<HTML lang="ru">
+
+<head>
+  <title>Талон</title>
+{setPageSize('A4')}
+{setOrientation('P')}
+{setLeftMargin(0)}
+{setRightMargin(0)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime}
+{: import inspect}
+
+{: vrach = db.getRecordList(stmt=u"""
+  select Event.setDate,
+         concat(Person.lastName, ' ', Person.firstName, ' ', Person.patrName) as fio,
+         rbSpeciality.name,
+         Person.id                                                            as pid
+  from Client
+           join Event on Client.id = Event.client_id
+           join Action on Event.id = Action.event_id
+           join Person on Action.person_id = Person.id
+           join rbSpeciality on Person.speciality_id = rbSpeciality.id
+  where Client.id = {ClientID};
+    """.format(ClientID=client.id))}
+
+
+{:
+currVrach = ''
+currVrachSpeciality = ''
+currID = ''
+}
+
+{for: item in vrach}
+    {if: visit.date in forceString(item.value('setDate')) and visit.time in unicode(datetime.strptime(forceString(item.value('setDate')), "%d.%m.%Y %H:%M"))}
+        {: currVrach = forceString(item.value('fio'))}
+        {: currVrachSpeciality = forceString(item.value('name'))}
+        {: currID = forceString(item.value('pid'))}
+    {end:}
+{end:}
+
+
+{:
+separator = '-'
+day, month, year = visit.data['date'].split('.')
+if day and month and year:
+    visitDateSqlFormatted = forceString(year) + separator + forceString(month) + separator + forceString(day)
+else:
+    visitDateSqlFormatted = u''
+
+visitTimeSqlFormatted = visit.data['time'] + u':' + u'00'
+}
+
+{:
+queueInfoRef = db.getRecordEx(stmt=u"""
+select tttt.*,
+       tttt.index                                                                                  as appointmentIdx,
+       Client.id                                                                                   AS patId,
+       concat(Client.lastName, ' ', left(Client.firstName, 1), '.', left(Client.patrName, 1), '.') as patientName,
+       Action.setPerson_id                                                                         as assignerId,
+       concat(p.lastName, ' ', left(p.firstName, 1), '.', left(p.patrName, 1), '.')                as assignerName,
+       rbP.name                                                                                    as assignerPost,
+       Action.note
+from (select ttt.*,
+             ActionProperty_String.value AS color
+      from (select tt.*,
+                   ActionProperty_Time.value as appointmentTime,
+                   IF(ActionProperty_Time.value IS NULL, 'Пациенты записанные сверх очереди',
+                      'Пациенты записанные на определенное время') AS grouping
+            from
+                (
+                select
+                t.*, ActionProperty_Action.id as scheduleActionPropertyId, ActionProperty_Action.index, ActionProperty_Action.value as `queue`, ActionPropertyType.name AS aptName, (
+                SELECT aps.value
+                FROM ActionProperty ap
+                JOIN ActionPropertyType apt ON ap.type_id = apt.id
+                JOIN ActionProperty_String aps ON ap.id = aps.id
+                WHERE ap.deleted = 0
+                AND apt.deleted=0
+                AND apt.name = 'office'
+                AND ap.action_id = t.id
+                ) AS office, (
+                SELECT aptime.value
+                FROM ActionProperty ap
+                JOIN ActionPropertyType apt ON ap.type_id = apt.id
+                JOIN ActionProperty_Time aptime ON ap.id = aptime.id
+                WHERE ap.deleted = 0
+                AND apt.deleted=0
+                AND apt.name = 'begTime'
+                AND ap.action_id = t.id
+                ) AS begTime, (
+                SELECT aptime.value
+                FROM ActionProperty ap
+                JOIN ActionPropertyType apt ON ap.type_id = apt.id
+                JOIN ActionProperty_Time aptime ON ap.id = aptime.id
+                WHERE ap.deleted = 0
+                AND apt.deleted=0
+                AND apt.name = 'endTime'
+                AND ap.action_id = t.id
+
+                ) AS endTime
+                from
+                (
+                select Event.setPerson_id, Action.id AS id, Action.actionType_id, concat(Person.lastName, ' ', Person.firstName, ' ', Person.patrName) as docName, Person.id as docId, DATE_FORMAT(Event.setDate, '%d.%m.%Y') as `date`
+                from Action
+                left join ActionType ON ActionType.id = Action.actionType_id
+                left join Event ON Event.id = Action.event_id
+                left join EventType ON EventType.id = Event.eventType_id
+                left join Person ON Person.id = Event.setPerson_id
+                where
+                Event.deleted=0
+                AND Action.deleted=0
+                AND EventType.code = '0'
+                AND Person.deleted = 0
+# note             здесь задать искомую дату
+                AND DATE (Event.setDate) = '{visitDate}'
+# note             здесь задать currID
+                AND Event.setPerson_id = {personId}
+                AND (Person.lastAccessibleTimelineDate IS NULL OR Person.lastAccessibleTimelineDate = '0000-00-00' OR DATE (Event.setDate)<=Person.lastAccessibleTimelineDate)
+                AND (Person.timelineAccessibleDays IS NULL OR Person.timelineAccessibleDays <= 0 OR DATE (Event.setDate)<=ADDDATE(CURRENT_DATE (), Person.timelineAccessibleDays))
+                ) t
+                LEFT JOIN ActionType ON ActionType.id = t.actionType_id
+                LEFT JOIN ActionPropertyType ON ActionPropertyType.actionType_id = ActionType.id
+                LEFT JOIN ActionProperty ON ActionProperty.action_id = t.id AND ActionProperty.type_id = ActionPropertyType.id
+                LEFT JOIN ActionProperty_Action ON ActionProperty_Action.id = ActionProperty.id
+                where
+                ActionPropertyType.deleted = 0
+                AND ActionProperty.deleted = 0
+                AND ActionProperty.id IS NOT NULL
+                AND ActionPropertyType.name LIKE 'queue%'
+                order by ActionProperty_Action.id, ActionProperty_Action.index
+                ) tt
+                LEFT JOIN ActionType
+            ON ActionType.id = tt.actionType_id
+                LEFT JOIN ActionPropertyType ON ActionPropertyType.actionType_id = ActionType.id
+                LEFT JOIN ActionProperty ON ActionProperty.action_id = tt.id AND ActionProperty.type_id = ActionPropertyType.id
+#                 note здесь вставить время
+                LEFT JOIN ActionProperty_Time ON ActionProperty_Time.id = ActionProperty.id AND ActionProperty_Time.`index` = tt.index  AND ActionProperty_Time.value = '{visitTime}'
+
+            where
+                ActionPropertyType.deleted = 0
+              AND ActionProperty.deleted = 0
+              AND ActionProperty.id IS NOT NULL
+              AND ActionPropertyType.name = CONCAT('times'
+                , REPLACE (aptName
+                , 'queue'
+                , '') )) ttt
+
+               LEFT JOIN ActionType ON ActionType.id = ttt.actionType_id
+               LEFT JOIN ActionPropertyType
+                         ON ActionPropertyType.actionType_id = ActionType.id AND ActionPropertyType.name = 'colors'
+               LEFT JOIN ActionProperty
+                         ON ActionProperty.action_id = ttt.id AND ActionProperty.type_id = ActionPropertyType.id AND
+                            ActionProperty.deleted = 0
+               LEFT JOIN ActionProperty_String ON ActionProperty_String.id = ActionProperty.id AND
+                                                  ActionProperty_String.`index` = ttt.index) tttt
+         LEFT JOIN Action on Action.id = tttt.queue
+         LEFT JOIN Event on Action.event_id = Event.id
+# note     здесь вставить пациента
+         JOIN Client on Client.id = Event.client_id and Client.id = {clientId}
+         LEFT JOIN Person p ON Action.setPerson_id = p.id
+         LEFT JOIN rbPost rbP on p.post_id = rbP.id;
+
+
+""".format(clientId=client.id, visitDate=visitDateSqlFormatted, visitTime=visitTimeSqlFormatted, personId=currID))
+
+if queueInfoRef:
+  assignerName = forceString(queueInfoRef.value('assignerName') )
+  assignerPost = forceString(queueInfoRef.value('assignerPost') )
+else:
+  assignerName = ''
+  assignerPost = ''
+}
+
+
+</head>
+
+
+<BODY style="font-size: 12pt;">
+
+
+<div>Код пациента: <b>{client.id}</b></div>
+<div>
+  Пациент: <b>{client.fullName}</b>
+  {if: person.id == 2041} ЭКГ {else:} {visit.type} {end:}
+</div>
+<div>Дата рождения: <b>{client.birthDate}</b></div>
+<div>Возраст: <b>{client.age}</b></div>
+
+<br>
+
+
+<div>Врач: <B> {currVrach} </B> ({currVrachSpeciality})</div>
+<div>Явиться: <B>{visit.date}</B> в кабинет № <b>{visit.office.split(';')[0]}</b></div>
+
+<h3>Время: {visit.time}</h3>
+
+
+{if: currID == 1083 or currID == 1012 or currID == 1909}
+  <p>Клинический (кровь из пальца) анализ крови,
+  биохимический анализ крови (кровь из вены):
+  анализы сдаются натощак (последний прием пищи
+   в 19 часов накануне, утром – обильное питье
+   (чистая негазированная вода)</p>
+{end:}
+{if: currID == 844 or currID == 122 or currID == 400}
+  <p>УЗИ брюшной полости для детей до года: ребенка
+   не кормить за два часа до исследования
+  УЗИ брюшной полости детям старше года: при
+  проведении исследования в первой половине дня:
+  последний приём пищи – накануне до 19 часов При проведении исследования после 14 часов – прием пищи в день исследования до 08:00
+  </p>
+{end:}
+{if: currID == 333 or currID == 414 or currID == 1549}
+  <p>При себе необходимо иметь сменную обувь и пеленку</p>
+{end:}
+{if: currID == 2041}
+  <p>С собой иметь: амб.карту, пеленку.<br> Вход в кабинет во второй обуви.</p>
+{end:}
+
+
+<!--
+note свойства visit
+personId', 'num', 'office', 'time', 'date', 'timeRange', 'type', 'clientId
+-->
+{if: assignerName != '' and assignerPost != ''}
+  <div>
+    Записал (направил): <b>{assignerName}</b>, <b>{assignerPost}</b>
+  </div>
+  <br>
+{end:}
+
+
+<div><b>Телефоны для справок:</b></div>
+<div>
+    Регистратура: 246-51-26<br>
+    Кварт. помощь: 246-51-26<br>
+    Запись на прием к врачу: 246-51-26
+</div>
+
+</BODY>
+</HTML>

@@ -1,0 +1,438 @@
+<!-- изменил Пулин дата 03.06.2025 задача  -->
+<!-- изменил Пулин дата 02.06.2025 НОВАЯ ЛОГИКА задача DEV_TEMP-5447 При выписки анализов на кровь из вены почему то Клинический анализ крови (17 показателей) печатается на отдельном листе  -->
+<!-- изменил Пулин дата 28.05.2025 задача  -->
+<!-- изменил Пулин дата 28.05.2025 задача
+ скопировал из детства, добавил штрихкод для отправки в КВД8
+ -->
+<!-- изменил Пулин дата 21.05.2024 задача DEV_TEMP-3977 Довавить QR в направление на исследование -->
+<!-- изменил Пулин дата 26.03.2024 задача DEV_TEMP-3744 В печатную форму на инструментальные исследования необходимо внести изменения -->
+<!--Начальная дата разработки  г.-->
+<!--Версия 0.0.0.1, дата  г.-->
+<!--Разработка: Маракулин Максим Андреевич -->
+<!--Контекст печати: nomerok  -->
+<!--Задача:   -->
+<!--Изменил в DEV_TEMP-3044 Нет печати лабораторных исследований.   -->
+
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+    <title>Номерок</title>
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(10)}
+{: setBottomMargin(5)}
+{: setRightMargin(10)}
+{: setLeftMargin(20)}
+{: from library.Utils import forceString }
+
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{: import base64 }
+{: import qrcode}
+{: from io import BytesIO}
+
+
+{:
+def renderClientInfo():
+    block = """
+        <div>
+            <div>ФИО: <FONT SIZE=+2>{client_fullName}</FONT></div>
+            <br/>
+            <div>Дата рожд. <b>{client_birthDate}</b>,&nbsp;Амб. карта {client_id}</div>
+            <div>Документ: <b>{client_document_serial} {client_document_number}</b> </div>
+            <div>Полис: <b>{client_policy}</b></div>
+            <div>Регистрация: {client_regAddress}</div>
+            <div>Проживание: <b>{client_locAddress}</b></div>
+            <div>Снилс: {client_SNILS}</div>
+        </div>
+    """.format(
+        client_fullName = client.fullName,
+        client_birthDate = client.birthDate,
+        client_id = client.id,
+        client_document_serial = client.document.serial,
+        client_document_number = client.document.number,
+        client_policy = client.policy,
+        client_regAddress = client.regAddress,
+        client_locAddress = client.locAddress,
+        client_SNILS = client.SNILS
+    )
+    write(block)
+}
+
+{:
+def get_form_id(personId, clientId):
+  ref = db.getRecordEx(stmt=u"""
+    call getRefNumber_counterKVD8RefNumber({personId}, {clientId});
+  """.format(personId=personId, clientId=clientId ))
+  if ref:
+    return forceString(ref.value('new_ref_number'))
+  else:
+    return u''
+}
+
+{:
+instrumentalGroupIdList = [4500722, 4500723, 4500724, 4500725, 4500726, 4500727, 4500957, 4501150, 4501155, 4501156]
+def renderAmbCardNote(groupId):
+  if groupId in instrumentalGroupIdList:
+    write("""<p class="medium"><b>При себе иметь амбулаторную карту</b></p>""")
+
+def renderResearchType(groupId):
+  if groupId in instrumentalGroupIdList:
+    return 'инструментальные'
+  else:
+   return 'лабораторные'
+}
+
+{:
+def createQRImg(act, job_ticket):
+  SEPARATOR_GOR = forceString('_')
+  SEPARATOR_VERT = forceString('|')
+
+  personId =  forceString(act.person.id)
+  visitDate = job_ticket.datetime.toString(u"dd.MM.yyyy")
+  visitDateFormatted = job_ticket.datetime.toString(u"yyyy_MM_dd")
+  visitTime = job_ticket.datetime.toString(u"hh:mm")
+  visitTimeFormatted = job_ticket.datetime.toString(u"hh:mm:ss").replace(':', '%3a')
+  office = job_ticket.orgStructure.code.split(' ', -1)
+  if office:
+    office = office[-1]
+  else:
+    office = ''
+  DPO = act.person.orgStructure.fullName.split('/')
+  if len(DPO) > 1:
+    DPO = DPO[1]
+  else:
+    DPO = ''
+  DPO_number = DPO.split()
+  if DPO_number:
+    DPO_number = DPO_number[-1].strip('№')
+  else:
+    DPO_number = ''
+
+  orgId = ''
+  if DPO_number == "9":
+    orgId = 234
+  elif DPO_number == "22":
+    orgId = 561
+  elif DPO_number == "34":
+    orgId = 235
+  elif DPO_number == "66":
+    orgId = 236
+  elif DPO_number == "68":
+    orgId = 233
+  elif DPO_number == "69":
+    orgId = 237
+  elif u'Офис Врача ДПО 66 Бокситогорская' in  DPO:
+    orgId = 1203
+  elif u'Офис Врача ДПО 22 Пейзажная' in DPO:
+    orgId = 1202
+
+  orgId = forceString(orgId)
+  codeString = personId + SEPARATOR_GOR + visitDateFormatted + SEPARATOR_GOR + visitTimeFormatted + SEPARATOR_GOR + office + SEPARATOR_VERT + orgId + SEPARATOR_VERT + visitDate + SEPARATOR_VERT + visitTime
+  img = qrcode.make(codeString)
+  buffered = BytesIO()
+  img.save(buffered, format="PNG")
+  img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+  return img_str
+}
+
+{:
+def makePostfix(act, prefix):
+  postfix = u''
+  if u'Проба на толерантность к глюкозе' in act.name:
+    postfix = forceString(act.id)
+  return postfix
+}
+
+{:
+def createIdForGrouping(job_ticket, postfix):
+  return job_ticket.jobType.code + postfix
+}
+
+{:
+class ReferralAnal:
+  def __init__(self, act, job_ticket, postfix):
+    self.Ticket_datetime = job_ticket.datetime.toString(u"dd.MM.yyyy, hh:mm")
+    self.Ticket_date = job_ticket.datetime.toString(u"dd.MM.yyyy")
+    self.Ticket_time = job_ticket.datetime.toString(u"hh:mm")
+    self.Ticket_number = job_ticket.idx+1
+    self.Ticket_id = job_ticket.id
+    self.Ticket_place_full = job_ticket.orgStructure
+    self.Ticket_place =  job_ticket.orgStructure.code
+    self.Job_type = job_ticket.jobType
+
+    self.group_id = act.group.id
+
+    self.actList = []
+    self.job_ticket = job_ticket
+
+    self.idForGrouping = createIdForGrouping(self.job_ticket, postfix)
+
+    self.addAct(act)
+
+  def addAct(self, act):
+    self.actList.append(act)
+
+
+def createNewReferralAnal(refList, act, prop, postfix):
+  newInstance = ReferralAnal(act, prop.value, postfix)
+  refList.append(newInstance)
+}
+
+<!--  note перебор actions в event -->
+{:
+MAIN_REF_LIST = []
+
+for act in event.actions:
+  if act.class_ == 1:
+    for prop in act:
+      if prop.typeName == u'JobTicket' and prop.value:
+        postfix = makePostfix(act, u'')
+        idForGrouping = createIdForGrouping(prop.value, postfix)
+
+        filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_REF_LIST)
+        filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+        if filteredRef:
+          filteredRefList[0].addAct(act)
+        else:
+          createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
+
+}
+
+</head>
+
+<body>
+
+{for: index, ref in enumerate(MAIN_REF_LIST)}
+
+<!-- это для всех тип работ кроме 6-1 и 04 -->
+    {if: ref.Job_type not in ('04', '6-1')}
+      {if: ref.group_id in (4500732, 4500760)}
+          {:unique_form_id = get_form_id(ref.actList[0].person.id, client.id)}
+      {else:}
+          {:unique_form_id = u''}
+      {end:}
+
+        <div style="page-break-inside: avoid;">
+          <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt;">
+          <TR>
+            <TD COLSPAN=2>
+              <font size="+6">{client.id}</font>
+              <FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT>
+            </TD>
+            <!-- штрихкод в КВД-8 -->
+            <TD COLSPAN=2 align="center">
+              {if: unique_form_id not in (u'', u' ', None)}
+                <div><FONT FACE="Code 3 de 9" SIZE=+6>*{unique_form_id}*</FONT></div>
+                <div><font>{unique_form_id}</font></div>
+              {end:}
+            </TD>
+          </TR>
+
+            <TR>
+              <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Женская консультация №8</B></FONT></TD>
+            </TR>
+            <TR>
+              <TD align="center" COLSPAN=4><FONT SIZE=+1>
+                <B>Направление на {renderResearchType(ref.group_id)} исследования (Работа: {ref.Job_type})<BR>Просьба иметь при себе паспорт.</B></FONT></TD>
+            </TR>
+            <TR>
+              <TD COLSPAN=3 width=70%>
+                {:renderClientInfo()}
+              </TD>
+              <td align="center" width="30%" valign="middle">
+                <table cellpadding="3" cellspacing="0" align="center">
+                  <tr>
+                    <td>
+                      Дата: <FONT SIZE=+2><b>{ref.Ticket_date}</b></FONT><br/>
+                      Время: <FONT SIZE=+2><b>{ref.Ticket_time}</b></FONT><br/>
+                      Номер: <FONT SIZE=+2><b>{ref.Ticket_number}</b></FONT><br/>
+                      Место: <FONT SIZE=-1><b>{ref.Ticket_place}</b></FONT>
+                      <div align="center">
+                        <img src="data:image/png;base64,{createQRImg(ref.actList[0], ref.job_ticket)}" width="100" alt="qr">
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+             </td>
+            </TR>
+          </TABLE>
+
+          {for: act in ref.actList }
+            <div><font size=+1><b>{act.name}</b></font></div>
+          {end:}
+
+        <div><font size=+1>Направил: {ref.actList[0].setPerson}</font></div>
+        {:renderAmbCardNote(ref.group_id)}
+        </div>
+<!-- Это только для 04 -->
+
+    {elif: bruh == True}
+        <div style="font-family: Arial; font-size: 9pt; color: black;page-break-inside: avoid;">
+        <table width="100%" cellpadding="3">
+            <tr>
+                <td valign="middle" width="50%">Направление № {Ticket_number}</td>
+                <td align="right" width="50%"><font style="font-size: 7pt">{currentOrganisation.shortName}</font></td>
+            </tr>
+        </table>
+        <table border="1" cellpadding="2" cellspacing="0" width="100%">
+            <tr>
+                <td width="15%"></td>
+                <td width="60%" align="center" valign="middle" style="padding-top: 15px; padding-bottom: 15px"><font style="font-size: 23pt">Дата: {Ticket_datetime} Номер стекла:</font></td>
+                <td width="25%" align="center" valign="middle">&nbsp;&nbsp;<FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT><br><b>{client.id}</b></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                  {:renderClientInfo()}
+                </td>
+                <td></td>
+            </tr>
+        </table>
+        <br>
+        <br>
+        <div><font style="font-size: 11pt">
+        Дата П.М.:<hr>
+        Диагноз:
+        {for: diag in event.diagnosises}
+            {if: diag.type.name == u"Основной"}
+                {diag.MKB} - {diag.MKB.descr}
+            {elif: diag.type.name == u"Заключительный"}
+                {diag.MKB} - {diag.MKB.descr}
+            {end:}
+        {end:}
+        <br>
+        Согласие на обработку персональных данных и забор жидкостной цитологии<br>
+        ____________________________/</font></div>
+
+        {for: act in ref.actList}
+            <div>{act.code} - {act.name}</div>
+        {end:}
+
+        <br>
+        <br>
+        Направил: {ref.actList[0].setPerson} /________________________/
+        {:renderAmbCardNote(ref.group_id)}
+        </div>
+
+
+<!-- Это только для 6-1 -->
+
+    {elif: a == True}
+        <div style="font-family: Times New Roman; font-size: 10pt; page-break-inside: avoid;">
+        <div align="right"><font style="font-size: 8pt">Приложение<br>к приказу Министрества здравоохранения СССР<br>от 05.09.1988</font></div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="1"><tr><td valign="middle" style="padding-bottom: 10px; padding-top: 10px">Код формы по ОКУД</td>{for: i in range(10)}<td width="30" style="padding-bottom: 10px; padding-top: 10px"></td>{end:}<td></td></tr></table>
+        <font style="font-size: 8pt"><table><tr><td align="center" width="20%">Минздрав РФ<hr>{currentOrganisation.shortName}</td><td width="50%"></td><td width="30%" align="right">Медицинская документация<br><b>Форма № 264/у-88</b><br>Утверждена Минздравом СССР<br>05.09.1988 г. № 590</td></tr></table></font>
+        <div align="center"><b>НАПРАВЛЕНИЕ № {Ticket_number} <br>
+        на исследование образцов крови в ИФА на СПИД<br>
+        в</b></div>
+        <table border="1" cellpadding="0" cellspacing="0" style="width:100.0%;" width="100%">
+            <tbody>
+                <tr>
+                    <td style="width:5.72%;height:16px;">
+                        <p align="center">
+                        N<br>
+                        п/п
+                        </p>
+                    </td>
+                    <td style="width:8.62%;height:16px;">
+                        <p align="center">
+                        Регистра-<br>
+                        ционный<br>
+                        номер
+                        </p>
+                    </td>
+                    <td style="width:24.92%;height:16px;">
+                        <p align="center">
+                        Фамилия, имя,<br>
+                        отчество<br>
+                        (полностью)
+                        </p>
+                    </td>
+                    <td style="width:4.2%;height:16px;">
+                        <p align="center">пол</p>
+                    </td>
+                    <td style="width:8.2%;height:16px;">
+                        <p align="center">
+                        Год<br>
+                        рожд.
+                        </p>
+                    </td>
+                    <td style="width:26.72%;height:16px;">
+                        <p align="center">
+                        Домашний<br>
+                        адрес
+                        </p>
+                    </td>
+                    <td style="width:7.2%;height:16px;">
+                        <p align="center">
+                        Код<br>
+                        контин-<br>
+                        гента
+                        </p>
+                    </td>
+                    <td style="width:5.54%;height:16px;">
+                        <p align="center">
+                        Дата<br>
+                        забора<br>
+                        крови</p>
+                    </td>
+                    <td style="width:8.86%;height:16px;">
+                        <p align="center">Результат<br>
+                        исследо-<br>
+                        вания</p>
+                    </td>
+                </tr>
+                <tr>
+                    {for: index in range(9)}
+                      <td align="center">0{index}</td>
+                    {end:}
+                </tr>
+                <tr>
+                    <td style="width:5.72%;">
+                        <p align="center">1</p>
+                    </td>
+                    <td style="width:8.62%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:24.92%;">
+                        <p align="center">{client.fullName}</p>
+                    </td>
+                    <td style="width:4.2%;">
+                        <p align="center">{client.sex}</p>
+                    </td>
+                    <td style="width:8.2%;">
+                        <p align="center">{client.birthDate}</p>
+                    </td>
+                    <td style="width:26.72%;">
+                        <p align="center">{client.locAddress.street}&nbsp; дом &nbsp;{client.locAddress.number} &nbsp; кор. &nbsp; {client.locAddress.corpus} &nbsp; кв. &nbsp; {client.locAddress.flat}</p>
+                    </td>
+                    <td style="width:7.2%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:5.54%;">
+                        <p align="center">{Ticket_datetime}</p>
+                    </td>
+                    <td style="width:8.86%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+        Должность, фамилия, подпись лица, направляющего материал <b>{currentPerson.post} <br>
+        {currentPerson.longName}</b>
+        <hr>
+        <p>Дата <u>{currentDate},</u></p>
+        </div>
+
+    {end:}
+    {if: index  < len(MAIN_REF_LIST) - 1}
+      <div style="page-break-after: always"></div>
+    {end:}
+{end:}
+
+</body>
+</html>

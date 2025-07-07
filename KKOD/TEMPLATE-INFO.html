@@ -1,0 +1,31 @@
+{:
+def concatProp(name, value):
+  return "{name}:{value}".format(name=name, value=value)
+}
+{:
+info_list = []
+client_id = client.id
+current_person_id = currentPerson.id
+globals_keys = globals().keys()
+
+if u'event' in globals_keys:
+  info_list.append(concatProp('event_id', event.id))
+if u'action' in globals_keys:
+  info_list.append(concatProp('action_id', action.id))
+if u'template_id' in globals_keys:
+  info_list.append(concatProp('template_id', template_id))
+
+info_str = '|'.join(info_list)
+}
+<div id="insider" data-insider-info="client_id:{client_id}|{info_str}"></div>
+
+{:
+write("""
+  <script type="module">
+      const insider = document.getElementById('insider');
+      const stand = window.location.pathname.split('/')[1];
+      const insiderInfo = insider.dataset.insiderInfo
+      insider.prepend(`${stand}|${insiderInfo}`)
+  </script>
+""")
+}

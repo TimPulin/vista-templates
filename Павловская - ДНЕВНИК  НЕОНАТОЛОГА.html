@@ -1,0 +1,203 @@
+
+<!-- ОДИН ДНЕВНИК -->
+<!-- изменил Пулин дата 26.06.2025 задача  -->
+<!--Начальная дата разработки 09.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: dairy_neonatolog -->
+<!--Задача: DEV_TEMP-5487 Шаблоны врача неонатолога Дневники -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Дневники</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.white-wrap {
+  white-space: nowrap;
+}
+.tbl-params {
+    float: left;
+    margin-right: 10px;
+}
+</style>
+''')}
+
+
+{:
+neoExaminationActList = [action]
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  {for: act in neoExaminationActList}
+
+    <section class="clearfix">
+      <div>Дата {act.endDate.toString('dd.MM.yyyy')}</div>
+
+      <table cellpadding="5" cellspacing="0" border="1" class="tbl-params">
+        <tr>
+          <td>
+            <div class="white-wrap">
+              Сутки
+              {if: act[u'Сутки'].value}
+                <b>{act[u'Сутки']}</b>
+              {else:}
+                ______
+              {end:}
+
+            </div>
+            <div class="white-wrap">
+              ЧД
+              {if: act[u'ЧД'].value}
+                <b>{act[u'ЧД']}</b>
+              {else:}
+                ________
+              {end:}
+
+            </div>
+            <div class="white-wrap">
+              ЧСС
+              {if: act[u'ЧСС'].value}
+                <b>{act[u'ЧСС']}</b>
+              {else:}
+                _______
+              {end:}
+            </div>
+            <div class="white-wrap">
+              t&deg;С
+              {if: act[u't']}
+                  {act[u't']}
+              {else:}
+                ________
+              {end:}
+            </div>
+            <div class="white-wrap">
+              StO2
+              {if: act[u'StO2'].value}
+                  act[u'StO2']
+              {else:}
+                _______
+              {end:}
+            </div>
+            <div class="white-wrap">
+              Bi
+              {if: act[u'Bi'].value}
+                  act[u'Bi']
+              {else:}
+                ________
+              {end:}
+              мкмоль/л
+            </div>
+            <div class="white-wrap">
+              Вес
+              {if: act[u'Вес'].value}
+                  act[u'Вес']
+              {else:}
+                _______
+              {end:}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+
+      <div>
+        <b>Состояние ребенка</b>: {act[u'Состояние ребенка']}
+      </div>
+      <div>
+        <b>Вскармливание</b>: {act[u'Вскармливание']}.
+        <b>Крик</b>: {act[u'Крик']}.
+        <b>Большой родничок</b>: {act[u'Большой родничок']}.
+        <b>Мышечный тонус</b>: {act[u'Мышечный тонус']}.
+        <b>Физиологические рефлексы</b>:
+        {: propNameList = [u'л/р', u'хв', u'о', u'ш', u'з', u'п', u'П', u'Г']}
+        {for: index, propName in enumerate(propNameList)}
+          <b>{propName}</b>: {act[propName]}{', ' if index < len(propNameList) - 1 else '.'}
+        {end:}
+        <b>Двигательная активность</b>: {act[u'Двигательная активность']}.
+        <b>Тремор подбородка и конечностей</b>: {act[u'Тремор подбородка и конечностей']}.
+        <b>Спонтанный рефлекс Моро</b>: {act[u'Спонтанный рефлекс Моро']}.
+        <b>Тепло</b>: {act[u'Тепло']}.
+        <b>Кожные покровы</b>: {act[u'Кожные покровы']}.
+        <b>Тургор</b>: {act[u'Тургор']}.
+        <b>Субиктеричность, желтушность</b>: {act[u'Субиктеричность, желтушность']}.
+        <b>Сыпь</b>: {action[u'Сыпь']}.
+      </div>
+      <div>
+        <b>Слизистые</b>: {act[u'Слизистые']}
+      </div>
+
+      <div>
+        <b>Грудная клетка</b>: {act[u'Грудная клетка']}.
+        <b>Дыхание через нос</b>: {act[u'Дыхание через нос']}.
+        Аускультативно
+        <b>дыхание</b>: {act[u'дыхание']};
+        <b>хрипы</b>: {act[u'хрипы']};
+        <b>крепитация</b>: {act[u'крепитация']}
+      </div>
+
+      <div>
+        <b>Тоны сердца</b>: {act[u'Тоны сердца']}
+      </div>
+
+      <div>
+        <b>Живот</b>: {act[u'Живот']}.
+        <b>Печень</b>: {act[u'Печень']}.
+        <b>Селезенка</b>: {act[u'Селезенка']}.
+        <b>Пупочный остаток</b>: {act[u'Пупочный остаток']}.
+        <b>Пупочная ранка</b>: {act[u'Пупочная ранка']}.
+        <b>Стул</b>: {act[u'Стул']}.
+        <b>Мочеиспускание</b>: {act[u'Мочеиспускание']}.
+        <b>Инфузионная терапия</b>: {act[u'Инфузионная терапия']}.
+      </div>
+
+      <div>
+        {act[u'Дополнительно']:n}
+      </div>
+
+      <div align="right">
+        Лечащий врач: {act.person}
+      </div>
+      <hr>
+    </section>
+
+
+
+  {end:}
+</div>
+</body>
+</html>
+
+<div>
+
+</div>

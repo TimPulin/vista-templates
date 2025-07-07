@@ -1,0 +1,16 @@
+.counter {
+    counter-reset: point 0;
+}
+
+.counter__point {
+    counter-increment: point 1;
+    position: relative;
+    padding-left: 25px;
+}
+.counter__point:before {
+    content: counter(point)'.';
+    position: absolute;
+    top: 0;
+    left: 0;
+    text-align: right;
+}

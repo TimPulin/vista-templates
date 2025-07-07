@@ -1,0 +1,185 @@
+<!-- ПРОТОКОЛ ВК ДЕТИ-->
+<!-- изменил Пулин дата 17.06.2025 задача DEV_TEMP-5515 Обновить 2 печатные формы "Протокол ВК" и "Протокол ВК дети" -->
+<html lang="ru">
+<head>
+  <title>Протокол ВК</title>
+{setPageSize('A4')}
+{setOrientation('P')}
+{setTopMargin(20)}
+{setBottomMargin(20)}
+{setRightMargin(15)}
+{setLeftMargin(30)}
+
+  {:
+  write('''
+  <style>
+    .white-wrap {
+        white-space: nowrap;
+    }
+  </style>
+  ''')}
+
+</head>
+
+
+
+
+
+<body style="font-family: Times New Roman; font-size: 14pt;">
+
+{:
+protocol_act_list = filter(lambda x: x.name == u'Протокол ВК', event.actions)
+protocol_act = protocol_act_list[0] if len(protocol_act_list) > 0 else None
+if protocol_act:
+  isEventHasProtocol = True
+else:
+  isEventHasProtocol = False
+}
+
+{if: isEventHasProtocol}
+  {: dial1 = dialogs.dialString(u"Введите номер протокола ВК", "" ) }
+  {: str1 = dial1.getVar() }
+  {: dial2 = dialogs.dialDate(u"Введите дату", "" ) }
+  {: str2 = dial2.getVar() }
+
+  <table>
+    <tr>
+      <td width="1%" align="center">
+        <div class="white-wrap">
+          <font style="font-size: 10pt">
+            <b>СПБ ГБУЗ <br>«Противотуберкулезный диспансер № 12»</b>&nbsp;<br>
+            190103, Санкт-Петербург,</font>&nbsp;<br>
+            <font style="font-size: 12pt"> набережная реки Фонтанки, 152а.&nbsp;<br>
+            тел. 251-73-71, E-mail: ptd12@zdrav.spb.ru&nbsp;
+          </font>
+        </div>
+      </td>
+      <td width="50%"></td>
+    </tr>
+  </table>
+
+
+
+  <div align="center"><big><b>Протокол ВК № {if:str1} {str1} {else:} ______ {end:} от {if:str2} {str2} {else:} _____________________ 20____ г.{end:}</b></big></div>
+  <br>
+
+  {if: protocol_act}
+    {for: prop in protocol_act}
+      {if: prop.value and prop.name not in [u'Председатель комиссии', u'Член комиссии_1', u'Член комиссии_2', u'Член комиссии_3']}
+        <div>
+          <b>{prop.name}:</b> {prop.value}
+        </div>
+      {end:}
+    {end:}
+  {end:}
+
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%">
+        <div class="white-wrap" align="center">
+          Секретарь <br>
+          врачебной комиссии: <br>
+          (дети и подростки):
+        </div>
+      </td>
+      <td align="center">
+        <div>{'_' * 20}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+      <td width="1%" class="white-wrap">
+        <div align="center">Шевырева Е.В.</div>
+        <div align="center"><sup>(расшифровка подписи)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+
+  <!-- note пока оставил - мало ли понадобится -->
+  {if: False}
+
+  <table width=100% border=0 cellpadding=0 cellspacing=0>
+  <tr>
+  <th width="25%"><b>Председатель врачебной комиссии:</b></th>
+  <th width="30%"><b>_________________  /</b></th>
+  <th width="45%">
+  {for: prop in act}
+  {if: prop.name == u"Председатель комиссии"} {if: prop.value != ""}
+  <u>{prop.value}</u>
+  {else:}{end:}{end:}{end:}
+  </th>
+  </tr>
+  <tr>
+  <th width="25%"></th>
+  <th width="30%"><div align="center"><small>(подпись)</small></div></th>
+  <th width="45%"><div align="center"><small>(расшифровка подписи)</small></div></th>
+  </tr> <br>
+  <tr>
+  <th width="25%"><b>Члены врачебной комиссии:</b></th>
+  <th width="30%"><b>_________________  /</b></th>
+  <th width="45%">
+  {for: prop in act}
+  {if: prop.name == u"Член комиссии_1"} {if: prop.value != ""}
+  <u>{prop.value}</u>
+  {else:}{end:}{end:}{end:}
+  </th>
+  </tr>
+  <tr>
+  <th width="25%"></th>
+  <th width="30%"><div align="center"><small>(подпись)</small></div></th>
+  <th width="45%"><div align="center"><small>(расшифровка подписи)</small></div></th>
+  </tr>
+  <tr>
+  <th width="25%"><b></b></th>
+  <th width="30%"><b>_________________  /</b></th>
+  <th width="45%">
+  {for: prop in act}
+  {if: prop.name == u"Член комиссии_2"} {if: prop.value != ""}
+  <u>{prop.value}</u>
+  {else:}{end:}{end:}{end:}</th>
+  </tr>
+  <tr>
+  <th width="25%"></th>
+  <th width="30%"><div align="center"><small>(подпись)</small></div></th>
+  <th width="45%"><div align="center"><small>(расшифровка подписи)</small></div></th>
+  </tr>
+  <tr>
+  <th width="25%"><b></b></th>
+  <th width="30%"><b>_________________  /</b></th>
+  <th width="45%">
+  {for: prop in act}
+  {if: prop.name == u"Член комиссии_3"} {if: prop.value != ""}
+  <u>{prop.value}</u>
+  {else:}{end:}{end:}{end:}</th>
+  </tr>
+  <tr>
+  <th width="25%"></th>
+  <th width="30%"><div align="center"><small>(подпись)</small></div></th>
+  <th width="45%"><div align="center"><small>(расшифровка подписи)</small></div></th>
+  </tr>
+  <tr>
+  <th width="25%"><b>Лечащий врач:</b></th>
+  <th width="30%"><b>_________________  /</b></th>
+  <th width="45%">
+  <u>{event.execPerson}</u>
+  </th>
+  </tr>
+  <tr>
+  <th width="25%"></th>
+  <th width="30%"><div align="center"><small>(подпись)</small></div></th>
+  <th width="45%"><div align="center"><small>(расшифровка подписи)</small></div></th>
+  </tr> <br>
+  <tr>
+  </table>
+
+  {end:} <!-- note подписи членов комиссии-->
+
+{else:}
+  {:dial1 = dialogs.dialMultiList(u"Внимание!", [u"Для заполнения всех необходимых полей необходимо добавить действие Протокол ВК", u"для этого перейдите на вкладку Статус, нажмите кнопку F9 и выберите действие в списке", ], 0) }
+  {: str = dial1.getVar()}
+{end:}
+</body>
+
+
+
+

@@ -1,0 +1,96 @@
+<!-- изменил Пулин дата 26.06.2025 задача  -->
+<!--Начальная дата разработки 25.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: rational_diag_pit -->
+<!--Задача: DEV_TEMP-5545 Обоснование диагноза в ПИТ -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Обоснование клинического диагноза</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+  
+{:
+def format_prop_value(prop_name, title = ''):
+  if action[prop_name].value:
+    return action[prop_name].value
+  else:
+    return u'_' * (75 - len(title))
+}  
+<!-- @formatter:on -->
+</head>
+<body>
+<div class="main">
+
+  {if: action.endDate}
+      {:actDate = action.endDate}
+  {else:}
+    {:actDate = action.begDate}
+  {end:}
+  <div><b>Дата</b> {actDate.toString('dd.MM.yyyy')}</div>
+  <div align="center" class="h1">Обоснование клинического диагноза</div>
+
+  <div>
+    <b>Принимая во внимание данные течения беременности</b>
+    {action[u'Данные течения беременности']}
+  </div>
+
+  <div>
+    <b>течение родов</b>
+    {action[u'Данные течения родов']}
+  </div>
+
+  <div>
+    <b>учитывая данные клинического наблюдения</b>
+    {action[u'Данные клинического наблюдения']}
+  </div>
+
+  <div>
+    <b>лабораторные данные</b>
+    {action[u'Лабораторные данные']}
+  </div>
+
+  <div>
+    <b>Клинический диагноз:</b>
+    {action[u'Клинический диагноз']}
+  </div>
+
+  <br>
+
+  <div align="right">
+    Врач: {'_' * 20} {action.person}
+  </div>
+</div>
+</body>
+</html>

@@ -1,282 +1,395 @@
-<!-- изменил Пулин дата 26.05.2025 задача DEV_TEMP-5447 При выписки анализов на кровь из вены почему то Клинический анализ крови (17 показателей) печатается на отдельном листе -->
-<!-- изменил Волков дата 23.05.2025 задача DEV_TEMP-5444 Изменился шаблон печати анализов у ЖК8 можно вернуть как было -->
-<!-- изменил Пулин дата 23.05.2025 задача DEV_TEMP-5398 В шаблоне на направлений на анализы добавить штрих код -->
+<!-- изменил Пулин дата 23.06.2025 задача DEV_TEMP-5539 В шаблоне анализа крови необходимо изменить референсные значения -->
+<!--Начальная дата разработки 00/00/0000 г.-->
+<!--Версия 0.0.0.2, дата 29.05.2021 г.-->
+<!--Разработка: Солтанов Алекснадр Назимович-->
+<!--Контекст печати: f131pe -->
+<!-- Задача: SUP-17123 -->
+<!-- 35 ддд -->
 
 <html lang="ru">
-
 <head>
-	<title>Направление</title>
-
-{setPageSize('A4')}
-{setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
-
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
-
-
-{:blood = dict()}
-{:flag = 0}
-{:T=0}
-{:F=0}
-{:per = u''}
-{: analCount = 0}
+  <title>Анализ крови и флюшка</title>
+{ setPageSize('A5') }
+{ setOrientation('P') }
+{ setLeftMargin(10.0) }
+{ setTopMargin(2.0) }
+{ setRightMargin(10.0) }
+{ setBottomMargin(2.0) }
 
 {:
-def renderClientInfo():
-    block = """
-        <div>
-            <div>ФИО: <FONT SIZE=+2>{client_fullName}</FONT></div>
-            <br/>
-            <div>Дата рожд. <b>{client_birthDate}</b>,&nbsp;Амб. карта {client_id}</div>
-            <div>Документ: <b>{client_document_serial} {client_document_number}</b> </div>
-            <div>Полис: <b>{client_policy}</b></div>
-            <div>Регистрация: {client_regAddress}</div>
-            <div>Проживание: <b>{client_locAddress}</b></div>
-            <div>Снилс: {client_SNILS}</div>
-        </div>
-    """.format(
-        client_fullName = client.fullName,
-        client_birthDate = client.birthDate,
-        client_id = client.id,
-        client_document_serial = client.document.serial,
-        client_document_number = client.document.number,
-        client_policy = client.policy,
-        client_regAddress = client.regAddress,
-        client_locAddress = client.locAddress,
-        client_SNILS = client.SNILS
-    )
-    write(block)
+write('''
+<style>
+.nowrap {
+    white-space: nowrap;
 }
-
-{:
-def get_form_id(personId, clientId):
-  ref = db.getRecordEx(stmt=u"""
-    call getRefNumber_counterKVD8RefNumber({personId}, {clientId});
-  """.format(personId=personId, clientId=clientId ))
-  if ref:
-    return forceString(ref.value('new_ref_number'))
-  else:
-    return u''
+.big {
+    font-size: 12pt;
 }
-
-
-
-{: count  = 0}
-{for: act in event.actions}
-  	{if: act.class_ == 1 and act.name == u'Глюкоза [моль/объем] через 1 ч после нагрузки глюкозой в сыворотке или плазме крови'}a2
-      	{for: prop in act}
-          	{if: prop.name == u'Номерок'}
-              	{:flag = 1}
-		  			{end:}
-				{end:}
-
-				{if: flag == 1 and act.status != 2}
-						{:key = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
-						{:data_key = act}
-						{:blood.data.setdefault(key4, []).append(data_key)}
-				{end:}
-				{:flag = 0}
-		{end:}
-
-  	{if: act.class_ == 1 and act.name != u'Глюкоза [моль/объем] через 1 ч после нагрузки глюкозой в сыворотке или плазме крови'}a6
-      	{for: prop in act}a7
-          	{if: prop.name == u'Номерок'}
-              	{:flag = 1}
-            {end:}
-        {end:}
-      	{if: flag == 1 and act.status != 2}
-          	{:key = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
-            {:key2 = unicode(act.group.name)}
-            {:key3 = ''}
-            {:key4 = 1}
-
-            {if: act.group.name == u'Группа крови' }
-              {:key3 = unicode(act[u'Номерок'].value)+unicode(act.group.name)}
-            {else:}
-              {:key3 = unicode(act[u'Номерок'].value)}
-            {end:}
-            {:data_key = act}
-              {: count= count + 1 }
-          	{:blood.data.setdefault(count, []).append(data_key)}Б10
-        {end:}
-        {:flag = 0}
-    {end:}
-{end:}
-
-
-
-
-{:f='0'}
-
-<!--	note я хз, что это за фигня, но без нее не работает -->
-{for: act in event.actions}b1
- 	{act.name} {act.flatCode}
-  {if: act.class_ == 1 and (act.name != u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' and act.name != u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно')}b2
-			{act.name} {act.flatCode}<br>
-      {for: prop in act}b3 <br>
-          {if: prop.name == u'Номерок'}b4
-							{:f='1'}
-					{end:}
-			{end:}
-  {end:}
-{end:}
+.small {
+    font-size: 5pt;
+}
+.bordered td {
+    font-size: 7pt;
+    padding-left: 2px;
+    padding-right: 1px;
+}
+.vertical {
+    line-height: 8px;
+}
+</style>
+''')}
 
 </head>
-<body>
 
 
-{: dt = []}
 
-{for: value in blood.data.keys()}
-	{if: blood.data[value][0].group.id not in [d.group.id for d in dt]}
-		{: dt.append(blood.data[value][0])}
-	{end:}
-{end:}
+<body style="font-family: 'MS Shell Dlg 2'; font-size: 8pt;">
 
 
-{if: f=='1'}
-	{for: i in range(len(dt))}
-		{if: i > 0}
-			<hr/>
-		{end:}
-		{:ticket = dt[i]}
-		{: actGroup = ticket.group.name}
-		{if: actGroup in (u'Мазок в КВД №8', u'КВД №8')}
-		    {:unique_form_id = get_form_id(ticket.person.id, client.id)}
-		{else:}
-		    {:unique_form_id = u''}
-		{end:}
 
-<TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt;">
-  <TR>
-    <TD COLSPAN=2>
-      <FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT>
-      <font size="+6">{client.id}</font>
-    </TD>
-    <!-- штрихкод в КВД-8 -->
-    <TD COLSPAN=2 align="right">
-      {if: unique_form_id != u''}
-				<div><FONT FACE="Code 3 de 9" SIZE=+6>*{unique_form_id}*</FONT></div>
-				<div><font>{unique_form_id}</font></div>
+<table cellpadding="0" cellspacing="0" style="font-size: 6pt;" width="100%">
+  <tr>
+      <td width="1%" class="small nowrap" align="center">
+        <div><span style="font-size: 10pt"> кабинет <b> 206, 8:30-11:00</b> </span></div>
+        <div>МИНЗДРАВ РФ</div>
+        <div>Наименование учреждения</div>
+        <div>{currentOrganisation.shortName}</div>
+        <div>Лаборатория</div>
+      </td>
+      <td width="98%"></td>
+      <td width="1%" class="small nowrap">
+        <div>Код формы по ОКУД ________</div>
+        <div>Код формы по ОКПО {currentOrganisation.OKPO}</div>
+        <div>Медицинская документация</div>
+        <div>Форма № 224/у</div>
+        <div>Утверждена Минздравом СССР&nbsp;</div>
+        <div>04.10.80 № 1030</div>
+      </td>
+  </tr>
+</table>
+
+
+
+<center>
+    <div><strong>АНАЛИЗ КРОВИ №</strong></div>
+    <div>«_____»  «___________»  20___г.</div>
+    <div><sup>Дата взятия биоматериала</sup></div>
+</center>
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td colspan="2">
+      <nobr>Ф.И.О. <span class="big"><b>{client.fullName}</b></span></nobr>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      Дата рождения <b>{client.birthDate}</b> &nbsp;&nbsp;&nbsp;
+      <nobr>Возраст <b>{if: client.birthDate and len(client.age.split()) <= 2} {client.age}{end:}</b></nobr>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <nobr>Учреждение <span class="big"><b>{client.work}</b></span></nobr>
+    </td>
+  </tr>
+  <tr>
+    <td width="40%">Участок ____________________</td>
+    <td> Медицинская карта № ____________________</td>
+  </tr>
+</table>
+
+<!-- note анализы -->
+<table cellpadding="0" cellspacing="0" border="1" width="100%" class="bordered">
+  <tr>
+    <td width="30%" rowspan="2" colspan="2"></td>
+    <td align="center" width="15%" rowspan="2">Результат</td>
+    <td align="center" width="55%" colspan="4">Норма</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2" width="30%">
+      <nobr>Единицы СИ</nobr>
+    </td>
+    <td align="center" colspan="2" width="30%">
+      <nobr>Един., подлеж. замене</nobr>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+          <td style="font-size: 7pt">Гемоглобин</td>
+          <td><font size="30%">М<br>Ж</font></td>
+        </tr>
+      </table>
+    <td></td>
+    <td align="center" width="20%">120,0-160,0<br>110,0-150,0</td>
+    <td align="center">г/л</td>
+    <td align="center">12,0-16,0<br>11,0-15,0</td>
+    <td align="center" width="20%">г%</td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        <tr>
+          <td style="font-size: 7pt">Эритроциты</td>
+          <td><font size="30%">М<br>Ж</font></td>
+        </tr>
+      </table>
+    </td>
+    <td></td>
+    <td align="center">4,0-5,5<br>3,5-5,0</td>
+    <td align="center">.10 12/л</td>
+    <td align="center">4,0-5,5<br>3,5-5,0</td>
+    <td class="nowrap" align="center">млн<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">Цветовой показатель</td>
+    <td></td>
+    <td align="center">0,85-1,05</td>
+    <td align="center"></td>
+    <td align="center">0,85-1,05</td>
+    <td align="center"></td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      Среднее содержание<br>гемоглобина в 1 эритроците
+    </td>
+    <td></td>
+    <td align="center">30-35</td>
+    <td align="center">пг</td>
+    <td align="center">30-35</td>
+    <td align="center">пг</td>
+  </tr>
+
+  <tr>
+    <td colspan="2">Ретикулоциты</td>
+    <td></td>
+    <td align="center">2-10</td>
+    <td align="center">‰</td>
+    <td align="center">2-10</td>
+    <td align="center"><‰</td>
+  </tr>
+
+  <tr>
+    <td colspan="2">Тромбоциты</td>
+    <td></td>
+    <td align="center">100,0-300,0</td>
+    <td align="center">.10 9/л</td>
+    <td align="center">100,0-300,0&nbsp;</td>
+    <td class="nowrap" align="center">тыс<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+
+  <tr>
+    <td colspan="2">Лейкоциты</td>
+    <td></td>
+    <td align="center">4,0-10,0</td>
+    <td align="center">.10 9/л</td>
+    <td align="center">4,0-10,0</td>
+    <td class="nowrap" align="center">тыс<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+
+  <tr>
+    <td colspan="2">Метгемоглобин</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+
+  <tr>
+    <td colspan="2">Карбоксигемоглобин</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+
+  <tr>
+    <td colspan="2">ВСК</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+
+
+  <tr>
+    <td valign="middle" align="center" rowspan="4">
+      <div class="vertical">Н</div>
+      <div class="vertical">е</div>
+      <div class="vertical">й</div>
+      <div class="vertical">т</div>
+      <div class="vertical">р</div>
+      <div class="vertical">о</div>
+      <div class="vertical">ф</div>
+      <div class="vertical">и</div>
+      <div class="vertical">л</div>
+      <div class="vertical">ы</div>
+    </td>
+    <td width="25%">Миелоциты</td>
+    <td align="center"></td>
+    <td align="center">.<br>.</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">.<br>.</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td>Метамиелоциты</td>
+    <td align="center"></td>
+    <td align="center">.<br>.</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">.<br>.</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td>Палочкоядерные</td>
+    <td align="center"></td>
+    <td align="center">1-6<br>0,040-0,300</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">1-6<br>40-300</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td>Сегментоядерные&nbsp;</td>
+    <td align="center"></td>
+    <td align="center">50-70<br>2,000-7,000</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">50-70<br>2000-7000</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">Эозинофилы</td>
+    <td align="center"></td>
+    <td align="center">0,5-5<br>0,020-0,300</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">0,5-5<br>20-300</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">Базофилы</td>
+    <td align="center"></td>
+    <td align="center">0-1<br>0-0,065</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">0-1<br>0-65</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">Лимфоциты</td>
+    <td align="center"></td>
+    <td align="center">20-40<br>0,800-4,000</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">20-40<br>800-4000</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">Моноциты</td>
+    <td align="center"></td>
+    <td align="center">3-15<br>0,100-1,500</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">3-15<br>100-1500</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      Плазматические клетки
+    </td>
+    <td align="center"></td>
+    <td align="center">.<br>.</td>
+    <td align="center">%<br>.10 9./л</td>
+    <td align="center">.<br>.</td>
+    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
+        <tr>
+          <td>
+            Скорость (реакция)<br>оседания эритроцитов
+          </td>
+          <td><font size="30%">М<br>Ж</font></td>
+        </tr>
+      </table>
+    </td>
+    <td align="center"></td>
+    <td align="center">2-10<br>2-15
+    </td>
+    <td align="center">мм/ч
+    </td>
+    <td align="center">2-10<br>2-15
+    </td>
+    <td align="center">мм/ч
+    </td>
+  </tr>
+</table>
+
+
+<!-- Флюшка -->
+
+<div style="page-break-after:always;"></div>
+<TABLE BORDER=0 WIDTH="100%" cellpadding="0" cellspacing="0" STYLE="font-family: Arial; font-size: 10pt; color: black" BORDER=0>
+  <br><br>
+  <tr>
+    <td align=center> АO Балтийский завод</td>
+  </tr>
+  <tr>
+    <td align=center> Медико-санитарная часть №3</td>
+  </tr>
+  <tr>
+    <td align=center><big><b> НАПРАВЛЕНИЕ В ФЛЮОРОКАБИНЕТ</b></big></td>
+  </tr>
+  <tr>
+    <td align=center><b><span class="big">
+      {:office = ''}
+      {for: action in event.actions}
+        {if: action.code in (u'14023')}
+          {:office = action._action.getType().office}
+        {end:}
       {end:}
-    </TD>
-  </TR>
-  <TR>
-    <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Женская консультация №8</B></FONT></TD>
-  </TR>
-  <TR>
-    <TD align="center" COLSPAN=4><FONT SIZE=+1>
-      <B>Направление на лабораторные исследования (работа: {unicode(ticket[u'Номерок'].value).split(', ')[0]})<BR>
-        Просьба иметь при себе паспорт.</B>
-    </FONT>
-    </TD>
-  </TR>
-  <TR>
-    <TD COLSPAN=3>
-			{:renderClientInfo()}
-    </TD>
-    <td align="center" width="50%"><p><br/>
-    Дата: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"dd.MM.yyyy"))}</b></FONT><br/>
-    Номер: <FONT SIZE=+2><b>{ticket[u"Номерок"].value.idx+1}</b></FONT><br/>
-    {if: unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ мочи' and unicode(ticket[u'Номерок'].value).split(', ')[0] != u'Анализ кала'}
-      Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
-    {end:}
-    Место: <FONT SIZE=+1><b>{unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[1]}, {unicode(ticket[u'Номерок'].value).split(', ')[2].split('/')[2]}</b></FONT>
-    </p></td>
-  </TR>
-</TABLE>
+      Кабинет
+      {if: office}
+        {office}
+      {else:}
+        Кабинет 104 ,  9:30 - 11:00
+      {end:} </span></b>
+    </td>
+  </tr>
+  <tr>
+    <td> ФИО <span class="big"><b><i>{client.fullName}</i></b></span>
+      <hr>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      Дата рождения <i> {client.birthDate} </i>
+      Возраст {if: client.birthDate and len(client.age.split()) <= 2} {client.age}{else:}{end:}
+      <hr>
+    </td>
+  </tr>
+  <tr>
+    <td> Адрес регистрации <i> {client.regAddress} </i>
+      <hr>
+    </td>
+  </tr>
+  <tr>
+    <td> Адрес проживания <i> {client.locAddress} </i>
+      <hr>
+    </td>
+  </tr>
+  <tr>
+    <td> Телефон <i> {client.phones}</i>
+      <hr>
+    </td>
+  </tr>
+  <tr>
+    <td> Место работы <span class="big"><b><i>{client.work.shortName} </i></b></span>
+      <hr>
+    </td>
+  </tr>
 
-
-{:gr = ''}
-
-	{if: ticket.name not in (u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа', u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно')}
-		{if: ticket.group.name != gr}
-			{:gr = ticket.group.name}
-			{:per=ticket.person}
-		{end:}
-		{for: ac in event.actions}
-			{if: ac.group.id == ticket.group.id}
-				<div align="center"><font size=+1><b>{ac.name}</b></font></div>
-			{end:}
-		{end:}
-
-	{end:}
-
-
-
-<p><font size=+1>Направил {per}</font></p>
-{: analCount = analCount + 1}
-
-
-
-
-{end:}
-{end:}
-
-
-{for: act in event.actions}
-  {if: act.name == u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' or act.name == u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно'}
-    {:F=1}
-  {end:}
-{end:}
-
-{if: F==1}
-    <p style="page-break-after: always"></p>
-    {for: i, value in enumerate(blood.data.keys())}
-      {if: i > 0}
-    <br/><hr/><br/>
-      {end:}
-    {:item = blood.data[value]}
-    {:ticket = item[0]}
-    {: actGroup = ticket.group.name}
-
-
-    <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt;">
-      <TR>
-        <TD   COLSPAN=4>&nbsp;&nbsp;<FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT></TD>
-      </TR>
-      <TR>
-        <TD align="center" COLSPAN=4><B>СПб ГУЗ "КОЖНО-ВЕНЕРОЛОГИЧЕСКИЙ ДИСПАНСЕР №2" Серологическая лаборатория</B></TD>
-      </TR>
-      <TR>
-        <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Направление на лабораторные исследования (работа: {unicode(ticket[u'Номерок'].value).split(', ')[0]})<BR>Просьба иметь при себе паспорт.</B></FONT></TD>
-      </TR>
-      <TR>
-        <TD COLSPAN=3>
-          {:renderClientInfo()}
-        </TD>
-        <td align="center" width="50%"><p><br/>
-        Дата: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"dd.MM.yyyy"))}</b></FONT><br/>
-        Номер: <FONT SIZE=+2><b>{ticket[u"Номерок"].value.idx+1}</b></FONT><br/>
-        Время: <FONT SIZE=+2><b>{unicode(ticket[u"Номерок"].value.datetime.toString(u"hh:mm"))}</b></FONT><br/>
-        Место: <FONT SIZE=+1><b>{unicode(ticket[u'Номерок'].value).split(', ')[2]}</b></FONT>
-        </p></td>
-      </TR>
-    </TABLE>
-      <FONT SIZE=-1>
-     <table cellpadding=0 cellspacing=0 width=100% border="0">
-        <tr><td align="center"><b>факторы безопастности</b></td></tr>
-      {for: act in event.actions}
-
-  {if: act.name == u'Антитела IgG+IgM к Treponema pallidum [наличие] в сыворотке методом иммуноферментного анализа' or act.name == u'Определение антител к бледной трепонеме (Treponema Pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественно'}{:per=act.person}
-         <tr><td>{act.name}</td> </tr>
-         {end:}{end:}
-    </table>
-    </FONT>
-    <p>Направил {per}</p>
-    <br>
-    {end:}
-
-
-{end:}
-
-
+</table>
 </body>
 </html>

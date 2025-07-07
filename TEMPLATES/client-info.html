@@ -4,6 +4,9 @@
 <br>
 Гражданство: <b>{client.citizenship}</b> <br>
 
+пол <b>{client.sex}</b>
+
+<b>{1 if client.sex == u'М' else 2}</b>
 
 Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
 <div>
@@ -45,9 +48,26 @@
     № <b>{client.policy.number}</b>
   </div>
 
+<div>
+  дата выдачи полиса обязательного медицинского страхования:
+  число <b>{client.begDate.date.toString('dd')}</b>
+  месяц <b>{forceString(month[client.begDate.month])}</b>
+  год <b>{forceString(client.begDate.year)} г.</b>
+</div>
 
 <div>
   данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
   {client.compulsoryPolicy.insurer}
 </div>
 <div> СНИЛС: <b>{client.SNILS}</b></div>
+
+<div>
+  Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
+  серия <b>{client.document.seral}</b>
+  № <b>{client.document.number}</b>
+</div>
+
+<div>
+  Номер телефона: <b>{client.primaryPhones}</b>
+  Адрес электронной почты: <b>{client.email if client.email != '' else '_' * 15}</b>
+</div>

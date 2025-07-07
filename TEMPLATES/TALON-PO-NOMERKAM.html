@@ -1,0 +1,62 @@
+{:
+def makePostfix(act, prefix):
+  postfix = u''
+  if u'Проба на толерантность к глюкозе' in act.name:
+    postfix = forceString(act.id)
+  return postfix
+}
+
+{:
+def createIdForGrouping(job_ticket, postfix):
+  return job_ticket.jobType.code + postfix
+}
+
+{:
+class ReferralAnal:
+  def __init__(self, act, job_ticket, postfix):
+    self.Ticket_datetime = job_ticket.datetime.toString(u"dd.MM.yyyy, hh:mm")
+    self.Ticket_date = job_ticket.datetime.toString(u"dd.MM.yyyy")
+    self.Ticket_time = job_ticket.datetime.toString(u"hh:mm")
+    self.Ticket_number = job_ticket.idx+1
+    self.Ticket_id = job_ticket.id
+    self.Ticket_place_full = job_ticket.orgStructure
+    self.Ticket_place =  job_ticket.orgStructure.code
+    self.Job_type = job_ticket.jobType
+
+    self.group_id = act.group.id
+
+    self.actList = []
+    self.job_ticket = job_ticket
+
+    self.idForGrouping = createIdForGrouping(self.job_ticket, postfix)
+
+    self.addAct(act)
+
+  def addAct(self, act):
+    self.actList.append(act)
+
+
+def createNewReferralAnal(refList, act, prop, postfix):
+  newInstance = ReferralAnal(act, prop.value, postfix)
+  refList.append(newInstance)
+}
+
+<!--  note перебор actions в event -->
+{:
+MAIN_REF_LIST = []
+
+for act in event.actions:
+  if act.class_ == 1:
+    for prop in act:
+      if prop.typeName == u'JobTicket' and prop.value:
+        postfix = makePostfix(act, u'')
+        idForGrouping = createIdForGrouping(prop.value, postfix)
+
+        filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_REF_LIST)
+        filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+        if filteredRef:
+          filteredRefList[0].addAct(act)
+        else:
+          createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
+
+}

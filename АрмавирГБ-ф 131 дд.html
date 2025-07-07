@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 25.06.2025 задача  -->
 <!--Начальная дата разработки 18.04.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати:  -->
@@ -302,6 +303,30 @@ else:
 
   <br>
 
+{:
+arterialPressRef = db.getRecordEx(stmt=u"""
+  select apsS.value as sisPress, apsD.value as diasPress
+  from event e
+  join action a on e.id = a.event_id and e.deleted = 0 and a.deleted = 0 and a.actionType_id = 56155 and e.client_id = {clientId}
+      -- систолическое давление
+  join actionproperty apS on a.id = apS.action_id and apS.type_id = 56713
+  join actionproperty_string apsS on apS.id = apsS.id
+      -- диастолическое давление
+  join actionproperty apD on a.id = apD.action_id and apD.type_id = 56718
+  left join actionproperty_string apsD on apD.id = apsD.id
+  order by e.id desc
+  limit 1;
+""".format(clientId=client.id))
+
+if arterialPressRef:
+  sisPress = forceString(arterialPressRef.value('sisPress'))
+  diasPress = forceString(arterialPressRef.value('diasPress'))
+else:
+  sisPress = '______'
+  diasPress = '______'
+}
+
+
   <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl-result">
     <tr>
       <td width="33%">
@@ -317,7 +342,9 @@ else:
       <td>
         артериальное давление на <br>
         прием гипотензивных лекарственных <br>
-        периферических артериях _______ мм рт. ст.
+        периферических артериях
+        <b>{sisPress} / {diasPress}</b>
+        мм рт. ст.
       </td>
       <td>
         <div>прием гипотензивных лекарственных <br> препаратов:</div>
@@ -372,7 +399,16 @@ else:
   </div>
   
   <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl-inspection">
+
     <thead>
+      <tr>
+        <td width="1%"></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
       <tr>
         <th width="95%" rowspan="2"  colspan="2">
           Прием (осмотр, консультация), исследование <br>

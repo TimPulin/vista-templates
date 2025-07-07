@@ -1,0 +1,126 @@
+<!--Начальная дата разработки 24.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: diary_watching_pit -->
+<!--Задача: DEV_TEMP-5544 Дневник наблюдения в ПИТ -->
+<DIV>
+
+</DIV>
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ДНЕВНИК НАБЛЮДЕНИЯ в ПИТ</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.tbl-params {
+    float: left;
+    margin-right: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def format_prop_value(prop_name):
+  if action[prop_name].value:
+    return action[prop_name].value
+  else:
+    return u'___________'
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ДНЕВНИК НАБЛЮДЕНИЯ в ПИТ</div>
+
+<div>
+  Ребенок в <b>{format_prop_value(u'Размещение ребенка')}</b>,
+  t обогрева <b>{format_prop_value(u't обогрева')}</b> <sup>0</sup>C,
+  <b>{action[u'Подача O2']}</b>
+</div>  
+  
+<table cellpadding="3" cellspacing="0" border="1" class="tbl-params">
+  <tr>
+    <td>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        {: propList = [[u'ЧД', u'в мин'], [u'Ps', u'в мин'], [u't тела', u'С'],  [u'SpO2', u'%'], [u'Вес', '']]}
+        {for: propName, unit in propList}
+          <tr>
+            <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+            <td><b>{format_prop_value(propName)}</b></td>
+            <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+          </tr>
+        {end:}
+
+        <tr><td colspan="">&nbsp;</td></tr>
+        <tr>
+          <td colspan="3">Введено:</td>
+        </tr>
+        {: propList = [[u'в/в', u'мл'], [u'per os', u'мл']]}
+        {for: propName, unit in propList}
+          <tr>
+            <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+            <td><b>{format_prop_value(propName)}</b></td>
+            <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+          </tr>
+        {end:}
+
+        <tr><td colspan="">&nbsp;</td></tr>
+        <tr>
+          <td colspan="3">Выделено:</td>
+        </tr>
+        {: propList = [[u'Моча', u'мл'], [u'Диурез', u'мл/кг/ч']]}
+        {for: propName, unit in propList}
+          <tr>
+            <td width="1%" class="white-wrap">{propName}&nbsp;</td>
+            <td><b>{format_prop_value(propName)}</b></td>
+            <td width="1%" class="white-wrap">{unit}&nbsp;</td>
+          </tr>
+        {end:}
+      </table>
+    </td>
+  </tr>
+</table>
+
+{: basePropNameList = [u'Общее состояние', u'Неврологический статус', u'Энтеральное кормление', u'Кожные покровы', u'Дыхательные расстройства', u'Гемодинамика', u'Живот', u'Печень', u'Мочеиспускание', u'Стул', u'Катетер', u'Дополнительные сведения']}
+{for: prop in action}
+  {if: prop.name in basePropNameList and prop.value}
+     <div><b>{prop.name}</b>: {prop.value}</div>
+  {end:}
+{end:}
+
+<div align="right">
+  Врач: {'_' * 20} {action.person}
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!-- изменил Пулин дата 28.05.2025 задача  -->
+<!-- изменил Пулин дата 28.05.2025 задача
+ скопировал из детства, добавил штрихкод для отправки в КВД8
+ -->
+<!-- изменил Пулин дата 21.05.2024 задача DEV_TEMP-3977 Довавить QR в направление на исследование -->
+<!-- изменил Пулин дата 26.03.2024 задача DEV_TEMP-3744 В печатную форму на инструментальные исследования необходимо внести изменения -->
+<!--Начальная дата разработки  г.-->
+<!--Версия 0.0.0.1, дата  г.-->
+<!--Разработка: Маракулин Максим Андреевич -->
+<!--Контекст печати: nomerok  -->
+<!--Задача:   -->
+<!--Изменил в DEV_TEMP-3044 Нет печати лабораторных исследований.   -->
+
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+    <title>Номерок</title>
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(10)}
+{: setBottomMargin(5)}
+{: setRightMargin(10)}
+{: setLeftMargin(20)}
+{: from library.Utils import forceString }
+
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{: import base64 }
+{: import qrcode}
+{: from io import BytesIO}
+
+
+{:
+def renderClientInfo():
+    block = """
+        <div>
+            <div>ФИО: <FONT SIZE=+2>{client_fullName}</FONT></div>
+            <br/>
+            <div>Дата рожд. <b>{client_birthDate}</b>,&nbsp;Амб. карта {client_id}</div>
+            <div>Документ: <b>{client_document_serial} {client_document_number}</b> </div>
+            <div>Полис: <b>{client_policy}</b></div>
+            <div>Регистрация: {client_regAddress}</div>
+            <div>Проживание: <b>{client_locAddress}</b></div>
+            <div>Снилс: {client_SNILS}</div>
+        </div>
+    """.format(
+        client_fullName = client.fullName,
+        client_birthDate = client.birthDate,
+        client_id = client.id,
+        client_document_serial = client.document.serial,
+        client_document_number = client.document.number,
+        client_policy = client.policy,
+        client_regAddress = client.regAddress,
+        client_locAddress = client.locAddress,
+        client_SNILS = client.SNILS
+    )
+    write(block)
+}
+
+{:
+def get_form_id(personId, clientId):
+  ref = db.getRecordEx(stmt=u"""
+    call getRefNumber_counterKVD8RefNumber({personId}, {clientId});
+  """.format(personId=personId, clientId=clientId ))
+  if ref:
+    return forceString(ref.value('new_ref_number'))
+  else:
+    return u''
+}
+
+{:
+instrumentalGroupIdList = [4500722, 4500723, 4500724, 4500725, 4500726, 4500727, 4500957, 4501150, 4501155, 4501156]
+def renderAmbCardNote(groupId):
+  if groupId in instrumentalGroupIdList:
+    write("""<p class="medium"><b>При себе иметь амбулаторную карту</b></p>""")
+
+def renderResearchType(groupId):
+  if groupId in instrumentalGroupIdList:
+    return 'инструментальные'
+  else:
+   return 'лабораторные'
+}
+
+{:
+def createQRImg(act, prop):
+  SEPARATOR_GOR = forceString('_')
+  SEPARATOR_VERT = forceString('|')
+
+  personId =  forceString(act.person.id)
+  visitDate = prop.value.datetime.toString(u"dd.MM.yyyy")
+  visitDateFormatted = prop.value.datetime.toString(u"yyyy_MM_dd")
+  visitTime = prop.value.datetime.toString(u"hh:mm")
+  visitTimeFormatted = prop.value.datetime.toString(u"hh:mm:ss").replace(':', '%3a')
+  office = prop.value.orgStructure.code.split(' ', -1)
+  if office:
+    office = office[-1]
+  else:
+    office = ''
+  DPO = act.person.orgStructure.fullName.split('/')
+  if len(DPO) > 1:
+    DPO = DPO[1]
+  else:
+    DPO = ''
+  DPO_number = DPO.split()
+  if DPO_number:
+    DPO_number = DPO_number[-1].strip('№')
+  else:
+    DPO_number = ''
+
+  orgId = ''
+  if DPO_number == "9":
+    orgId = 234
+  elif DPO_number == "22":
+    orgId = 561
+  elif DPO_number == "34":
+    orgId = 235
+  elif DPO_number == "66":
+    orgId = 236
+  elif DPO_number == "68":
+    orgId = 233
+  elif DPO_number == "69":
+    orgId = 237
+  elif u'Офис Врача ДПО 66 Бокситогорская' in  DPO:
+    orgId = 1203
+  elif u'Офис Врача ДПО 22 Пейзажная' in DPO:
+    orgId = 1202
+
+  orgId = forceString(orgId)
+  codeString = personId + SEPARATOR_GOR + visitDateFormatted + SEPARATOR_GOR + visitTimeFormatted + SEPARATOR_GOR + office + SEPARATOR_VERT + orgId + SEPARATOR_VERT + visitDate + SEPARATOR_VERT + visitTime
+  img = qrcode.make(codeString)
+  buffered = BytesIO()
+  img.save(buffered, format="PNG")
+  img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+  return img_str
+}
+
+</head>
+
+{: jobNow = None }
+{: nomerok = []}
+{for: act in event.actions}
+    {if: act.class_ == 1}
+        {for: prop in act}
+            {if: prop.name.lower() == u"номерок" and prop.value}
+                {if: prop.value.jobType.code == '236'}
+                    {if: (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) not in nomerok}
+                        {: nomerok.append(str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                    {end:}
+                {end:}
+                {if: (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) not in nomerok}
+                    {: nomerok.append(str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+{end:}
+
+{: i = 0}
+{: jobFlag = 0}
+{for: n in nomerok}
+    {:i += 1}
+    {: flag = True}
+    {for: act in event.actions}
+        {for: prop in act}
+            {if: prop.name.lower() == u"номерок"}
+                {if: prop.value}
+                    {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0])) }
+                        {:qrImg = createQRImg(act, prop)}
+                        {:ticket = act}
+                        {:ticketGroupId = act.group.id}
+                        {:Ticket_datetime = prop.value.datetime.toString(u"dd.MM.yyyy, hh:mm")}
+                        {:Ticket_number = prop.value.idx+1}
+                        {:Ticket_time = prop.value.datetime.toString(u"hh:mm")}
+                        {:Ticket_place_full = unicode(prop.value).split(', ')[2].split('/')}
+                        {:Ticket_place =  unicode(prop.value).split('/')[-1]}
+                        {:Act = unicode(prop.value).split(', ')[0]}
+                        {if: jobFlag == 0}
+                            {:jobLast = prop.value.jobType.code}
+                            {:jobFlag = 1}
+                        {elif: jobFlag == 1}
+                            {:jobNow = prop.value.jobType.code}
+                        {end:}
+                        {if: prop.value.jobType.code == '04'}
+                            {:bruh = True}
+                        {else:}
+                            {:bruh = False}
+                        {end:}
+                        {if: prop.value.jobType.code == '236'}
+                            {:kek = True}
+                            {: kekName = act.name}
+                        {else:}
+                            {:kek = False}
+                        {end:}
+                        {if: prop.value.jobType.code == '6-1'}
+                            {:a = True}
+                            {: aName = act.name}
+                        {else:}
+                            {:a = False}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+    {end:}
+
+    {if: kek == True and nomerok.index(n) != 0}
+        <div style="page-break-after: always"></div>
+    {elif: jobLast and jobNow}
+        {if: jobLast != jobNow}
+            <div style="page-break-after: always"></div>
+            {:jobLast = jobNow}
+        {end:}
+    {end:}
+<!-- это для всех тип работ кроме 6-1 и 04 -->
+    {if: bruh == False and a == False}
+      {if: ticketGroupId in (4500732, 4500760)}
+          {:unique_form_id = get_form_id(ticket.person.id, client.id)}
+      {else:}
+          {:unique_form_id = u''}
+      {end:}
+
+        <div style="page-break-inside: avoid;">
+          <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Arial; font-size: 9pt; color: black">
+          <TR>
+            <TD COLSPAN=2>
+              <FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT>
+              <font size="+6">{client.id}</font>
+            </TD>
+            <!-- штрихкод в КВД-8 -->
+            <TD COLSPAN=2 align="right">
+              {if: unique_form_id not in (u'', u' ', None)}
+                <div><FONT FACE="Code 3 de 9" SIZE=+6>*{unique_form_id}*</FONT></div>
+                <div><font>{unique_form_id}</font></div>
+              {end:}
+            </TD>
+          </TR>
+
+            <TR>
+              <TD align="center" COLSPAN=4><FONT SIZE=+1><B>Женская консультация №8</B></FONT></TD>
+            </TR>
+            <TR>
+              <TD align="center" COLSPAN=4><FONT SIZE=+1>
+                <B>Направление на {renderResearchType(ticketGroupId)} исследования (Работа: {Act})<BR>Просьба иметь при себе паспорт.</B></FONT></TD>
+            </TR>
+            <TR>
+              <TD COLSPAN=3 width=70%>
+                {:renderClientInfo()}
+              </TD>
+              <td align="center" width="30%" valign="middle">
+                <table cellpadding="3" cellspacing="0" align="center">
+                  <tr>
+                    <td>
+                      Дата: <FONT SIZE=+2><b>{Ticket_datetime}</b></FONT><br/>
+                      Номер: <FONT SIZE=+2><b>{Ticket_number}</b></FONT><br/>
+                      Время: <FONT SIZE=+2><b>{Ticket_time}</b></FONT><br/>
+                      Место: <FONT SIZE=-1><b>{Ticket_place}</b></FONT>
+                      <div align="center">
+                        <img src="data:image/png;base64,{qrImg}" width="100" alt="qr">
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+             </td>
+            </TR>
+          </TABLE>
+
+
+        {if: kek == True}
+            {: kek = False}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: prop.name.lower() == u"номерок" and prop.value}
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                          <div><font size=+1><b>{act.name}</b></font></div>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {else:}
+            {for: act in event.actions}
+                {for: prop in act}
+                    {if: prop.name.lower() == u"номерок" and prop.value}
+                        {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                          <div><font size=+1><b>{act.name}</b></font></div>
+                        {else:}
+                            {if: not prop.value and flag == False}
+                              <div><font size=+1><b>{act.name}</b></font></div>
+                            {end:}
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+
+
+        <div><font size=+1>Направил: {act.setPerson}</font></div>
+        {:renderAmbCardNote(ticketGroupId)}
+        </div>
+<!-- Это только для 04 -->
+
+    {elif: bruh == True}
+        <div style="font-family: Arial; font-size: 9pt; color: black;page-break-inside: avoid;">
+        <table width="100%" cellpadding="3">
+            <tr>
+                <td valign="middle" width="50%">Направление № {Ticket_number}</td>
+                <td align="right" width="50%"><font style="font-size: 7pt">{currentOrganisation.shortName}</font></td>
+            </tr>
+        </table>
+        <table border="1" cellpadding="2" cellspacing="0" width="100%">
+            <tr>
+                <td width="15%"></td>
+                <td width="60%" align="center" valign="middle" style="padding-top: 15px; padding-bottom: 15px"><font style="font-size: 23pt">Дата: {Ticket_datetime} Номер стекла:</font></td>
+                <td width="25%" align="center" valign="middle">&nbsp;&nbsp;<FONT FACE="Code 3 de 9" SIZE=+6>*{client.id}*</FONT><br><b>{client.id}</b></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <font style="font-size: 11pt">{client.fullName.upper()}</font><br>
+                    Дата рожд. <font style="font-size: 18pt">{client.birthDate}</font> № амб. карты <font style="font-size: 11pt">{client.id}</font><br>
+                    Паспорт гражданина РФ: {client.document.serial} {client.document.number} СНИЛС: {client.SNILS} Пол <font style="font-size: 11pt"><b>{if: client.sex == u'М'}мужской{end:}{if: client.sex == u'Ж'}женский{end:}</b></font><br>
+                    Полис: {client.policy} Телефон: {client.contact.contact}<br>
+                    Регистрация: {client.regAddress}<br>
+                    Проживание: {client.locAddress}
+                </td>
+                <td></td>
+            </tr>
+        </table>
+        <br>
+        <br>
+        <div><font style="font-size: 11pt">
+        Дата П.М.:<hr>
+        Диагноз:
+        {for: diag in event.diagnosises}
+            {if: diag.type.name == u"Основной"}
+                {diag.MKB} - {diag.MKB.descr}
+            {elif: diag.type.name == u"Заключительный"}
+                {diag.MKB} - {diag.MKB.descr}
+            {end:}
+        {end:}
+        <br>
+        Согласие на обработку персональных данных и забор жидкостной цитологии<br>
+        ____________________________/</font></div>
+        <table border="1" cellspacing="0" cellpadding="0" width="100%" style="font-size: 11pt">
+        {for: act in event.actions}
+            {for: prop in act}
+                {if: prop.name.lower() == u"номерок" and prop.value and bruh == True}
+                    {if: n == (str(prop.value.idx + 1) + (unicode(prop.value).split(', ')[0]))}
+                        <tr>
+                            <td>{act.code} - {act.name}</td>
+                        </tr>
+                    {else:}
+                        {if: not prop.value and flag == False}
+                            <tr>
+                                <td>{act.code} - {act.name}</td>
+                            </tr>
+                        {end:}
+                    {end:}
+                {end:}
+            {end:}
+        {end:}
+        </table>
+        <br>
+        <br>
+        Направил: {act.setPerson} /________________________/
+        {:renderAmbCardNote(ticketGroupId)}
+        </div>
+<!-- Это только для 6-1 -->
+
+    {elif: a == True}
+        <div style="font-family: Times New Roman; font-size: 10pt; color: black;page-break-inside: avoid;">
+        <div align="right"><font style="font-size: 8pt">Приложение<br>к приказу Министрества здравоохранения СССР<br>от 05.09.1988</font></div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="1"><tr><td valign="middle" style="padding-bottom: 10px; padding-top: 10px">Код формы по ОКУД</td>{for: i in range(10)}<td width="30" style="padding-bottom: 10px; padding-top: 10px"></td>{end:}<td></td></tr></table>
+        <font style="font-size: 8pt"><table><tr><td align="center" width="20%">Минздрав РФ<hr>{currentOrganisation.shortName}</td><td width="50%"></td><td width="30%" align="right">Медицинская документация<br><b>Форма № 264/у-88</b><br>Утверждена Минздравом СССР<br>05.09.1988 г. № 590</td></tr></table></font>
+        <div align="center"><b>НАПРАВЛЕНИЕ № {Ticket_number} <br>
+        на исследование образцов крови в ИФА на СПИД<br>
+        в</b></div>
+        <table border="1" cellpadding="0" cellspacing="0" style="width:100.0%;" width="100%">
+            <tbody>
+                <tr>
+                    <td style="width:5.72%;height:16px;">
+                        <p align="center">
+                        N<br>
+                        п/п
+                        </p>
+                    </td>
+                    <td style="width:8.62%;height:16px;">
+                        <p align="center">
+                        Регистра-<br>
+                        ционный<br>
+                        номер
+                        </p>
+                    </td>
+                    <td style="width:24.92%;height:16px;">
+                        <p align="center">
+                        Фамилия, имя,<br>
+                        отчество<br>
+                        (полностью)
+                        </p>
+                    </td>
+                    <td style="width:4.2%;height:16px;">
+                        <p align="center">пол</p>
+                    </td>
+                    <td style="width:8.2%;height:16px;">
+                        <p align="center">
+                        Год<br>
+                        рожд.
+                        </p>
+                    </td>
+                    <td style="width:26.72%;height:16px;">
+                        <p align="center">
+                        Домашний<br>
+                        адрес
+                        </p>
+                    </td>
+                    <td style="width:7.2%;height:16px;">
+                        <p align="center">
+                        Код<br>
+                        контин-<br>
+                        гента
+                        </p>
+                    </td>
+                    <td style="width:5.54%;height:16px;">
+                        <p align="center">
+                        Дата<br>
+                        забора<br>
+                        крови</p>
+                    </td>
+                    <td style="width:8.86%;height:16px;">
+                        <p align="center">Результат<br>
+                        исследо-<br>
+                        вания</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width:5.72%;">
+                        <p align="center">01</p>
+                    </td>
+                    <td style="width:8.62%;">
+                        <p align="center">02</p>
+                    </td>
+                    <td style="width:24.92%;">
+                        <p align="center">03</p>
+                    </td>
+                    <td style="width:4.2%;">
+                        <p align="center">04</p>
+                    </td>
+                    <td style="width:8.2%;">
+                        <p align="center">05</p>
+                    </td>
+                    <td style="width:26.72%;">
+                        <p align="center">06</p>
+                    </td>
+                    <td style="width:7.2%;">
+                        <p align="center">07</p>
+                    </td>
+                    <td style="width:5.54%;">
+                        <p align="center">08</p>
+                    </td>
+                    <td style="width:8.86%;">
+                        <p align="center">09</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width:5.72%;">
+                        <p align="center">1</p>
+                    </td>
+                    <td style="width:8.62%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:24.92%;">
+                        <p align="center">{client.fullName}</p>
+                    </td>
+                    <td style="width:4.2%;">
+                        <p align="center">{client.sex}</p>
+                    </td>
+                    <td style="width:8.2%;">
+                        <p align="center">{client.birthDate}</p>
+                    </td>
+                    <td style="width:26.72%;">
+                        <p align="center">{client.locAddress.street}&nbsp; дом &nbsp;{client.locAddress.number} &nbsp; кор. &nbsp; {client.locAddress.corpus} &nbsp; кв. &nbsp; {client.locAddress.flat}</p>
+                    </td>
+                    <td style="width:7.2%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                    <td style="width:5.54%;">
+                        <p align="center">{Ticket_datetime}</p>
+                    </td>
+                    <td style="width:8.86%;">
+                        <p align="center">&nbsp;</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+        Должность, фамилия, подпись лица, направляющего материал <b>{currentPerson.post} <br>
+        {currentPerson.longName}</b>
+        <hr>
+        <p>Дата <u>{currentDate},</u></p>
+        </div>
+
+    {end:}
+    {if: kek == True and nomerok.index(n) != (len(nomerok) - 1)}
+        <div style="page-break-after: always"></div>
+    {elif: kek == False and nomerok.index(n) != (len(nomerok) - 1)}
+        {if: i == 2}
+            <div style="page-break-after: always"></div>
+            {:i = 0}
+        {end:}
+    {end:}
+{end:}
+</div>
+</html>
