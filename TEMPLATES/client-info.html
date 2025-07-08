@@ -10,24 +10,32 @@
 
 Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
 <div>
-  {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  <br>
-  {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+  <div>
+    {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  </div>
+
+  <div>
+    {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+  </div>
 </div>
 
 Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
 <div>
-  {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  <br>
-  {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-  {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+  <div>
+    {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  </div>
+
+  <div>
+    {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+  </div>
 </div>
 
 
@@ -50,9 +58,9 @@
 
 <div>
   дата выдачи полиса обязательного медицинского страхования:
-  число <b>{client.begDate.date.toString('dd')}</b>
-  месяц <b>{forceString(month[client.begDate.month])}</b>
-  год <b>{forceString(client.begDate.year)} г.</b>
+  число <b>{client.policy.begDate.date.toString('dd')}</b>
+  месяц <b>{forceString(month[client.policy.begDate.month])}</b>
+  год <b>{forceString(client.policy.begDate.year)} г.</b>
 </div>
 
 <div>

@@ -1,0 +1,391 @@
+<!--Начальная дата разработки 13.03.2024 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-3677 Форма для статотчетности 025-1/у "Талон пациента, получающего медицинскую помощь в амбулаторных условиях" -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:-off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from library.Utils import smartDict }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+* {
+  box-sizing: border-box;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+body {
+    font-family: 'Times New Roman';
+    font-size: 8pt;
+}
+
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.bold {
+  font-weight: 900;
+}
+.pl {
+  padding-left: 10px;
+}
+.red-line {
+  text-indent: 10px;
+}
+.card-section {
+  padding: 5px;
+  border: 1px solid #000000;
+}
+
+.card-line {
+  display: flex;
+  justify-content: space-between;
+  column-gap: 5px;
+}
+.card-line:not(:last-child) {
+  margin-bottom: 5px;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+</style>
+''')}
+
+{:
+address = client.regAddress
+
+def formatAddress(obj):
+  return forceString(obj).split(' ', -1)[0]
+
+cladrCode = forceString(client.regAddress.KLADRCode)[8:11]
+if cladrCode == '000':
+  inCity = True
+else:
+  inCity = False
+}
+
+<!--  NOTE занятость если не будет исползоваться - удалить! -->
+{:
+workStatus = 'прочие'
+workStatusCodeList = [u'1', u'2', u'с05', u'5', u'6', u'7']
+
+workStatusDic = smartDict()
+workStatusDic[u'1'] = u'прочие'
+workStatusDic[u'6'] = u'пенсионер(ка)'
+workStatusDic[u'5'] = u'не работает'
+workStatusDic[u'2'] = u'студент(ка)'
+workStatusDic[u'с05'] = u'работает'
+workStatusDic[u'7'] = u'проходит военную службу или приравненную к ней службу'
+
+for stat in client.socStatuses:
+    if stat.code in workStatusCodeList:
+      if stat.code == u'2':
+        age = forceInt(forceString(client.age).split(' ', 1)[0])
+        if age > 17:
+          workStatus = workStatusDic[stat.code]
+        else:
+          workStatus = workStatusDic[u'1']
+      else:
+        workStatus = workStatusDic[stat.code]
+}
+
+
+{:
+eventInfoRef = db.getRecordEx(stmt=u"""
+  select rbDR.name                                as event_result,
+         -- первичный, вторичный
+         e.isPrimary,
+         -- законченный случай лечения
+         e.isClosed,
+         ds.MKB,
+         -- 1-по заболеванию, 2-с профилактической целью
+         IF(ds.MKB between 'A00' and 'T98', 1, 2) as event_goal,
+         IF(v.scene_id in (2, 3), 2, v.scene_id)  as visit_place,
+         e.referral_id,
+         e.goal_id,
+         rbEG.code                                as visit_goal,
+         IF(a.id is null, 0, 1)                   as is_hospital,
+         e.`order`
+  from event e
+           join visit v on e.id = v.event_id
+           join rbEventGoal rbEG on e.goal_id = rbEG.id
+           left join action a on e.id = a.event_id and a.actionType_id = 134
+           join diagnostic dc on e.id = dc.event_id and e.deleted = 0 and dc.deleted = 0 and e.id = {event_id}
+           join rbdiagnosticresult rbDR on dc.result_id = rbDR.id
+           join diagnosis ds on dc.diagnosis_id = ds.id and ds.id = (select getEventDiagnosis({event_id}));
+""".format(event_id=event.id))
+}
+
+{:
+if eventInfoRef:
+  event_result = forceString(eventInfoRef.value(u'event_result'))
+  event_goal = forceString(eventInfoRef.value(u'event_goal'))
+  visit_place = forceString(eventInfoRef.value(u'visit_place'))
+  visit_goal = forceString(eventInfoRef.value(u'visit_goal'))
+  is_hospital = forceString(eventInfoRef.value(u'is_hospital'))
+  isClosed = forceString(eventInfoRef.value(u'isClosed'))
+  isPrimary = forceString(eventInfoRef.value(u'isPrimary'))
+else:
+  event_result = ''
+  event_goal = ''
+  visit_place = ''
+  visit_goal = ''
+  is_hospital = ''
+  isClosed = ''
+  isPrimary = ''
+
+
+}
+
+{:
+financeRef = db.getRecordEx(stmt=u"""
+  select rf.name
+  from Event e
+       join Visit v on e.id = v.event_id and v.deleted = 0
+       join rbFinance rf on v.finance_id = rf.id
+  where e.id = 166370;
+""".format(clientId=event.client.id))
+
+if financeRef:
+  finance = forceString(financeRef.value('name'))
+else:
+  finance = '-'
+}
+
+
+
+<!-- @formatter:-on -->
+</head>
+<body>
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%"></td>
+        <td width="98%"></td>
+        <td width="1%" class="small">
+          <div class="white-wrap">Приложение № 7</div>
+          <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+<div align="center" class="h1">ТАЛОН ПАЦИЕНТА, ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ В АМБУЛАТОРНЫХ УСЛОВИЯХ, № {event.id}</div>
+<div class="card-section">
+    <div>
+      1. Дата открытия талона:
+      <b>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</b>
+    </div>
+
+    <div>
+      1.1. Номер медицинской карты пациента, получающего помощь в амбулаторных условиях <b>{client.id}</b>
+    </div>
+    <div>
+      1.2. Номер участка (при наличии) <!-- TODO -->
+    </div>
+
+    <div>
+      2. Код меры социальной поддержки <!-- TODO find_out-->
+      3. Установлена до
+    </div>
+
+    <div>
+      4. Полис обязательного медицинского страхования:
+      серия <b>{client.policy.serial}</b>
+      № <b>{client.policy.number}</b>
+      выдан <b>{client.compulsoryPolicy.insurer}</b>
+      дата выдачи <b>{client.policy.begDate}</b>
+    </div>
+
+    <div>5. Страховой номер индивидуального лицевого счета <b>{client.SNILS}</b></div>
+
+  <div class="card-line">
+    7. Фамилия <b>{client.lastName}</b>
+    8. Имя <b>{client.firstName}</b>
+    9. Отчество <b>{client.patrName}</b>
+    10. Пол: <span class="xs">муж. – 1, жен. – 2</span> <b>{1 if client.sex == u'М' else 2}</b>
+  </div>
+
+  <div class="card-line">
+    11. Дата рождения:
+    <b>«{client.birthDate.date.toString('dd')}» {forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)} г.</b>
+
+    10.1. Документ, удостоверяющий личность <b>{client.document.documentType}</b>
+    серия <b>{client.document.serial}</b>
+    № <b>{client.document.number}</b>
+    гражданство: <b>{client.citizenship}</b>
+  </div>
+
+  <div>
+    <div>
+      11. Регистрация по месту жительства:
+      {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    </div>
+    <div>
+      {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+      тел. <b>{client.primaryPhones}</b>
+    </div>
+  </div>
+
+  <div>
+    <div>
+      11.1. Регистрация по месту пребывания:
+      {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    </div>
+    <div>
+      {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+      тел. <b>{client.primaryPhones}</b>
+    </div>
+  </div>
+
+  <div class="card-line">
+    <div>12. Местность: <b>{'городская' if inCity else 'сельская'}</b></div>
+  </div>
+
+  <div class="card-line">
+    13. Занятость: <span class="xs">работает – 1, проходит военную службу или приравненную к ней службу – 2; пенсионер – 3, обучающийся – 4, не работает – 5, прочие – 6</span>
+    <!--TODO find_out -->
+  </div>
+
+  <div class="card-line">
+    14. Место работы, учебы <b>{client.work}</b>
+  </div>
+
+  <div>
+    15. Инвалидность: <span class="xs">установлена впервые – 1, повторно – 2</span> <!--TODO find_out -->
+    16. Группа инвалидности: <span class="xs">I – 1, II – 2, III – 3</span> <!--TODO find_out -->
+  </div>
+
+  <div class="card-line">
+    17. Оказываемая медицинская помощь:
+    <span class="xs">первичная доврачебная медико-санитарная помощь – 1, первичная врачебная медико-санитарная помощь – 2, первичная специализированная медико-санитарная помощь – 3, паллиативная медицинская помощь – 4</span>
+    <!--TODO find_out -->
+  </div>
+
+  <div>
+    18. Место обращения (посещения):
+    <span class="xs">поликлиника и (или) ее подразделения – 1, на дому – 2, центр здоровья – 3, мобильная медицинская бригада – 4, фельдшерско-акушерский пункт (включая передвижные) – 5, фельдшерский пункт (включая передвижные) – 6, здравпункт – 7, иные медицинские организации – 8</span>
+    <b>{visit_place}</b>
+  </div>
+
+  <div>
+    <div>19. Посещение (цель):</div>
+    <div class="xs">
+      по заболеванию (коды A00 – T98) – 1, из них: в неотложной форме – 1.1, активное посещение – 1.2, диспансерное наблюдение – 1.3, дневной стационар – 1.4, консультативный прием – 1.5,
+    </div>
+    <div class="xs">
+      по направлению – 1.6
+    </div>
+    <div class="xs">
+      с профилактической и иными целями (коды Z00 – Z99) – 2: медицинский осмотр – 2.1, диспансеризация и профилактический медицинский осмотр – 2.2, комплексное обследование – 2.3,
+    </div>
+    <div class="xs">
+      паллиативная медицинская помощь – 2.4, патронаж – 2.5, другие обстоятельства – 2.6
+    </div>
+    <b>{visit_goal}</b>
+  </div>
+
+  <div>
+    20. Обращение (цель): <span class="xs">по заболеванию (коды A00 – T98) – 1, с профилактической целью (коды Z00 – Z99) – 2</span>
+    <b>{event_goal}</b>
+  </div>
+  <div>
+    21. Обращение (законченный случай лечения): <span class="xs">да – 1, нет – 2</span>
+    <b>{isClosed}</b>
+  </div>
+
+  <div>
+    22. Обращение: <span class="xs">первичное – 1, повторное – 2</span> <b>{isPrimary}</b>
+  </div>
+
+  <div>23. Результат обращения:
+  <div>
+    23.1. Выздоровление – 1, без изменения – 2, улучшение – 3, ухудшение – 4, летальный исход – 5
+    <b>{event_result}</b>
+  </div>
+</div> <!-- END card-section -->
+
+
+
+
+
+
+<table style="margin-top:20px">
+    <tr>
+    <td>{currentDate}</td>
+    <td style="padding:20px"></td>
+    <td width="1%" align="center">
+      <div>{'_' * 15}</div>
+      <div><sup>(подпись)</sup></div>
+    </td>
+    <td style="padding:20px"></td>
+    <td style="white-space:nowrap" align="center">
+      <div>{event.execPerson.fullName}</div>
+      <div><sup>(Ф.И.О. медицинского работника)</sup></div>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,820 @@
+<!--Начальная дата разработки 20.06.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: med_card_amb -->
+<!--Задача: SUP-51938 Шаблоны приказа 274 -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>МЕДИЦИНСКАЯ КАРТА</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 70):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+def layoutSignRow(title='', person=''):
+  return """
+    <tr>
+      <td colspan="2">
+        <div>{title}</div>
+      </td>
+    </tr>
+    <tr>
+      <td>{person}</td>
+      <td width="1%" class="white-wrap">подпись&nbsp;</td>
+      <td width="1%" class="white-wrap">________&nbsp;</td>
+    </tr>
+  """.format(title=title, person=person)
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+
+
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 1</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">
+    МЕДИЦИНСКАЯ КАРТА <br>
+    ПАЦИЕНТА, ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ <br>
+    В АМБУЛАТОРНЫХ УСЛОВИЯХ № {event.id}
+  </div>
+
+
+
+<div>
+  Дата заполнения медицинской карты:
+  {if: action.endDate}
+      {:actionDate = action.endDate}
+  {else:}
+      {:actionDate = action.begDate}
+  {end:}
+  число <b>{ forceString(actionDate.toString('dd'))}</b>
+  месяц <b>{ forceString(month[actionDate.date.month()])}</b>
+  год <b>{ forceString(actionDate.date.year())}</b>
+</div>
+
+<div>
+  Фамилия, имя, отчество (при наличии) пациента: <b>{client.fullName}</b>
+</div>
+
+<div>
+  Дата рождения:
+  <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+  Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+  Гражданство: <b>{client.citizenship}</b>
+</div>
+
+<div>
+  Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
+  серия <b>{client.document.serial}</b>
+  № <b>{client.document.number}</b>
+</div>
+
+<div>
+  Номер телефона: <b>{client.primaryPhones}</b>
+  Адрес электронной почты: <b>{client.email if client.email != '' else '_' * 15}</b>
+</div>
+
+<div>
+  Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+  <div>
+    {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  </div>
+
+  <div>
+    {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+  </div>
+</div>
+
+<div>
+  Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+  <div>
+    {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+  </div>
+
+  <div>
+    {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+    {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+  </div>
+</div>
+
+<div>
+  Местность:
+  {:incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
+  {if: incity} <b>городская</b> {else:} <b>сельская</b> {end:}
+</div>
+
+<div>
+  Полис обязательного медицинского страхования:
+  серия <b>{client.policy.serial}</b>
+  № <b>{client.policy.number}</b>
+</div>
+
+<div>
+  дата выдачи полиса обязательного медицинского страхования:
+  число
+  {if: client.policy and client.policy.begDate}
+    <b>{client.policy.begDate.date.toString('dd')}</b>
+  {end:}
+  месяц
+  {if: client.policy and client.policy.begDate}
+    <b>{forceString(month[client.policy.begDate.month])}</b>
+  {end:}
+  год
+  {if: client.policy and client.policy.begDate}
+    <b>{forceString(client.policy.begDate.year)} г.</b>
+  {end:}
+</div>
+
+<div align="justify">
+  данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+  {client.compulsoryPolicy.insurer}
+</div>
+
+<div>
+  Страховой номер индивидуального лицевого счёта: <b>{client.SNILS}</b>
+</div>
+
+<div>
+  Код меры социальной поддержки <b>{action[u'Код меры социальной поддержки']}</b>
+</div>
+
+<div>
+  <div>
+    Сведения о лице, которому может быть передана информация о состоянии здоровья пациента:
+    фамилия, имя, отчество (при наличии), номер контактного телефона
+  </div>
+
+  <hr>
+  <hr>
+</div>
+
+<div>
+  Занятость: <span class="xs">работает – 1, проходит военную и приравненную к ней службу – 2; пенсионер – 3, обучающийся – 4, не работает – 5, прочее – 6</span>
+  {: client_work_value = action[u'Занятость'].value}
+  {if: client_work_value == u'работает'}
+      {: client_work = 1}
+  {elif: client_work_value == u'проходит военную и приравненную к ней службу'}
+      {: client_work = 2}
+  {elif: client_work_value == u'пенсионер'}
+      {: client_work = 3}
+  {elif: client_work_value == u'обучающийся'}
+      {: client_work = 4}
+  {elif: client_work_value == u'не работает'}
+      {: client_work = 5}
+  {else:}
+      {: client_work = 6}
+  {end:}
+  <b>{client_work}</b>
+</div>
+
+<div>
+  Группа инвалидности: <b>{action[u'Группа инвалидности'].value}</b>
+</div>
+
+<div>
+  Место работы, место учебы:
+  {if: client.work.shortName != ''}
+    <b>{client.work.shortName} {client.work.post}</b>
+  {else:}
+    {'_' * 60}
+  {end:}
+</div>
+
+<div>
+  Признан нуждающимся в оказании паллиативной медицинской помощи: <span class="xs">не признан – 1; признан – 2</span>
+  {:is_need_paletive_help_value = action[u'Признан нуждающимся в оказании паллиативной медицинской помощи']}
+  {if: is_need_paletive_help_value == u'не признан'}
+      <b>1</b>
+  {else:}
+    <b>2</b>
+  {end:}
+
+</div>
+
+<!--  note стр. 2 ф. № 025/у-->
+<!--
+note
+  select * from Diagnosis where dispanser_id is not null ; записей нет
+ -->
+<div>
+  <b>Хронические заболевания, функциональные расстройства, иные состояния, при наличии которых осуществляется диспансерное наблюдение:</b>
+</div>
+
+{:
+dispanser_ref_list = db.getRecordList(stmt=u"""
+  select mkb.DiagID                                                                   as diag_id,
+         mkb.DiagName                                                                 as diag_name,
+         ds.setDate,
+         ds.endDate,
+         CONCAT(p.lastName, ' ', LEFT(p.firstName, 1), '.', LEFT(p.patrName, 1), '.') as person_fio,
+         rbS.name                                                                     as person_speciality,
+         rbP.name                                                                     as person_post
+  from diagnosis ds
+           join diagnostic dc
+                on ds.id = dc.diagnosis_id and ds.deleted = 0 and ds.dispanser_id is not null and dc.deleted = 0
+           join mkb on ds.MKB = mkb.DiagID
+           join event e on dc.event_id = e.id
+           join person p on e.execPerson_id = p.id
+           join rbspeciality rbS on p.speciality_id = rbS.id
+           join rbpost rbP on p.post_id = rbP.id
+  where e.client_id ={clientId};
+""".format(clientId=event.client.id))
+}
+
+
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <th valign="top">
+      Дата начала <br> диспансерного <br> наблюдения
+    </th>
+    <th valign="top">
+      Дата <br> прекращения <br> диспансерного <br> наблюдения
+    </th>
+    <th valign="top">
+      Диагноз
+    </th>
+    <th>
+      Код по <br> Международной <br> статистической <br> классификации <br> болезней и <br> проблем, <br> связанных со <br> здоровьем <br> (далее – МКБ)
+    </th>
+    <th valign="top">
+      Фамилия, имя, <br>
+      отчество (при наличии) <br> врача, наблюдающего <br> пациента, должность, <br> специальность
+    </th>
+  </tr>
+  {if: dispanser_ref_list}
+    {for: dispanser_ref in dispanser_ref_list}
+      <tr>
+        <td>{forceString(dispanser_ref.value(u'setDate'))}</td>
+        <td>{forceString(dispanser_ref.value(u'endDate'))}</td>
+        <td>{forceString(dispanser_ref.value(u'diag_name'))}</td>
+        <td>{forceString(dispanser_ref.value(u'diag_id'))}</td>
+        <td>
+          <div>{forceString(dispanser_ref.value(u'person_fio'))}</div>
+          <div>{forceString(dispanser_ref.value(u'person_speciality'))}</div>
+          <div>{forceString(dispanser_ref.value(u'person_post'))}</div>
+        </td>
+      </tr>
+    {end:}
+  {else:}
+    {for: _ in range(5)}
+      <tr>
+        <td>&nbsp;</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    {end:}
+  {end:}
+
+</table>
+
+<div>
+  <b>Лист записи заключительных (уточненных) диагнозов:</b>
+</div>
+
+{:
+final_diag_ref_list = db.getRecordList(stmt=u"""
+  select DATE_FORMAT(dc.setDate, '%d.%m.%Y')                                                          as diagSetDate,
+         ds.MKB                                                                                       as mkb,
+         mkb.DiagName                                                                                 as diag_name,
+         CONCAT(p.lastName, ' ', CONCAT(LEFT(p.firstName, 1), '.'), CONCAT(LEFT(p.patrName, 1), '.')) as fio,
+         rbS.name                                                                                     as speciality,
+         rbP.name                                                                                     as post
+  from Event e
+           join Person p on e.execPerson_id = p.id and p.deleted = 0 and e.deleted = 0
+           join rbSpeciality rbS on p.speciality_id = rbS.id
+           join rbPost rbP on p.post_id = rbP.id
+           join Diagnostic dc on e.id = dc.event_id and dc.deleted = 0
+           join Diagnosis ds on dc.diagnosis_id = ds.id and ds.deleted = 0
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where dc.diagnosisRationale_id = 3
+    and dc.diagnosisNosologyType_id = 1
+    and dc.diagnosisType_id in (1, 2)
+    and e.client_id = {client_id}
+  order by e.id desc;
+""".format(client_id=event.client.id))
+}
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <th width="1%" class="white-wrap">
+      Дата&nbsp; <br>
+      (число, месяц,&nbsp; <br>
+      год)&nbsp;
+    </th>
+    <th valign="top" width="50%">Заключительные (уточненные) диагнозы</th>
+    <th valign="top" width="1%" class="white-wrap">
+      Код по <br> МКБ
+    </th>
+    <th valign="top" width="1%" class="white-wrap">
+      Установленные&nbsp; <br> впервые – 1, <br> повторно – 2
+    </th>
+    <th valign="top" width="47%" class="white-wrap">
+      Фамилия, имя, <br>
+      отчество (при наличии) <br> врача, наблюдающего <br> пациента, должность, <br> специальность
+    </th>
+  </tr>
+  {if: final_diag_ref_list}
+    {for: final_diag_ref in final_diag_ref_list}
+      <tr>
+        <td>{forceString(final_diag_ref.value('diagSetDate'))}</td>
+        <td>{forceString(final_diag_ref.value('diag_name'))}</td>
+        <td>{forceString(final_diag_ref.value('mkb'))}</td>
+        <td></td>
+        <td>
+          <div>{forceString(final_diag_ref.value('fio'))}</div>
+          <div>{forceString(final_diag_ref.value('post'))}</div>
+          <div>{forceString(final_diag_ref.value('speciality'))}</div>
+        </td>
+      </tr>
+    {end:}
+  {else:}
+    {for: _ in range(5)}
+      <tr>
+        <td>&nbsp;</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    {end:}
+  {end:}
+
+</table>
+
+  <!--  fix узнать источник информации-->
+<div>
+  Группа крови <b>{client.bloodTypeNumber}{client.bloodTypeName}</b>
+  Резус-принадлежность {client.bloodTypeRhesus}
+  антиген К1 системы Kell {'_' * 16}
+  иные сведения групповой принадлежности крови (при наличии)
+  {if: client.bloodNotes}
+      <b>{client.bloodNotes}</b>
+  {else:}
+    {'_' * 16}
+  {end:}
+</div>
+
+<div>Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции {'_' * 30}</div>
+
+<!--  fix узнать источник информации-->
+<div>
+  Записи врачей-специалистов:
+</div>
+<section>
+  <div>
+    Дата осмотра {'_' * 16}
+    на приеме, на дому, в фельдшерско-акушерском пункте, прочее. Врач (должность,
+    специальность) {'_' * 16}
+  </div>
+
+  <div>
+    Жалобы:
+  </div>
+  <div>
+    Анамнез заболевания, жизни:
+  </div>
+  <div>
+    Объективные данные
+  </div>
+
+  <!-- note таблица диагнозов -->
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td colspan="3">
+         Диагноз основного заболевания: {: render_line(u'Диагноз основного заболевания', 30)}
+      </td>
+    </tr>
+    <tr>
+      <td>{render_line(u'', 70)}</td>
+      <td width="1%" class="white-wrap">код по МКБ&nbsp;</td>
+      <td width="1%" class="white-wrap">{'_' * 10}&nbsp;</td>
+    </tr>
+
+    {: diag_type_name_list = [u'Осложнения', u'Сопутствующие заболевания', u'Внешняя причина при травмах (отравлениях)']}
+    
+    {for: diag_type_name in diag_type_name_list}
+      <tr>
+        <td>
+          {diag_type_name}: {render_line( diag_type_name, 70)}
+        </td>
+        <td width="1%" class="white-wrap">код по МКБ&nbsp;</td>
+        <td width="1%" class="white-wrap">{'_' * 10}</td>
+      </tr>
+    {end:}
+  </table>
+
+</section>
+<!-- END Записи врачей-специалистов:-->
+
+<!--  fix узнать источник информации-->
+<div>
+  Группа здоровья {'_' * 16}
+  Диспансерное наблюдение {'_' * 16}
+</div>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <th width="50%">
+      Назначения (исследования, консультации)
+    </th>
+    <th>
+      Лекарственные препараты, физиотерапия
+    </th>
+  </tr>
+  {for: _ in range(3)}
+    <tr>
+      <td>&nbsp;</td>
+      <td></td>
+    </tr>
+  {end:}
+
+  <tr>
+    <th>
+      Листок нетрудоспособности, справка
+    </th>
+    <th>
+      Льготные рецепты
+    </th>
+  </tr>
+  <tr>
+    <td>&nbsp;</td>
+    <td></td>
+  </tr>
+</table>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <td>
+      <div align="justify">Информированное добровольное согласие на медицинское вмешательство, отказ от медицинского вмешательства {'_' * 30}</div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность, специальность лечащего врача', event.execPerson.fullName))}
+      </table>
+    </td>
+  </tr>
+</table>
+
+  <!-- note стр. 3 ф. № 025/у-->
+  <!--  fix узнать источник информации-->
+<div>
+  Медицинское наблюдение в динамике:
+</div>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <td colspan="2">
+      Дата
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      Жалобы
+    </td>
+  </tr>
+  <tr>
+    <td>
+      Данные наблюдения в динамике
+    </td>
+  </tr>
+  <tr>
+    <th>Назначения (исследования, консультации)</th>
+    <th>Лекарственные препараты, физиотерапия</th>
+  </tr>
+  {for: _ in range(3)}
+    <tr>
+      <td>&nbsp;</td>
+      <td></td>
+    </tr>
+  {end:}
+
+  <tr>
+    <th>Листок нетрудоспособности, справка</th>
+    <th>Льготные рецепты</th>
+  </tr>
+  <tr>
+    <td>&nbsp;</td>
+    <td></td>
+  </tr>
+
+  <tr>
+    <td></td>
+    <td>
+      Врач
+    </td>
+  </tr>
+</table>
+
+<!-- note  стр. 4 ф. № 025/у -->
+<!--
+note
+  # Этапный эпикриз
+  select * from ActionType where id = 14030;
+  select * from ActionPropertyType where actionType_id = 14030 and !deleted;
+-->
+<section>
+  <div>
+    Этапный эпикриз
+  </div>
+
+  <div>
+    Проведенное обследование, лечение и медицинская реабилитация
+  </div>
+
+  <!-- note вставить таблицу диагнозов -->
+
+  <div>
+    Рекомендации
+  </div>
+
+  <div>
+    Листок нетрудоспособности (при наличии)
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность, специальность лечащего врача', event.execPerson.fullName))}
+  </table>
+</section>
+
+  <!--  fix узнать источник информации-->
+<section>
+  <div>Консультация заведующего отделением</div>
+  <div>Дата</div>
+  <div>
+    Жалобы и динамика состояния
+  </div>
+  <div>
+    Проведенное обследование, лечение и медицинская реабилитация
+  </div>
+
+
+  <!-- note вставить таблицу диагнозов -->
+
+  <div>
+    Рекомендации по дальнейшему наблюдению, дообследованию, лечению и медицинской реабилитации
+  </div>
+
+  <div>
+    Листок нетрудоспособности (при наличии)
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии) заведующего отделением'))}
+    {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность, специальность лечащего врача', event.execPerson.fullName))}
+  </table>
+</section>
+
+<!--  note стр. 5 ф. № 025/у-->
+<section>
+  <div>Врачебная комиссия</div>
+  <div>Дата</div>
+  <div>
+    Жалобы и динамика состояния
+  </div>
+  <div>
+    Проведенное обследование, лечение и медицинская реабилитация
+  </div>
+
+  <!-- note вставить таблицу диагнозов -->
+
+  <div>
+    Решение врачебной комиссии:
+  </div>
+  <div>
+    Рекомендации
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    {:write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность председателя'))}
+    {:write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность члена комиссии'))}
+
+    {for: _ in range(3)}
+      {:write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность члена комиссии'))}
+    {end:}
+  </table>
+</section>
+
+<section>
+  <div>Диспансерное наблюдение</div>
+  <div>Дата</div>
+  <div>
+    Жалобы и динамика состояния
+  </div>
+  <div>
+    Проведенное обследование, лечение и медицинская реабилитация
+  </div>
+
+  <!-- note вставить таблицу диагнозов -->
+
+  <div>
+    Рекомендации и дата следующего диспансерного осмотра, консультации
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность, специальность лечащего врача', event.execPerson.fullName))}
+  </table>
+</section>
+
+<div align="justify">Сведения о периоде нахождения в медицинских организациях, оказывающих медицинскую помощь в стационарных условиях, в условиях дневного стационара </div>
+
+<table width="100%" cellpadding="1" cellspacing="0" border="1">
+  <tr>
+    <th valign="top">
+      Дата поступления <br>
+      и выписки
+    </th>
+    <th valign="top">
+      Наименование медицинской <br> организации, в которой была <br> оказана медицинская помощь <br>
+      в стационарных условиях, <br>
+      в условиях дневного стационара <br>
+    </th>
+    <th valign="top">
+      Диагноз, установленный <br>
+      в медицинской организации, <br>
+      в которой была оказана <br> медицинская помощь  <br>
+      в стационарных условиях, <br>
+      в условиях дневного стационара<br>
+    </th>
+    <th valign="top">
+      Код по МКБ
+    </th>
+  </tr>
+  {for: _ in range(3)}
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  {end:}
+</table>
+
+
+<div>Сведения о проведенных оперативных вмешательствах в амбулаторных условиях</div>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <th valign="top">Дата проведения</th>
+    <th valign="top">Оперативное вмешательство</th>
+    <th valign="top">
+      Код <br>
+      оперативного <br> вмешательства
+    </th>
+    <th valign="top">
+      Фамилия, имя, отчество (при наличии), <br>
+      должность, <br>
+      специальность, подпись <br> лечащего врача
+    </th>
+  </tr>
+  {for: _ in range(3)}
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  {end:}
+</table>
+
+<div>Лист учета доз облучения при рентгенологических исследованиях</div>
+
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <th>Дата проведения</th>
+    <th>Название рентгенологического исследования</th>
+    <th>Доза облучения</th>
+  </tr>
+  {for: _ in range(3)}
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  {end:}
+</table>
+
+<!-- note стр. 7 ф. № 025/у -->
+
+<div>
+  Результаты функциональных методов исследования:
+</div>
+
+<div>
+  Результаты лабораторных методов исследования:
+</div>
+
+<!--  note стр. 8 ф. № 025/у -->
+<div>
+  Эпикриз
+
+</div>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  {write(layoutSignRow(u'Фамилия, имя, отчество (при наличии), должность, специальность лечащего врача', event.execPerson.fullName))}
+</table>
+
+<div>
+  Дата
+</div>
+
+</div>
+</body>
+</html>

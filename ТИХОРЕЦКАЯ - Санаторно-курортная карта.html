@@ -1,0 +1,419 @@
+<!--Начальная дата разработки 07.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: RSanCur -->
+<!--Задача: DEV_TEMP-5578 Санаторно-курортная карта Взрослые -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Санаторно-курортная карта</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.break-line {
+    line-height: 5px;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 7</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+  
+
+  <div align="center" class="h1">Санаторно-курортная карта № <b>{action[u'Номер документа']}</b></div>
+  {if: action.endDate}
+      {:actionDate = action.endDate}
+  {else:}
+      {:actionDate = action.begDate}
+  {end:}
+  <div align="center"><b>«{forceString(actionDate.toString('dd'))}» {forceString(month[actionDate.date.month()])} {forceString(actionDate.date.year())} г.</b></div>
+
+  <div>Выдается при предъявлении путевки на санаторно-курортное лечение. Без настоящей карты путевка недействительна</div>
+
+  <!-- note верхняя часть 1 -->
+  <section>
+    <div>
+      Фамилия, имя, отчество (при наличии) ребенка <b>{client.fullName}</b>
+    </div>
+
+    <div>
+      Дата рождения:
+      <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+      Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+    </div>
+
+    <div>
+      Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+      <div>
+        <div>
+          {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+      <div>
+        <div>
+          {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      Полис обязательного медицинского страхования
+      серия <b>{client.policy.serial}</b>
+      № <b>{client.policy.number}</b>
+    </div>
+
+    <div>
+      дата выдачи полиса обязательного медицинского страхования:
+      <b>«{forceString(client.policy.begDate.toString('dd'))}» {forceString(month[client.policy.begDate.date.month()])} {forceString(client.policy.begDate.date.year())} г.</b>
+    </div>
+
+    <div>
+      данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+      {client.compulsoryPolicy.insurer}
+    </div>
+
+    <div>
+      Код субъекта Российской Федерации
+      <b>{action[u'Субъекты Российской Федерации']}</b>
+    </div>
+
+    <div>
+      Климат в месте проживания пациента (код)
+      <b>{action[u'Климат в месте проживания']}</b>
+    </div>
+    <div>
+      Климатические факторы в месте проживания пациента (код)
+      <b>{action[u'Климатические факторы в месте проживания']}</b>
+    </div>
+    <div>
+      Код меры социальной поддержки
+      <b>{action[u'Льготная категория']}</b>
+    </div>
+    <div>
+      Сопровождение: <span class="small">да – 1, нет – 2</span>
+      <b>{action[u'Необходимость сопровождения пациента']}</b>
+    </div>
+
+    <div>Документ, подтверждающий право на получение мер социальной поддержки в виде набора социальных услуг:</div>
+
+    <div>
+      серия <b>{action[u'Серия документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      номер <b>{action[u'Номер документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      дата выдачи <b>{action[u'Дата выдачи документа']}</b>
+    </div>
+
+    <div>
+      Страховой номер индивидуального лицевого счета: <b>{client.SNILS}</b>
+    </div>
+
+  </section>
+  <!-- note END верхняя часть 1 -->
+
+  <!-- note верхняя часть 2 -->
+  <section>
+    <div>
+      Жалобы: {action[u'Жалобы']}
+    </div>
+
+    <div>
+      Анамнез заболевания (включая данные о предшествующем лечении, в том числе санаторно-курортном):
+      {action[u'Анамнез заболевания']}
+    </div>
+
+    <div>
+      Данные клинического, лабораторного, рентгенологического и других исследований (даты проведения исследований)
+      {action[u'Данные исследований']}
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%"></td>
+        <td></td>
+        <td width="1%"></td>
+        <td></td>
+      </tr>
+      {: diag_type_name_list = [u'Диагноз основного заболевания:', u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+      {for: diag_type_name in diag_type_name_list}
+        <tr>
+          <td class="white-wrap">{diag_type_name}&nbsp;</td>
+          <td></td>
+          <td class="white-wrap">код по МКБ</td>
+          <td></td>
+        </tr>
+      {end:}
+
+      <tr>
+        <td colspan="4">
+          Дополнительные сведения о заболевании:
+          {action[u'Дополнительные сведения о заболевании']}
+        </td>
+      </tr>
+
+        <tr>
+          <td class="white-wrap">Заболевание, явившееся причиной инвалидности:&nbsp;</td>
+          <td></td>
+          <td class="white-wrap">код по МКБ</td>
+          <td></td>
+        </tr>
+    </table>
+
+
+    <div align="center">ЗАКЛЮЧЕНИЕ</div>
+
+    <div>
+      Наименование санаторно-курортной организации: <b>{action[u'Название санаторно-курортной организации']}</b>
+    </div>
+
+    <div>
+      Лечение: <span class="small">в условиях пребывания в санаторно-курортной организации – 1, амбулаторно – 2</span>
+      {if: action[u'Лечение'].value == u'в условиях пребывания в санаторно-курортной организации'}
+          <b>1</b>
+      {else:}
+          <b>2</b>
+      {end:}
+    </div>
+    <div>
+      Продолжительность курса лечения <b>{action[u'Продолжительность курса лечения (дней)']}</b> дней
+    </div>
+    <div>
+      Путевка № <b>{action[u'Номер путевки']}</b>
+    </div>
+    <div>
+      Фамилия, имя, отчество (при наличии) и подпись лица, заполнившего карту
+      <b>{action.person.fullName}</b>
+    </div>
+
+    <div>
+      Заведующий отделением (председатель врачебной комиссии)
+    </div>
+    <hr>
+    <div>М.П. (при наличии)</div>
+  </section>
+  <!-- note END верхняя часть 2 -->
+
+  <div style="page-break-after: always"></div>
+
+<!--  note Обратный талон -->
+  <!-- note Обратный талон part 1-->
+  <section>
+    <div align="center">Обратный талон</div>
+
+    <div>
+      Наименование санаторно-курортной организации {render_line(u'Наименование санаторно-курортной организации')}
+    </div>
+    <div>
+      Основной государственный регистрационный номер санаторно-курортной организации {render_line(u'Основной государственный регистрационный номер санаторно-курортной организации')}
+    </div>
+    <div>
+      Фамилия, имя, отчество (при наличии) пациента {render_line(u'Фамилия, имя, отчество (при наличии) пациента')}
+    </div>
+
+    <div>
+      Период санаторно-курортного лечения: с «____» ___________ 20____г. по «____» ___________ 20____г.
+    </div>
+
+    <div>
+      Диагноз, установленный направившей медицинской организацией:
+    </div>
+
+    <div>
+      Основное заболевание {render_line(u'Основное заболевание')}
+    </div>
+    <div align="justify">
+      код по Международной статистической классификации болезней и проблем, связанных со здоровьем (далее – МКБ)
+    </div>
+
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td></td>
+        <td width="1%"></td>
+        <td></td>
+      </tr>
+      {: diag_type_name_list = [u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+      {for: diag_type_name in diag_type_name_list}
+        <tr>
+          <td class="white-wrap">
+            {diag_type_name}&nbsp;
+            {render_line(diag_type_name, 60)}
+          </td>
+          <td class="white-wrap">код по МКБ</td>
+          <td>{'_' * 12}</td>
+        </tr>
+      {end:}
+    </table>
+  </section>
+  <!-- note END Обратный талон part 1-->
+
+  <!-- note Обратный талон part 2-->
+  <section>
+    <div>
+      Проведено лечение {render_line(u'Проведено лечение')}
+    </div>
+    <div class="break-line">&nbsp;</div>
+    <div>
+      {render_line(u'')}
+    </div>
+    <div align="center"><sup>(виды лечения, количество процедур, их переносимость, даты проведения санаторно-курортного лечения)</sup></div>
+
+    <div>
+      Эпикриз (включая данные обследования) {render_line(u'Эпикриз (включая данные обследования)')}
+    </div>
+    {for: _ in range(3)}
+      <div class="break-line">&nbsp;</div>
+      <div>
+        {render_line(u'')}
+      </div>
+    {end:}
+
+    <div>
+      Результат санаторно-курортного лечения: <span class="small">значительное улучшение – 1, улучшение – 2, без перемен – 3, ухудшение – 4</span>
+    </div>
+    <div>
+      Наличие обострений, потребовавших отмену процедур: <span class="small">да – 1, нет – 2</span>
+    </div>
+
+    <div>
+      Рекомендации по дальнейшему лечению: {render_line(u'Рекомендации по дальнейшему лечению:')}
+    </div>
+    {for: _ in range(3)}
+      <div class="break-line">&nbsp;</div>
+      <div>
+        {render_line(u'')}
+      </div>
+    {end:}
+
+    <br>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {: row_title_list = [u'Лечащий врач, должность врача-специалиста', u'Главный врач санаторно-курортной организации']}
+      {for: row_title in row_title_list}
+        <tr>
+          <td valign="top">
+            <div class="white-wrap">{row_title}</div>
+          </td>
+          <td>
+            <div align="center">{'_' * 40}</div>
+            <div align="center"><sup>(фамилия, имя, отчество (при наличии)</sup></div>
+          </td>
+          <td>
+            <div align="center">{'_' * 15}</div>
+            <div align="center"><sup>подпись</sup></div>
+          </td>
+        </tr>
+      {end:}
+    </table>
+    <div>
+      М.П. (при наличии)
+    </div>
+  </section>
+<!--  note END Обратный талон -->
+
+
+
+</div>
+</body>
+</html>
