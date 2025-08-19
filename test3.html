@@ -1,310 +1,778 @@
-<!-- изменил Пулин дата 26.06.2025 задача  -->
-<!-- изменил Пулин дата 05.06.2025 задача DEV_TEMP-5479 Изменить форму печати талонов к врачам -->
-<!-- Сделал правильный выбор врача Кириенко 27.01.2025 в рамках задачи DEV_TEMP-3984 При распечатке неправильно указан номер кабинета -->
-<HTML lang="ru">
-
+<!-- изменил Волков А.А. дата 18.02.2025 задача DEV_TEMP-5112 Увеличить шрифт ФИО, дата рождения и номер участка -->
+<!-- изменил Пулин дата 21.03.2024 задача DEV_TEMP-3723 Корректировка шаблона -->
+<!-- Разработал: ??? ??? ??? -->
+<!-- Изменил: Рыжко Назарий Олегович -->
+<!-- Дата: 13.10.2022 -->
+<!-- Задача: DEV_TEMP-309 -->
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <title>Талон</title>
-{setPageSize('A4')}
-{setOrientation('P')}
-{setLeftMargin(0)}
-{setRightMargin(0)}
-
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
+<title>Медицинская карта пациента, получающего медицинскую помощь в амбулаторных условиях № __</title>
 {: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-{: from datetime import datetime}
-{: import inspect}
+{: db = QtGui.qApp.db}
+{: from library.Utils import forceString, forceRef, forceInt, forceDate}
 
-{: vrach = db.getRecordList(stmt=u"""
-  select Event.setDate,
-         concat(Person.lastName, ' ', Person.firstName, ' ', Person.patrName) as fio,
-         rbSpeciality.name,
-         Person.id                                                            as pid
-  from Client
-           join Event on Client.id = Event.client_id
-           join Action on Event.id = Action.event_id
-           join Person on Action.person_id = Person.id
-           join rbSpeciality on Person.speciality_id = rbSpeciality.id
-  where Client.id = {ClientID};
-    """.format(ClientID=client.id))}
+{ setPageSize('A4') }
+{ setOrientation('P') }
+{ setLeftMargin(5.0) }
+{ setTopMargin(1.0) }
+{ setRightMargin(5.0) }
+{ setBottomMargin(5.0) }
 
+{:Ychastki = client.allAttaches}
+{:CDate = client.chartBeginDate.date.toString('dd.MM.yyyy')}
+{:R3Date = client.birthDate.date.toString('dd.MM.yyyy')}
+{:AdrOKATO = unicode(client.regAddress.OKATO)}
 
-{:
-currVrach = ''
-currVrachSpeciality = ''
-currID = ''
-}
+{:Adress = client.regAddress}
+{:Adressprov = client.locAddress}
 
-
-
-{for: item in vrach}
-    {if: visit.data.get('date', '') in forceString(item.value(u'setDate')) and visit.data.get(u'time', '') in unicode(datetime.strptime(forceString(item.value(u'setDate')), u'%d.%m.%Y %H:%M'))}
-        {: currVrach = forceString(item.value(u'fio'))}
-        {: currVrachSpeciality = forceString(item.value(u'name'))}
-        {: currID = forceString(item.value(u'pid'))}
-    {end:}
+{: ref_number = db.getRecordEx(stmt=u"SELECT GROUP_CONCAT(ci.identifier SEPARATOR '; ') as num FROM ClientIdentification ci WHERE ci.client_id = {clientId} AND ci.accountingSystem_id = 15;".format(clientId=client.id)) }
+{if: ref_number}
+	{: notes = forceString(ref_number.value(u'num'))} </b><br />
+{else:}
+	{: notes = client.notes.replace(u'<br>', u' ').split(u' ')[-1]}
 {end:}
 
+{: regAddress_list = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress
+where client_id = {clientId}
+	and type = 0;
+""".format(clientId=client.id))}
 
-{:
-separator = '-'
-date = visit.data['date'].split('.')
-if len(date) == 3:
-  day, month, year = date
-else:
-  day = None
-  month = None
-  year = None
-}
+{: locAddress_list = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress ca
+where client_id = {clientId}
+	and type = 1
+""".format(clientId=client.id))
 
-{:
-if day and month and year:
-    visitDateSqlFormatted = forceString(year) + separator + forceString(month) + separator + forceString(day)
-else:
-    visitDateSqlFormatted = u''
-}
+prevLocAddressListRef = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress ca
+where client_id = {clientId}
+	and type = 1
+    and ca.deleted = 1;
+""".format(clientId=client.id))}
 
-{:
-visitTimeSqlFormatted = forceString(visit.data.get(u'time', '')) + u':' + u'00'
-}
+{:n = 1}
 
-{:
-queueInfoRef = None
-if visitDateSqlFormatted != u'' and visitTimeSqlFormatted and currID:
-  queueInfoRef = db.getRecordEx(stmt=u"""
-  select tttt.*,
-         tttt.index                                                                                  as appointmentIdx,
-         Client.id                                                                                   AS patId,
-         concat(Client.lastName, ' ', left(Client.firstName, 1), '.', left(Client.patrName, 1), '.') as patientName,
-         Action.setPerson_id                                                                         as assignerId,
-         concat(p.lastName, ' ', left(p.firstName, 1), '.', left(p.patrName, 1), '.')                as assignerName,
-         rbP.name                                                                                    as assignerPost,
-         Action.note
-  from (select ttt.*,
-               ActionProperty_String.value AS color
-        from (select tt.*,
-                     ActionProperty_Time.value as appointmentTime,
-                     IF(ActionProperty_Time.value IS NULL, 'Пациенты записанные сверх очереди',
-                        'Пациенты записанные на определенное время') AS grouping
-              from
-                  (
-                  select
-                  t.*, ActionProperty_Action.id as scheduleActionPropertyId, ActionProperty_Action.index, ActionProperty_Action.value as `queue`, ActionPropertyType.name AS aptName, (
-                  SELECT aps.value
-                  FROM ActionProperty ap
-                  JOIN ActionPropertyType apt ON ap.type_id = apt.id
-                  JOIN ActionProperty_String aps ON ap.id = aps.id
-                  WHERE ap.deleted = 0
-                  AND apt.deleted=0
-                  AND apt.name = 'office'
-                  AND ap.action_id = t.id
-                  ) AS office, (
-                  SELECT aptime.value
-                  FROM ActionProperty ap
-                  JOIN ActionPropertyType apt ON ap.type_id = apt.id
-                  JOIN ActionProperty_Time aptime ON ap.id = aptime.id
-                  WHERE ap.deleted = 0
-                  AND apt.deleted=0
-                  AND apt.name = 'begTime'
-                  AND ap.action_id = t.id
-                  ) AS begTime, (
-                  SELECT aptime.value
-                  FROM ActionProperty ap
-                  JOIN ActionPropertyType apt ON ap.type_id = apt.id
-                  JOIN ActionProperty_Time aptime ON ap.id = aptime.id
-                  WHERE ap.deleted = 0
-                  AND apt.deleted=0
-                  AND apt.name = 'endTime'
-                  AND ap.action_id = t.id
+<!--Адрес временной регистрации настоящие-->
+{: ref_add = db.getRecordEx(stmt=u"""
+  SELECT CONCAT(k.NAME, ' ', s.NAME, ' ', s.SOCR, ' ', 'д.', ah.number, ' ', 'кв.', a.flat) as addr FROM pnd8.Address a JOIN pnd8.AddressHouse ah ON a.house_id = ah.id JOIN kladr.STREET s ON ah.KLADRStreetCode = s.CODE JOIN kladr.KLADR k ON ah.KLADRCode= k.CODE where a.id = (SELECT ca.address_id FROM ClientAddress ca WHERE ca.client_id = {clientId} AND ca.type = 2 and ca.deleted = 0 ORDER BY ca.id DESC LIMIT 1);
+  """.format(clientId=client.id)) }
+<!--Адрес временной регистрации прошлые-->
+{: ref_add_del = db.getRecordList(stmt=u"SELECT CONCAT(k.NAME, ' ', s.NAME, ' ', s.SOCR, ' ', 'д.', ah.number, ' ', 'кв.', a.flat) as addr FROM pnd8.Address a JOIN pnd8.AddressHouse ah ON a.house_id = ah.id JOIN kladr.STREET s ON ah.KLADRStreetCode = s.CODE JOIN kladr.KLADR k ON ah.KLADRCode= k.CODE where a.id = (SELECT ca.address_id FROM ClientAddress ca WHERE ca.client_id = {clientId} AND ca.type = 2 and ca.deleted = 1 ORDER BY ca.id DESC LIMIT 1);".format(clientId=client.id)) }
 
-                  ) AS endTime
-                  from
-                  (
-                  select Event.setPerson_id,
-                      Action.id AS id,
-                      Action.actionType_id,
-                      os.name as orgDivision,
-                      concat(Person.lastName, ' ', Person.firstName, ' ', Person.patrName) as docName,
-                      Person.id as docId,
-                      DATE_FORMAT(Event.setDate, '%d.%m.%Y') as `date`
-                  from Action
-                      left join ActionType ON ActionType.id = Action.actionType_id
-                      left join Event ON Event.id = Action.event_id
-                      left join EventType ON EventType.id = Event.eventType_id
-                      left join Person ON Person.id = Event.setPerson_id
-                      left join OrgStructure os on Person.orgStructure_id = os.id
-                  where
-                  Event.deleted=0
-                  AND Action.deleted=0
-                  AND EventType.code = '0'
-                  AND Person.deleted = 0
-  # note             здесь задать искомую дату
-                  AND DATE (Event.setDate) = '{visitDate}'
-  # note             здесь задать currID
-                  AND Event.setPerson_id = {personId}
-                  AND (Person.lastAccessibleTimelineDate IS NULL OR Person.lastAccessibleTimelineDate = '0000-00-00' OR DATE (Event.setDate)<=Person.lastAccessibleTimelineDate)
-                  AND (Person.timelineAccessibleDays IS NULL OR Person.timelineAccessibleDays <= 0 OR DATE (Event.setDate)<=ADDDATE(CURRENT_DATE (), Person.timelineAccessibleDays))
-                  ) t
-                  LEFT JOIN ActionType ON ActionType.id = t.actionType_id
-                  LEFT JOIN ActionPropertyType ON ActionPropertyType.actionType_id = ActionType.id
-                  LEFT JOIN ActionProperty ON ActionProperty.action_id = t.id AND ActionProperty.type_id = ActionPropertyType.id
-                  LEFT JOIN ActionProperty_Action ON ActionProperty_Action.id = ActionProperty.id
-                  where
-                  ActionPropertyType.deleted = 0
-                  AND ActionProperty.deleted = 0
-                  AND ActionProperty.id IS NOT NULL
-                  AND ActionPropertyType.name LIKE 'queue%'
-                  order by ActionProperty_Action.id, ActionProperty_Action.index
-                  ) tt
-                  LEFT JOIN ActionType
-              ON ActionType.id = tt.actionType_id
-                  LEFT JOIN ActionPropertyType ON ActionPropertyType.actionType_id = ActionType.id
-                  LEFT JOIN ActionProperty ON ActionProperty.action_id = tt.id AND ActionProperty.type_id = ActionPropertyType.id
-  #                 note здесь вставить время
-                  LEFT JOIN ActionProperty_Time ON ActionProperty_Time.id = ActionProperty.id AND ActionProperty_Time.`index` = tt.index  AND ActionProperty_Time.value = '{visitTime}'
+{ setPageSize('A4') }
+{ setOrientation('P') }
 
-              where
-                  ActionPropertyType.deleted = 0
-                AND ActionProperty.deleted = 0
-                AND ActionProperty.id IS NOT NULL
-                AND ActionPropertyType.name = CONCAT('times'
-                  , REPLACE (aptName
-                  , 'queue'
-                  , '') )) ttt
+{ setLeftMargin(25.0) }
+{ setTopMargin(10.0) }
+{ setRightMargin(15.0) }
+{ setBottomMargin(10.0) }
 
-                 LEFT JOIN ActionType ON ActionType.id = ttt.actionType_id
-                 LEFT JOIN ActionPropertyType
-                           ON ActionPropertyType.actionType_id = ActionType.id AND ActionPropertyType.name = 'colors'
-                 LEFT JOIN ActionProperty
-                           ON ActionProperty.action_id = ttt.id AND ActionProperty.type_id = ActionPropertyType.id AND
-                              ActionProperty.deleted = 0
-                 LEFT JOIN ActionProperty_String ON ActionProperty_String.id = ActionProperty.id AND
-                                                    ActionProperty_String.`index` = ttt.index) tttt
-           LEFT JOIN Action on Action.id = tttt.queue
-           LEFT JOIN Event on Action.event_id = Event.id
-  # note     здесь вставить пациента
-           JOIN Client on Client.id = Event.client_id and Client.id = {clientId}
-           LEFT JOIN Person p ON Action.setPerson_id = p.id
-           LEFT JOIN rbPost rbP on p.post_id = rbP.id;
-
-
-  """.format(clientId=client.id, visitDate=visitDateSqlFormatted, visitTime=visitTimeSqlFormatted, personId=currID))
-
-if queueInfoRef:
-  assignerName = forceString(queueInfoRef.value('assignerName') )
-  assignerPost = forceString(queueInfoRef.value('assignerPost') )
-  orgDivision = forceString(queueInfoRef.value('orgDivision') )
-else:
-  assignerName = ''
-  assignerPost = ''
-  orgDivision = ''
-}
-
+{: QDate = type(client.birthDate.date)}
 
 </head>
 
+<body style="font-family: Times New Roman; font-size: 6pt; color: black;">
 
-<BODY style="font-size: 12pt;">
-<!--
-note свойства visit
-personId', 'num', 'office', 'time', 'date', 'timeRange', 'type', 'clientId
--->
-<!-- note для тестирования -->
-<div style="font-size: 8pt"></div>
-<div>Код пациента: <b>{client.id}</b></div>
-<div>
-  Пациент: <b>{client.fullName}</b>
-  {if: person.id == 2041} ЭКГ {else:} {visit.type} {end:}
-</div>
-<div>Дата рождения: <b>{client.birthDate}</b></div>
-<div>Возраст: <b>{client.age}</b></div>
+<table width=100% cellpadding=1 cellspacing=0 border=0 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+	<tr>
+		<td width=100%>
 
-<br>
+			<table width=100% cellpadding=3 cellspacing=0 border=0 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+				<tr>
+					<td width=100%>
+						<table width=100% cellpadding=1 cellspacing=0 border=1 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+<tr>
+	<td align="center" width="40%">МИНИСТЕРСТВО ЗДРАВООХРАНЕНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ</td>
+	<td rowspan="4" width="60%">
+		<table style="font-family: Times New Roman; font-size: 8pt; color: black;" border="0" cellspacing="0" cellpadding="1">
+			<tbody>
+				<tr>
+					<td>Код учреждения по ОКПО</td>
+					<td>
+					<table border="1" cellspacing="0" cellpadding="0">
+					<tbody>
+					<tr>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;3&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;4&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;3&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;5&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;4&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;2&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;0&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;6&nbsp;&nbsp;</strong></td>
+				</tr>
+			</tbody>
+		</table>
+	</td>
+</tr>
+</tbody>
+</table>
+<table style="font-family: Times New Roman; font-size: 7pt; color: black;" border="0" cellspacing="0" cellpadding="1">
+<tbody>
+<tr>
+<td>Медицинская документация
+Учетная форма N 025/у </td>
+</tr>
+<tr>
+<td>Утверждена приказом Минздрава России
+от 15 декабря 2014 г. N 834н </td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr>
+<td align="center">{currentOrganisation.fullName}</td>
+</tr>
+</table>
+</td>
+<td width="30%">&nbsp;</td>
+</tr>
+<tr>
+<td>
+<table style="font-family: Times New Roman; font-size: 9pt; color: black;" border="0" width="100%" cellspacing="0" cellpadding="1">
+<tbody>
+<tr>
+<td align="right" style="font-size: 12pt ;"><font size="5pt">Номер участка </font>&nbsp;&nbsp;
+	{:ychastki = filter(lambda ych: ych.endDate >= currentDate.date or not ych.endDate, client.allAttaches)}
+	{if: len(ychastki) > 1 and len(ychastki) != 0}
+	<b>	{', '.join(map(lambda a: a.orgStructure.code, ychastki))}</b>
+	{elif: len(ychastki) != 0}
+	<b>	{ychastki[0].orgStructure.code}</b>
+	{end:}
+
+<td align="right"></td>
+<td>
+	{if: CDate != ''}
+	<td><font size="-1">1. Дата заполнения медицинской карты: </font></td>
+ 	<b>{client.chartBeginDate.date.toString('dd.MM.yyyy')}</b>
+	{else:}
+	<tr>
+		<td style="font-size: 9pt;">1. Дата заполнения медицинской карты: </td>
+	</tr>
+	<tbody>
+	</tbody>
+	</table>
+	{end:}
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<tr>
+<td colspan="2">&nbsp;</td>
+</tr>
+<tr>
+<td align="center">
+<h4>МЕДИЦИНСКАЯ КАРТА № <font style="font-size: 10pt;">{client.id}</font></h4>
+	<tr >
+		<td style="font-size: 9pt;" >
+			2. Фамилия, имя, отчество: <font style="font-size: 12pt;"><b>{client.fullName}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			3. Пол <b><font style="font-size: 9pt;">{if: client.sexCode == 1}мужской{else:}женский{end:}</font></b>. &nbsp;
+			4. Дата рождения: <b><font style="font-size: 11pt;">{client.birthDate.date.toString(u"dd.MM.yyyy")}</font></b>
+		</td>
+	</tr>
+
+	{if: client.regAddress}{: regAddr = client.regAddress}{else:}{: regAddr = client.locAddress}{end:}
+	{if: client.locAddress}{: locAddr = client.locAddress}{else:}{: locAddr = client.regAddress}{end:}
+	<tr>
+		<td>
+			<table>
+			<tr>
+			<td style="font-size: 9pt;"> 5. Место регистрации:</td>
+			<td align='center' style="font-size: 9pt;"><b>{regAddr}</b></td>
+			</tr>
+
+			<tr>
+
+			<td style="font-size: 9pt;">Место проживания:</td><td align='center' style="font-size: 9pt;"> <b>{locAddr}</b></td>
+			</tr>
+			</table>
+			{if: client.phones}&nbsp;&nbsp;&nbsp;<b style="font-size: 9pt;">{client.phones}</b>{else:}телефон: _______________{end:}. &nbsp;
+		</td>
+	</tr>
+	<table style="font-size: 9pt;">
+	<tr>
+		<td style="font-size: 9pt;">
+			6. Житель:<b style="font-size: 9pt;"> {if: client.regAddress.isVillager == 0}города{else:}села{end:}</b>
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			7.  Полис ОМС:
+			серия
+				{if: client.compulsoryPolicy.serial}
+					<b style="font-size: 9pt;">{client.compulsoryPolicy.serial}</b>
+				{else:}
+					____
+				{end:}
+			номер
+				{if: client.compulsoryPolicy.number}
+					<b style="font-size: 9pt;">{client.compulsoryPolicy.number}</b>
+				{else:}
+					_______________
+				{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			8. СНИЛС: {if: client.SNILS}<b style="font-size: 9pt;">{client.SNILS}</b>.{else:}_______________{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			9. Наименование страховой мед. организации: {if: client.policy.insurer}<b style="font-size: 9pt;">{client.policy.insurer}</b>{else:}____________________{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			10. Код категории льготы:
+				{: string = ''}
+				<!-- проверяю наличие "льгота" в соц статусах -->
+				{for: status in client.socStatuses}
+					{if: status.classes == u"льгота"}
+						{:string = status.code}
+					{end:}
+				{end:}
+				<!-- если есть "льгота", вывожу "код", если нет, вывожу нижнее подчеркивание -->
+				{if: string != ''}
+					<b style="font-size: 9pt;">{string}</b>
+				{else:}
+					_____
+				{end:}
+
+			11.  Документ {if: client.document}<b style="font-size: 9pt;">{client.document}</b>{else:}______________________________{end:}
+		</td>
+	</tr>
+		<tr>
+		</tr>
+	<tr>
+		<td style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px; line-height: 0.5; margin: 0;">
+			12. Заболевания, по поводу которых осуществляется диспансерное наблюдение:
+		</td>
+	</tr>
+	<tr>
+		<td>
+
+			<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" width="100%" border="1" cellpadding="2" cellspacing="0" >
+				<tr>
+					<td width="23%" align="center">Дата начала<br>диспансерного<br>наблюдения</td>
+					<td width="23%" align="center">Дата<br>прекращения<br>дисп. наблюдения</td>
+					<td width="12%" align="center">Диагноз</td>
+					<td width="12%" align="center">Код по<br><b style="font-family: Times New Roman; font-size: 6pt;"> МКБ-10</b></td>
+					<td width="30%" align="center">Врач</td>
+				</tr>
+				{for: status in client.allSocStatuses}
+					{if: (status.code==u"К" or status.code==u"АПЛ" or status.code==u"АДН" or status.code==u"Д" or status.code==u"КЛП") and not status.endDate}
+						<tr>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">{status.begDate.toString('dd.MM.yyyy')}</td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">{status.endDate.toString('dd.MM.yyyy')}</td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center"><b>{status.name}</b></td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">
+							<!--перебираю ДИАГНОЗЫ клиента-->
+								{for: diag in client.diagnosises}
+										{if: (diag.endDate.date>currentDate.date or not diag.endDate) and diag.MKB and (diag.type==u"заключительный" or diag.type==u"основной")}
+												{diag.MKB},
+									{end:}
+								{end:}
+							</td>
+							<td align="center">{client.attendingPerson}</td>
+						</tr>
+					{end:}
+				{end:}
+				<tr>
+					<td>
+					{for: status in client.allSocStatuses}
+					{if: (status.code==u"Д"  or status.code==u"АПЛ" or status.code==u"АДН")}
+					<!--перебираю ДИАГНОЗЫ клиента-->
+								<h4>{for: diag in client.diagnosises}
+										{if: (not diag.endDate) and diag.MKB and (diag.type==u"заключительный" or diag.type==u"основной")}
+												{diag.MKB},</h4>
+									{end:}
+								{end:}
+					{end:}
+				{end:}
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+	<tr>
+		<td nowrap>
+			13. Семейное положение: <font style="font-size: 6pt;"><b>{client.relations}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			14. Образование:
+				{: string = ''}
+				<!-- проверяю наличие "Образование" в соц статусах -->
+				{for: status in client.socStatuses}
+					{if: status.classes == u"Образование"}
+						{:string = status.name}
+					{end:}
+				{end:}
+				<!-- если есть "Образование", вывожу "Type", если нет, вывожу нижнее подчеркивание -->
+				{if: string != ''}
+					<font style="font-size: 6pt;"><b>{string}</b></font>
+				{else:}
+					_____
+				{end:}
+		</td>
+	</tr>
+	<tr>
+		<td>
+			15.  Занятость: <font style="font-size: 6pt;"><b>{client.work}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			16.  Инвалидность (первичная, повторная, группа, дата):
+			{if: client.disabilities}
+				{if: client.disabilities[-1].recertificationDate}
+					<font style="font-size: 6pt;"><b>{client.disabilities[-1].groupNumber} гр., {client.disabilities[-1].setDate}, переосвидетельствование {client.disabilities[-1].recertificationDate}</b></font>
+				{else:}
+					<font style="font-size: 6pt;"><b>{client.disabilities[-1].groupNumber} гр., {client.disabilities[-1].setDate}</b></font>
+				{end:}
+			{else:}
+				{"_" * 79}
+			{end:}
+		</td>
+	</tr>
+	<tr>
+		<td>
+			17.  Место работы, должность: <font style="font-size: 6pt;"><b>{client.work}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<!-- берется из диалога -->
+			18.  Изменения места работы: <font style="font-size: 6pt;">________________________________</font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<!-- берется из диалога -->
+			19.  Изменения места регистрации: <font style="font-size: 6pt;">_______________________________</font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			20. Лист записи заключительных (уточненных) диагнозов:
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" width="100%" border="1" cellpadding="2" cellspacing="0">
+				<tr>
+					<td width="22%" align="center">Дата (число,<br> месяц, год)</td>
+					<td width="22%" align="center">заключительные (уточненные)<br>диагнозы</td>
+					<td width="22%" align="center">Установленные впервые или<br> повторно (+/-)</td>
+					<td width="34%" align="center">Врач</td>
+				</tr>
+				{if: client.diagnosises}
+					{for: diag in sorted(client.diagnosises, key = lambda x: x.setDate)[-3:]}
+						<tr>
+							<td>{diag.setDate}</td>
+							<td>{diag.MKB}</td>
+							<td></td>
+							<td>{diag.person.shortName}</td>
+						</tr>
+					{end:}
+				{end:}
+			</table>
+<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+	<tr>
+		<td>
+			21. Группа крови: {if: client.bloodType}<font style="font-size: 6pt;"><b>{client.bloodType[:-3]}</b></font>{else:}__________{end:}
+			22. Rh-фактор: {if: client.bloodType and 'Rh' in client.bloodType}<font style="font-size: 6pt;"><b>{client.bloodType}[-3:]</b></font>{else:}__________{end:}
+			23. Аллергические реакции: {if: client.allergies}<font style="font-size: 6pt;"><b>{client.allergies}</b></font>{else:}______________________________{end:}
+		</td>
+	</tr>
+			<tr>
+				<td>24. Записи врачей-специалистов:</td>
+			</tr>
+			<tr>
+				<td>Дата осмотра _________ на приеме, на дому, в фельдшерско-акушерском пункте,</td>
+			</tr>
+			<tr>
+				<td>прочее.</td>
+			</tr>
+			<tr>
+				<td>Врач (специальность) ___________</td>
+			</tr>
+			<tr>
+				<td>Жалобы пациента _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>________________________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Анамнез заболевания, жизни ___________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Объективные данные ___________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Группа здоровья ________ Диспансерное наблюдение _________________________________________________________________</td>
+			</tr>
+		</table>
+		<table border="1" cellspacing="0" width="100%" style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<tr>
+				<td align="center">
+					Назначения (исследования, консультации)
+				</td>
+				<td valign="top" align="center">
+					Лекарственные препараты, физиотерапия
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td align="center">
+					Листок нетрудоспособности, справка
+				</td>
+				<td valign="top" align="center">
+					Льготные рецепты
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td colspan="2" align="center">
+					Информированное добровольное согласие на медицинское вмешательство, отказ от медицинского вмешательства
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Врач
+				</td>
+			</tr>
+		</table>
+		<p style="font-family: Times New Roman; font-size: 6pt;">
+			25. Медицинское наблюдение в динамике:
+		</p>
+		<table border="1" cellspacing="0" width="100%" cellpadding="2" style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px;">
+			<tr>
+				<td colspan="2">
+					Дата
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Жалобы
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Данные наблюдения в динамике
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2"></td>
+			</tr>
+			<tr>
+				<td>
+					Назначения (исследования, консультации)
+				</td>
+				<td valign="top">
+					Лекарственные препараты, физиотерапия
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td>
+					Листок нетрудоспособности, справка
+				</td>
+				<td valign="top">
+					Льготные рецепты
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td>
+					Врач
+				</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>
+				<br>
+				26. Этапный эпикриз
+			</caption>
+			<tr>
+				<td>Дата _________ Временная нетрудоспособность с _______ (____ дней).</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния _________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 ___________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Листок нетрудоспособности ____________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Врач _______________</td>
+			</tr>
+		</table>
+
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>27. Консультация заведующего отделением</caption>
+			<tr>
+				<td>Дата _________ Временная нетрудоспособность с _______ (____ дней).</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния __________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации по дальнейшему наблюдению, дообследованию и лечению _____________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Листок нетрудоспособности ____________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Зав. отделением _______________ Лечащий врач _________________________________________________________________________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>28. Заключение врачебной комиссии</caption>
+			<tr>
+				<td>Дата ____________</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния _________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ______________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Заключение врачебной комиссии: _______________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Председатель _____________ Члены комиссии ____________________________________________________________________________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px;">
+			<caption>29. Диспансерное наблюдение</caption>
+			<tr>
+				<td>Дата ____________</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния __________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проводимые лечебно-профилактические мероприятия ______________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации и дата следующего диспансерного осмотра, консультации ___________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Врач _______________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>30. Сведения о госпитализациях</caption>
+			<tr>
+				<td align="center">
+					Дата поступления и выписки
+				</td>
+				<td align="center">
+					Медицинская организация, в которой была оказана мед. помощь в стационарных условиях
+				</td>
+				<td align="center">
+					Заключительный клинический диагноз
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>31. Сведения о проведенных оперативных вмешательствах в амбулаторных</caption>
+			<tr>
+				<td align="center">
+					Дата проведения
+				</td>
+				<td align="center">
+					Название оперативного вмешательства
+				</td>
+				<td align="center">
+					Врач
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>32. Лист учета доз облучения при рентгенологических исследованиях</caption>
+			<tr>
+				<td align="center">
+					Дата проведения
+				</td>
+				<td align="center">
+					Название рентгенологического исследования
+				</td>
+				<td align="center">
+					Доза облучения
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<p style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px;">
+			33. Результаты функциональных методов исследования:________________________________________________________________________
+			<br>
+			34. Результаты лабораторных методов исследования:__________________________________________________________________________
+			<br>
+			35. Эпикриз: __________________________________________________________________________________________
+		</p>
+</body>
+</html>
 
 
-{:
-def getPersonInfo(personId):
-  personRef = None
-  if personId:
-    personRef = db.getRecordEx(stmt=u"""
-      select CONCAT_WS(' ', p.lastName, p.firstName, p.patrName) as fio,
-             rbS.name                                            as speciality
-      from Person p
-               join rbSpeciality rbS on p.speciality_id = rbS.id
-      where p.id = {personId};
-    """.format(personId=personId))
-
-  if personRef:
-    personFio = forceString(personRef.value(u'fio'))
-    speciality = forceString(personRef.value(u'speciality'))
-  else:
-    personFio = ''
-    speciality = ''
-
-  return [personFio, speciality]
-
-}
-
-
-<div>Врач:
-  {if: currVrach != ''}
-    <B> {currVrach} </B> ({currVrachSpeciality})
-  {else:}
-    {: personInfo, speciality = getPersonInfo(visit.personId)}
-    <b>{personInfo}</b> ({speciality})
-  {end:}
-
-
-</div>
-<div>Явиться: <B>{visit.date}</B> в кабинет № <b>{visit.office.split(';')[0]}</b> <b>{orgDivision}</b></div>
-
-
-<h3>Время: {visit.time}</h3>
-
-
-{if: currID == 1083 or currID == 1012 or currID == 1909}
-  <p>Клинический (кровь из пальца) анализ крови,
-  биохимический анализ крови (кровь из вены):
-  анализы сдаются натощак (последний прием пищи
-   в 19 часов накануне, утром – обильное питье
-   (чистая негазированная вода)</p>
-{end:}
-{if: currID == 844 or currID == 122 or currID == 400}
-  <p>УЗИ брюшной полости для детей до года: ребенка
-   не кормить за два часа до исследования
-  УЗИ брюшной полости детям старше года: при
-  проведении исследования в первой половине дня:
-  последний приём пищи – накануне до 19 часов При проведении исследования после 14 часов – прием пищи в день исследования до 08:00
-  </p>
-{end:}
-{if: currID == 333 or currID == 414 or currID == 1549}
-  <p>При себе необходимо иметь сменную обувь и пеленку</p>
-{end:}
-{if: currID == 2041}
-  <p>С собой иметь: амб.карту, пеленку.<br> Вход в кабинет во второй обуви.</p>
-{end:}
-
-
-<!--
-note свойства visit
-personId', 'num', 'office', 'time', 'date', 'timeRange', 'type', 'clientId
--->
-{if: assignerName != '' and assignerPost != ''}
-  <div>
-    Записал (направил): <b>{assignerName}</b>, <b>{assignerPost}</b>
-  </div>
-  <br>
-{end:}
-
-
-<div><b>Телефоны для справок:</b></div>
-<div>
-    Регистратура: 246-51-26<br>
-    Кварт. помощь: 246-51-26<br>
-    Запись на прием к врачу: 246-51-26
-</div>
-
-</BODY>
-</HTML>

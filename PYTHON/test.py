@@ -1,7 +1,15 @@
-id_list = [16600613, 16600614, 16600615, 16600647, 16600648, 16600649, 16600650, 16600651, 16600652, 16600653, 16600654, 16600655, 16600656, 16600657, 16600658, 16600659, 16600660, 16600661, 16600662, 16600663, 16600664, 16600665, 16600666, 16600667, 16600668, 16600669, 16600670]
+from collections import OrderedDict
+hour_list = [8, 10, 12, 14, 16, 18, 20, 22, 0, 2, 4, 6]
+test_data = {
+    '24.07': 'test1',
+    '25.07': 'test1'
+}
+hour_collection = OrderedDict()
 
-with open('query.sql', 'a') as f:  # 'a' - режим добавления (append)
-    for qID in id_list:
-        q = 'select * from ActionPropertyType where id = {id};'.format(id=qID)
-        f.write(q + '\n')
+for hour in hour_list:
+    new_dict = hour_collection.setdefault(hour, dict())
+    new_dict.setdefault('24.07', 'ok')
 
+
+for key, value in hour_collection.items():
+    print(key, value)

@@ -1,0 +1,91 @@
+<!--
+  Изменил: Волков Андрей Алексеевич 01.04.2025
+  Создал: Скопцов 21.11.2024
+-->
+<html>
+<head>
+    {: from library.Utils import forceString, forceInt}
+    {: from PyQt4 import QtGui }
+    {: db = QtGui.qApp.db }
+
+
+    <!-- Запрос основного диагноза -->
+    {: refDiag = db.getRecordEx(stmt=u"""
+        SELECT
+            dg.MKB AS mkb,
+            dg.diagnos_string AS name
+        FROM diagnostic dc
+        JOIN Diagnosis dg ON dc.diagnosis_id = dg.id
+        JOIN Event e ON dc.event_id = e.id
+        WHERE
+            e.id = {eventId}
+            AND !dc.deleted
+            AND !dg.deleted
+            AND !e.deleted
+            AND dg.diagnosisType_id = 1
+        ORDER BY dg.createDatetime DESC
+        LIMIT 1;
+    """.format(eventId=event.id)) }
+
+    <!-- Обработка диагноза -->
+    {if: refDiag}
+        {: mkb = forceString(refDiag.value('mkb')) }
+        {: nameDiag = forceString(refDiag.value('name')) }
+    {else:}
+        {: mkb = '-' }
+        {: nameDiag = '' }
+    {end:}
+</head>
+
+<body style="font-family: Arial, sans-serif; font-size: 11pt;">
+    <!-- Заголовок карты -->
+    <div align="center">
+        <b>{forceString(client.fullName).upper()}</b>
+    </div>
+    <div align="center">
+        <b>Амбулаторная карта № {client.id}</b>
+    </div>
+    <div align="center">
+        <b>Дата {action.begDate.toString('dd.MM.yyyy')} ОМС</b>
+    </div>
+    <br>
+
+    <!-- Основные поля действия -->
+    {for: prop in action}
+        {if: prop.name == u'Номер зуба, с которыми проводится лечение'}
+            {if: action[u'Номер зуба, с которыми проводится лечение'].value and action[u'Номер зуба, с которыми проводится лечение'].value != u'Не выполнены условия для автоматического заполнения данного поля.'}
+                <div><b>Зуб №:</b> {action[u'Номер зуба, с которыми проводится лечение'].value}</div>
+            {end:}
+        {end:}
+
+        {if: prop.name == u'Список зубов для чистки'}
+            {if: action[u'Список зубов для чистки'].value and action[u'Список зубов для чистки'].value != u'Не выполнены условия для автоматического заполнения данного поля.'}
+                <div><b>Список зубов для чистки:</b> {action[u'Список зубов для чистки'].value}</div>
+            {end:}
+        {end:}
+
+        {if: prop.name == u'Области головы, для которых проводится лечение'}
+            {if: action[u'Области головы, для которых проводится лечение'].value and action[u'Области головы, для которых проводится лечение'].value != u'Не выполнены условия для автоматического заполнения данного поля.'}
+                <div><b>Области головы, для которых проводится лечение:</b> {action[u'Области головы, для которых проводится лечение'].value}</div>
+            {end:}
+        {end:}
+
+        {if: prop.name == u'Области слизистой полости рта'}
+            {if: action[u'Области слизистой полости рта'].value and action[u'Области слизистой полости рта'].value != u'Не выполнены условия для автоматического заполнения данного поля.'}
+                <div><b>Области слизистой полости рта:</b> {action[u'Области слизистой полости рта'].value}</div>
+            {end:}
+        {end:}
+    {end:}
+
+    <!-- Медицинские данные -->
+    <div><b>Жалобы:</b> {action[u'Жалобы'].value}</div>
+    <div><b>Анамнез:</b> {action[u'Анамнез'].value}</div>
+    <div><b>Объективные данные:</b> {action[u'Объективные данные'].value}</div>
+    <div><b>Диагноз:</b> {action[u'Клинический диагноз'].value}</div>
+    <div><b>МКБ-10:</b> {mkb} {nameDiag}</div>
+    <div><b>Лечение:</b> {action[u'Лечение'].value}</div>
+    <div><b>Рекомендации:</b> {action[u'Рекомендации'].value}</div>
+    <br>
+
+</body>
+</html>

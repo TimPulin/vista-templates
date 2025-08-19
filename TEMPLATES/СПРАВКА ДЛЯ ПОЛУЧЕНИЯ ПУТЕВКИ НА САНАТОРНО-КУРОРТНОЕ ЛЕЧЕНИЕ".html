@@ -1,0 +1,347 @@
+<!--Начальная дата разработки 10.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка СКЛ</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+sanCurCardActList = filter(lambda x: x.name=u'Санаторно-курортная карта', event.actions)
+sanCurCardAct = sanCurCardActList[0] if len(sanCurCardActList) > 0 else None
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 7</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">
+           Справка N __________ <br>
+           для получения путевки на санаторно-курортное лечение
+  </div>
+
+  <div align="center">"__" __________ 20__ года</div>
+
+  <p>
+    Настоящая справка не заменяет санаторно-курортной карты и не дает права на санаторно-курортное лечение. Справка действительна в течение 12 месяцев
+  </p>
+
+  <div>
+    Фамилия, имя, отчество (при наличии) ребенка <b>{client.fullName}</b>
+  </div>
+
+  <div>
+    Дата рождения:
+    <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+    Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+  </div>
+
+  <div>
+    Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+    <div>
+      <div>
+        {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      </div>
+      <div>
+        {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+    <div>
+      <div>
+        {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      </div>
+      <div>
+        {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    Полис обязательного медицинского страхования
+    серия <b>{client.policy.serial}</b>
+    № <b>{client.policy.number}</b>
+  </div>
+
+  <div>
+    дата выдачи полиса обязательного медицинского страхования:
+    <b>«{forceString(client.policy.begDate.toString('dd'))}» {forceString(month[client.policy.begDate.date.month()])} {forceString(client.policy.begDate.date.year())} г.</b>
+  </div>
+
+  <div>
+    данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+    {client.compulsoryPolicy.insurer}
+  </div>
+
+    <div>
+      Код субъекта Российской Федерации
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Субъекты Российской Федерации']}</b>
+      {end:}
+    </div>
+
+    <div>
+      Климат в месте проживания пациента (код)
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Климат в месте проживания']}</b>
+      {end:}
+    </div>
+    <div>
+      Климатические факторы в месте проживания пациента (код)
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Климатические факторы в месте проживания']}</b>
+      {end:}
+    </div>
+    <div>
+      Код меры социальной поддержки
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Льготная категория']}</b>
+      {end:}
+    </div>
+    <div>
+      Сопровождение: <span class="small">да – 1, нет – 2</span>
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Необходимость сопровождения пациента']}</b>
+      {end:}
+    </div>
+
+    <div>Документ, подтверждающий право на получение мер социальной поддержки в виде набора социальных услуг:</div>
+
+    <div>
+      серия
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Серия документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      {end:}
+      номер
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Номер документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      {end:}
+      дата выдачи
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Дата выдачи документа']}</b>
+      {end:}
+    </div>
+
+    <div>
+      Страховой номер индивидуального лицевого счета: <b>{client.SNILS}</b>
+    </div>
+
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 21 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ''
+      ) AS relatedDiag
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  WHERE e.id = {event_id};
+""".format(event_id=event.id))
+}
+{:
+if diagRef:
+    mainId = forceString(diagRef.value('mainId'))
+    mainName = forceString(diagRef.value('mainName'))
+    relatedDiags = forceString(diagRef.value('relatedDiag'))
+else:
+  mainId = ''
+  mainName = ''
+  relatedDiags = ''
+}
+
+
+
+    <div>
+      Диагноз заболевания, для лечения которого направляется в санаторно-курортную организацию: <b>{mainName}</b>
+      код по Международной статистической классификации болезней и проблем, связанных со здоровьем (далее - МКБ) <b>{mainId}</b>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td></td>
+        <td width="1%"></td>
+        <td width="1%"></td>
+      </tr>
+
+      {if: relatedDiags != ''}
+        {: for index, relatedDiag in range(relatedDiags.split(';'))}
+          {: code, name = relatedDiag.split('$')}
+          <tr>
+            <td class="white-wrap">
+              {u'Сопутствующие заболевания' if index == 0 else ''}
+              <b>{name}</b>
+            </td>
+            <td class="white-wrap">код по МКБ</td>
+            <td class="white-wrap"><b>{code}</b></td>
+          </tr>
+        {end:}
+      {end:}
+
+      <tr>
+        <td>Заболевание, являющееся причиной инвалидности&nbsp;</td>
+        <td class="white-wrap">код по МКБ</td>
+        <td class="white-wrap">{'_' * 6}</td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+      <tr>
+        <td align="center">Противопоказания для санаторно-курортного лечения отсутствуют</td>
+      </tr>
+    </table>
+
+  <div align="justify">
+    Рекомендуемое лечение: в условиях пребывания в санаторно-курортной организации - 1; амбулаторно - 2
+    {if: sanCurCardAct}
+      {if: sanCurCardAct[u'Лечение'].value == u'в условиях пребывания в санаторно-курортной организации'}
+          <b>1</b>
+      {else:}
+          <b>2</b>
+      {end:}
+    {else:}
+      <b>1</b>
+    {end:}
+
+  </div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td width="1%" class="white-wrap">Предпочтительное <br> место лечения</td>
+      <td valign="middle">
+        {if: sanCurCardAct}
+            <b>{sanCurCardAct[u'Название санаторно-курортной организации']}</b>
+        {end:}
+      </td>
+    </tr>
+  </table>
+
+  <div>Рекомендуемые сезоны лечения: зима - 1, весна - 2, лето - 3, осень - 4</div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        Лечащий врач, должность врача-специалиста
+      </td>
+      <td width="1%" class="white-wrap">{'_' * 20}</td>
+    </tr>
+    <tr>
+      <td>
+        Заведующий отделением
+      </td>
+      <td width="1%" class="white-wrap">{'_' * 20}</td>
+    </tr>
+    <tr>
+      <td>
+        Председатель врачебной комиссии
+      </td>
+      <td width="1%" class="white-wrap">{'_' * 20}</td>
+    </tr>
+  </table>
+  <p>М.П. (при наличии)</p>
+</div>
+</body>
+</html>

@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 18.08.2025 задача  -->
 <!--Начальная дата разработки 20.06.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати: med_card_amb -->
@@ -37,6 +38,15 @@ write('''
 .main {
     font-family: 'Times New Roman';
     font-size: 8pt;
+}
+.xxl {
+    font-size: 20pt;
+}
+.xl {
+    font-size: 14pt;
+}
+.big {
+    font-size: 12pt;
 }
 .small {
   font-size: 8pt;
@@ -236,40 +246,70 @@ else:
 
 
 <div class="main">
-
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td width="99%"></td>
-      <td width="1%" class="small">
-        <div class="white-wrap">Приложение № 1</div>
-        <div class="white-wrap">к приказу Министерства здравоохранения Российской Федерации</div>
-        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
-      </td>
-    </tr>
-  </table>
-
   <header class="header">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td width="1%" valign="top">
           <div class="white-wrap xs">
-            Наименование и адрес медицинской организации <br>
-            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
-          </div>
-          <div>
-            {currentOrganisation.title}
-          </div>
-          <div class="white-wrap xs">
-            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
-            номер индивидуального предпринимателя)
+            <div>
+              Санкт-Петербургское государственное 
+            </div>
+            <div>
+              бюджетное учреждение здравоохранения 
+            </div>
+            <div>
+              "Психоневрологический диспансер №8"
+            </div>
+            <div>
+              Пр. Ю. Гагарина дом .18 кор.3, лит. А 
+            </div>
+            <div>
+              Санкт-Петербург, 196211 
+            </div>
+            <div>
+              Тел. (812) 241-3414 Факс: (812)241-3414 
+            </div>
+            <div>
+              ИНН/КПП 7810208176/781001001
+            </div>
           </div>
         </td>
         <td width="98%"></td>
-        <td width="1%" valign="top" class="small">
+        <td width="1%" valign="top" class="small white-wrap">
           <div class="white-wrap">Медицинская документация</div>
           <div class="white-wrap">Учетная форма № 025/у</div>
-          <div class="white-wrap">Утверждена приказом Министерства здравоохранения Российской Федерации</div>
-          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+          <div class="white-wrap">
+            Утверждена приказом Министерства здравоохранения от
+          </div>
+          <div class="white-wrap">13 мая 2025 г. № 274н</div>
+          <div class="white-wrap">С дополнениями, утвержденными приказом главного врача СПб</div>
+          <div class="white-wrap">ГБУЗ ПНД№8 от 59-од № 14.07.2025</div>
+          <div class="xl">
+            <div>
+{:
+attach_info_ref = db.getRecordEx(stmt=u"""
+  select rbAT.name as attach_type,
+         os.name   as orgstructure_name
+  from ClientAttach ca
+           join rbAttachType rbAT on ca.attachType_id = rbAT.id and ca.deleted = 0 and ca.client_id = {client_id}
+           join OrgStructure os on ca.orgStructure_id = os.id and os.deleted = 0
+  order by ca.id desc
+  limit 1;
+""".format(client_id=client.id))
+if attach_info_ref:
+  attach_type = forceString(attach_info_ref.value(u'attach_type'))
+  orgstructure_name = forceString(attach_info_ref.value(u'orgstructure_name'))
+else:
+  attach_type = ''
+  orgstructure_name = ''
+}
+
+              Тип прикрепления: <b>{attach_type}</b>
+            </div>
+            <div>
+              Участок: <b>{orgstructure_name}</b>
+            </div>
+          </div>
         </td>
       </tr>
     </table>
@@ -283,66 +323,74 @@ else:
 
 
 
-<div>
-  <!-- TODO event_start_date  -->
-  Дата заполнения медицинской карты:
-  {if: event_start_date}
-    число <b>{ forceString(event_start_date.toString('dd'))}</b>
-    месяц <b>{ forceString(month[event_start_date.date.month()])}</b>
-    год <b>{ forceString(event_start_date.date.year())}</b>
-  {else:}
-    число {'_' * 10}
-    месяц {'_' * 10}
-    год {'_' * 10}
-  {end:}
-
-</div>
-
-<div>
-  Фамилия, имя, отчество (при наличии) пациента: <b>{client.fullName}</b>
-</div>
-
-<div>
-  Дата рождения:
-  <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
-  Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
-  Гражданство: <b>{client.citizenship}</b>
-</div>
-
-<div>
-  Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
-  серия <b>{client.document.serial}</b>
-  № <b>{client.document.number}</b>
-</div>
-
-<div>
-  Номер телефона: <b>{client.primaryPhones}</b>
-  Адрес электронной почты: <b>{client.email if client.email != '' else '_' * 15}</b>
-</div>
-
-<div>
-  Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+<div class="big">
   <div>
-    {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    <br>
-    {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+    <!-- TODO event_start_date  -->
+    Дата заполнения медицинской карты:
+    {event_set_date}
   </div>
-</div>
 
-<div>
-  Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
   <div>
-    {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    <br>
-    {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
-    {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+    <div>Фамилия, имя, отчество (при наличии) пациента:</div>
+    <div class="xxl"><b>{client.fullName}</b></div>
+  </div>
+
+  <div>
+    Дата рождения: <b>{client.birthDate.toString(u'dd.MM.yyyy')}</b>
+  </div>
+
+  <div>
+    Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+    Гражданство: <b>{client.citizenship}</b>    
+  </div>
+
+  <div>
+    Номер телефона: <b>{client.primaryPhones}</b>
+    Адрес электронной почты: <b>{client.email if client.email != '' else '_' * 15}</b>
+  </div>  
+  
+  <div>
+    Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
+    серия <b>{client.document.serial}</b>
+    № <b>{client.document.number}</b>
+  </div>
+
+
+
+  <div>
+    <div>Регистрация по месту жительства:</div> 
+    <div><b>{client.regAddress}</b></div>
+  </div>
+
+  <div>
+    <div>Регистрация по месту пребывания: </div>
+    <div><b>{client.locAddress}</b></div>
+  </div>
+
+  <div>
+{:
+represent_person_ref = db.getRecordEx(stmt=u"""
+  select
+      MAX(if(css.socStatusClass_id = 61, css.notes, '')) as fio,
+      MAX(if(css.socStatusClass_id = 63, css.notes, '')) as phone
+  from ClientSocStatus css
+  where css.socStatusClass_id in (61, 63)
+  and css.client_id = {client_id}
+""".format(client_id=client.id))
+if represent_person_ref:
+    represent_fio = forceString(represent_person_ref.value('fio'))
+    represent_phone = forceString(represent_person_ref.value('phone'))
+else:
+  represent_fio = ''
+  represent_phone = ''
+}
+
+    <div>
+      Сведения о лице, которому может быть передана информация о состоянии здоровья пациента:
+      <b>{represent_fio}</b>{u', 'if represent_fio !='' and represent_phone !='' else ''}
+      <b>{represent_phone}</b>
+    </div>
+
   </div>
 </div>
 
@@ -384,7 +432,7 @@ else:
 </div>
 
 <div>
-  Код меры социальной поддержки 
+  Код меры социальной поддержки
   {: soc_code = ''}
   <!-- проверяю наличие "льгота" в соц статусах -->
   {for: status in client.socStatuses}
@@ -397,15 +445,10 @@ else:
     <b>{soc_code}</b>
   {else:}
     {: render_line(u'Код меры социальной поддержки')}
-  {end:}  
+  {end:}
 </div>
 
-<div>
-  <div>Сведения о лице, которому может быть передана информация о состоянии здоровья пациента:</div>
-  <div>фамилия, имя, отчество (при наличии), номер контактного телефона {'_' * 20}</div>
-  <hr>
-  <hr>
-</div>
+
 
 <div>
   Занятость: <span class="xs">работает – 1, проходит военную и приравненную к ней службу – 2; пенсионер – 3, обучающийся – 4, не работает – 5, прочее – 6</span>

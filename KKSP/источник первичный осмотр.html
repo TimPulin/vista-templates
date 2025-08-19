@@ -1,0 +1,241 @@
+<!--
+  Создал: Скопцов 21.11.2024
+  Задача: Шаблон первичного осмотра
+-->
+<html>
+<head>
+    {: from library.Utils import forceString, forceInt}
+    {: from PyQt4 import QtGui }
+    {: db = QtGui.qApp.db }
+
+    <!-- Запрос данных о постоянных зубах -->
+    {: deciduous_teeth_formula_ref = db.getRecordList(stmt=u"""
+        SELECT
+            d.number AS number,
+            rbds.code AS status,
+            rbmv.code AS move
+        FROM dentalformulateeth d
+        LEFT JOIN dentalformulastate ds ON ds.formula_id = d.id
+        LEFT JOIN rbtoothsectionstate rbds ON ds.state_id = rbds.id
+        LEFT JOIN dentaldesease dmv ON d.id = dmv.formula_id
+        LEFT JOIN rbtoothmovement rbmv ON rbmv.id = dmv.movement_id
+        WHERE
+            d.is_deciduous = 1
+            AND d.event_id = {e_id}
+            AND ds.cured_state = 0
+        GROUP BY rbds.code, d.number;
+    """.format(e_id=event.id)) }
+
+    <!-- Инициализация данных о зубах -->
+    {if: deciduous_teeth_formula_ref > 0}
+        {: teeth_formula = deciduous_teeth_formula_ref}
+        {: top = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]}
+        {: bottom = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]}
+    {end:}
+
+    {: number = []}
+    {: status = []}
+    {: move = []}
+
+    <!-- Заполнение данных о зубах -->
+    {if: deciduous_teeth_formula_ref > 0}
+        {for: tooth in teeth_formula}
+            {: number.append(forceInt(tooth.value('number')))}
+            {: status.append(forceString(tooth.value('status')))}
+            {: move.append(forceString(tooth.value('move')))}
+        {end:}
+    {end:}
+
+
+    <!-- Запрос данных о молочных зубах -->
+    {: children_deciduous_teeth_formula_ref = db.getRecordList(stmt=u"""
+        SELECT
+            d.number AS number,
+            rbds.code AS status,
+            rbmv.code AS move
+        FROM dentalformulateeth d
+        LEFT JOIN dentalformulastate ds ON ds.formula_id = d.id
+        LEFT JOIN rbtoothsectionstate rbds ON ds.state_id = rbds.id
+        LEFT JOIN dentaldesease dmv ON d.id = dmv.formula_id
+        LEFT JOIN rbtoothmovement rbmv ON rbmv.id = dmv.movement_id
+        WHERE
+            d.is_deciduous = 0
+            AND d.event_id = {e_id}
+            AND ds.cured_state = 0
+        GROUP BY rbds.code, d.number;
+    """.format(e_id=event.id)) }
+
+
+    <!-- Стили таблицы -->
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        .center {
+            text-align: center;
+        }
+        .header {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body style="font-family: Arial, sans-serif; font-size: 11pt;">
+    <!-- Заголовок документа -->
+    <div class="header">П е р в и ч н ы й &nbsp;&nbsp; о с м о т р</div>
+    <br>
+    <div class="header"><u>{forceString(client.fullName).upper()} № амб.карты {client.id}</u></div>
+    <div class="header">Дата <u>{action.begDate.toString('dd.MM.yyyy')}</u></div>
+
+    <!-- Основная информация -->
+    <div>Перенесенные и сопутствующие заболевания: {action[u'Перенесенные и сопутствующие заболевания'].value}</div>
+    <div>Данные объективного исследования:</div>
+    <div>Внешний осмотр: {action[u'Внешний осмотр'].value}</div>
+    <br>
+
+    <!-- Таблица постоянных зубов -->
+    {if: len(deciduous_teeth_formula_ref) > 0}
+        <div class="center">Постоянные зубы</div>
+        <table>
+            <tr>
+                <td class="center">Статус</td>
+                {for: n in top}
+                    <td class="center">
+                        {:teeth_stat = ''}
+                        {: indexes = [i for i, x in enumerate(number) if x == n]}
+                        {for: s in indexes}
+                            {: teeth_stat += status[s] + ' '}
+                        {end:}
+                        {teeth_stat}
+                    </td>
+                {end:}
+            </tr>
+            <tr>
+                <td class="center">Пародонтит, подвижность</td>
+                {for: n in top}
+                    <td class="center">{move[number.index(n)] if n in number else ''}</td>
+                {end:}
+            </tr>
+            <tr>
+                <td class="center">Состояние</td>
+                {for: i in top}<td class="center"></td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Верх</td>
+                {for: i in top}<td class="center">{i}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Низ</td>
+                {for: i in bottom}<td class="center">{i}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Состояние</td>
+                {for: i in top}<td class="center"></td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Пародонтит, подвижность</td>
+                {for: n in bottom}<td class="center">{move[number.index(n)] if n in number else ''}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Статус</td>
+                {for: n in bottom}
+                    <td class="center">
+                        {:teeth_stat = ''}
+                        {: indexes = [i for i, x in enumerate(number) if x == n]}
+                        {for: s in indexes}
+                            {: teeth_stat += status[s] + ', '}
+                        {end:}
+                        {teeth_stat[:-2]}
+                    </td>
+                {end:}
+            </tr>
+        </table>
+    {end:}
+    <br>
+
+    <!-- Таблица молочных зубов -->
+    {if: len(children_deciduous_teeth_formula_ref) > 0}
+        {if: len(children_deciduous_teeth_formula_ref) > 1}
+            {: teeth_formula = children_deciduous_teeth_formula_ref}
+            {: top = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65]}
+            {: bottom = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75]}
+        {end:}
+
+        {: number = []}
+        {: status = []}
+        {: move = []}
+
+        {for: tooth in teeth_formula}
+            {: number.append(forceInt(tooth.value('number')))}
+            {: status.append(forceString(tooth.value('status')))}
+            {: move.append(forceString(tooth.value('move')))}
+        {end:}
+
+        <div class="center">Молочные зубы</div>
+        <table>
+            <tr>
+                <td class="center">Статус</td>
+                {for: n in top}
+                    <td class="center">
+                        {:teeth_stat = ''}
+                        {: indexes = [i for i, x in enumerate(number) if x == n]}
+                        {for: s in indexes}
+                            {: teeth_stat += status[s] + ' '}
+                        {end:}
+                        {teeth_stat}
+                    </td>
+                {end:}
+            </tr>
+            <tr>
+                <td class="center">Пародонтит, подвижность</td>
+                {for: n in top}<td class="center">{move[number.index(n)] if n in number else ''}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Состояние</td>
+                {for: i in top}<td class="center"></td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Верх</td>
+                {for: i in top}<td class="center">{i}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Низ</td>
+                {for: i in bottom}<td class="center">{i}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Состояние</td>
+                {for: i in top}<td class="center"></td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Пародонтит, подвижность</td>
+                {for: n in bottom}<td class="center">{move[number.index(n)] if n in number else ''}</td>{end:}
+            </tr>
+            <tr>
+                <td class="center">Статус</td>
+                {for: n in bottom}
+                    <td class="center">
+                        {:teeth_stat = ''}
+                        {: indexes = [i for i, x in enumerate(number) if x == n]}
+                        {for: s in indexes}
+                            {: teeth_stat += status[s] + ', '}
+                        {end:}
+                        {teeth_stat[:-2]}
+                    </td>
+                {end:}
+            </tr>
+        </table>
+    {end:}
+    <br>
+
+    <!-- Дополнительная информация -->
+    <div>Прикус: {action[u'Прикус'].value}</div>
+    <div>Состояние слизистой оболочки полости рта, десен, альвеолярных отростков и неба: {action[u'Состояние слизистой оболочки полости рта, десен, альвеолярных отростков и неба'].value}</div>
+    <div>Состояние слюнных желез: {action[u'Состояние слюнных желез: околоушных, подвижночелюстных, подъязычных'].value}</div>
+    <div>Состояние лимфоузлов: {action[u'Состояние лимфоузлов: подчелюстных, подбородочных, подъязычных, шейных'].value}</div>
+    <div>Данные рентгеновских, лабораторных исследований: {action[u'Данные рентгенографических, лабораторных исследований'].value}</div>
+    <div>Развитие настоящего заболевания: {action[u'Развитие настоящего заболевания'].value}</div>
+</body>
+</html>
+

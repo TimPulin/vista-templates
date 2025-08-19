@@ -1,0 +1,445 @@
+<!-- изменил Пулин дата 13.08.2025 задача  -->
+<!--Начальная дата разработки 10.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: skl -->
+<!--Задача: Chel-707 Служебная записка по санаторно-курортному лечению -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка СКЛ</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.break-line {
+    line-height: 5px;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+</style>
+''')}
+
+{:
+sanCurCardActList = filter(lambda x: x.name==u'Санаторно-курортная карта', event.actions)
+sanCurCardAct = sanCurCardActList[0] if len(sanCurCardActList) > 0 else None
+}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+referral_info_ref_list = db.getRecordList(stmt=u"""
+  SELECT DATE_FORMAT(st.createDate, '%d.%m.%Y')                             as actDate,
+         IF(st.guardian_fio is null, 2, 1)                                  as is_need_gurdian,
+         st.card_num                                                        as card_number,
+         st.voucher_num                                                     as voucher_number,
+         rbS.name                                                           as sanatorium,
+         CONCAT_WS(' ', p.lastName, p.firstName, p.patrName)                as person_fio,
+         rbPP.name                                                          as person_post,
+         CONCAT_WS(' ', pChief.lastName, pChief.firstName, pChief.patrName) as chief_fio,
+         st.id                                                              as record_id
+
+  FROM SpaTreatment st
+           join rbSpaTreatmentSanator rbS on st.sanator_id = rbS.id
+           join Person p on st.person_id = p.id
+           join rbPost rbPP on p.post_id = rbPP.id
+           join OrgStructure os on p.orgStructure_id = os.id
+           join Person pChief on os.chief_id = pChief.id
+  where st.event_id = {event_id};
+""".format(event_id=event.id))
+}
+
+{:
+option_list = []
+if referral_info_ref_list:
+  for referral_info_ref in referral_info_ref_list:
+    actDate = forceString(referral_info_ref.value('actDate'))
+    voucher_number = forceString(referral_info_ref.value('voucher_number'))
+    sanatorium = forceString(referral_info_ref.value('sanatorium'))
+    str = actDate + ' ' + voucher_number + ' ' + sanatorium
+    option_list.append(str)
+}
+
+{:
+ref_index = None
+if referral_info_ref_list:
+  if len(referral_info_ref_list) == 1:
+    ref_index = 0
+  else:
+    dial =  dialogs.dialList("Выберите направление", option_list, 0)
+    ref_index = dial.getVar()
+}
+
+{:
+if referral_info_ref_list and ref_index is not None:
+  ref = referral_info_ref_list[ref_index]
+  actDate = forceString(ref.value('actDate'))
+  is_need_gurdian = forceString(ref.value('is_need_gurdian'))
+  card_number = forceString(ref.value('card_number'))
+  voucher_number = forceString(ref.value('voucher_number'))
+  sanatorium = forceString(ref.value('sanatorium'))
+  person_fio = forceString(ref.value('person_fio'))
+  person_post = forceString(ref.value('person_post'))
+  chief_fio = forceString(ref.value('chief_fio'))
+  record_id = forceString(ref.value('record_id'))
+else:
+  actDate = ''
+  is_need_gurdian = 0
+  card_number = ''
+  voucher_number = ''
+  sanatorium = ''
+  person_fio = ''
+  person_post = ''
+  chief_fio = ''
+  record_id = ''
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 7</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+      <tr>
+        <td valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">
+           Справка № {record_id} <br>
+           для получения путевки на санаторно-курортное лечение
+  </div>
+
+  <div align="center">{actDate}</div>
+
+  <p>
+    Настоящая справка не заменяет санаторно-курортной карты и не дает права на санаторно-курортное лечение. Справка действительна в течение 12 месяцев
+  </p>
+
+  <div>
+    Фамилия, имя, отчество (при наличии) ребенка <b>{client.fullName}</b>
+  </div>
+
+  <div>
+    Дата рождения:
+    <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+    Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+  </div>
+
+  <div>
+    Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+    <div>
+      <div>
+        {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      </div>
+      <div>
+        {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+    <div>
+      <div>
+        {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      </div>
+      <div>
+        {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    Полис обязательного медицинского страхования
+    серия <b>{client.policy.serial}</b>
+    № <b>{client.policy.number}</b>
+  </div>
+
+  <div>
+    дата выдачи полиса обязательного медицинского страхования:
+    <b>«{forceString(client.policy.begDate.toString('dd'))}» {forceString(month[client.policy.begDate.date.month()])} {forceString(client.policy.begDate.date.year())} г.</b>
+  </div>
+
+  <div>
+    данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+    {client.compulsoryPolicy.insurer}
+  </div>
+
+{:
+kladr_ref = db.getRecordEx(stmt=u"""
+  select LEFT(ah.KLADRCode, 2) as region_code
+  from ClientAddress ca
+           join Address a on ca.address_id = a.id and ca.deleted = 0 and ca.client_id = {clientId}
+           join AddressHouse ah on a.house_id = ah.id and ah.deleted = 0
+  limit 1;
+""".format(clientId=client.id))
+
+if kladr_ref:
+    region_code = forceString(kladr_ref.value(u'region_code'))
+else:
+    region_code = ''
+}
+
+    <div>
+      Код субъекта Российской Федерации
+      <b>{region_code}</b>
+    </div>
+
+    <div>
+      Климат в месте проживания пациента (код)
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Климат в месте проживания']}</b>
+      {end:}
+    </div>
+    <div>
+      Климатические факторы в месте проживания пациента (код)
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Климатические факторы в месте проживания']}</b>
+      {end:}
+    </div>
+    <div>
+      Код меры социальной поддержки
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Льготная категория']}</b>
+      {end:}
+    </div>
+    <div>
+      Сопровождение: <span class="small">да – 1, нет – 2</span>
+      {if: sanCurCardAct}
+        <b>{sanCurCardAct[u'Необходимость сопровождения пациента']}</b>
+      {end:}
+    </div>
+
+    <div>Документ, подтверждающий право на получение мер социальной поддержки в виде набора социальных услуг:</div>
+
+    <div>
+      серия
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Серия документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      {end:}
+      номер
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Номер документа, удостоверяющего право на получение набора социальных услуг']}</b>
+      {end:}
+      дата выдачи
+      {if: sanCurCardAct}
+          <b>{sanCurCardAct[u'Дата выдачи документа']}</b>
+      {end:}
+    </div>
+
+    <div>
+      Страховой номер индивидуального лицевого счета: <b>{client.SNILS}</b>
+    </div>
+
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 21 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ''
+      ) AS relatedDiag
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  WHERE e.id = {event_id};
+""".format(event_id=event.id))
+}
+{:
+if diagRef:
+    mainId = forceString(diagRef.value('mainId'))
+    mainName = forceString(diagRef.value('mainName'))
+    relatedDiags = forceString(diagRef.value('relatedDiag'))
+else:
+  mainId = ''
+  mainName = ''
+  relatedDiags = ''
+}
+
+{:
+def diag_layout(type, mkd_id='', mkb_name=''):
+    return """
+      <tr>
+        <td width="98%">
+          {type}
+          <b>{mkb_name}</b>
+        </td>
+        <td class="white-wrap" width="1%">код по МКБ </td>
+        <td class="white-wrap" width="1%"><b>{mkd_id}</b></td>
+      </tr>
+    """.format(type=type, mkd_id=mkd_id, mkb_name=mkb_name)
+}
+
+    <div>
+      Диагноз заболевания, для лечения которого направляется в санаторно-курортную организацию: <b>{mainName}</b>
+      код по Международной статистической классификации болезней и проблем, связанных со здоровьем (далее - МКБ) <b>{mainId}</b>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+
+      {if: relatedDiags != ''}
+        {for: index, diag in enumerate(relatedDiags.split(';'))}
+          {: code, name = diag.split('$')}
+          {: title = u'Сопутствующие заболевания:' if index == 0 else ''}
+          {write(diag_layout(title, code, name))}
+        {end:}
+      {else:}
+        {write(diag_layout(u'Сопутствующие заболевания:', u'______', u''))}
+      {end:}
+
+      {write(diag_layout(u'Заболевание, являющееся причиной инвалидности:', u'______', u''))}
+    </table>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+      <tr>
+        <td align="center">Противопоказания для санаторно-курортного лечения отсутствуют</td>
+      </tr>
+    </table>
+
+  <div align="justify">
+    Рекомендуемое лечение: в условиях пребывания в санаторно-курортной организации - 1; амбулаторно - 2
+    {if: sanCurCardAct}
+      {if: sanCurCardAct[u'Лечение'].value == u'в условиях пребывания в санаторно-курортной организации'}
+          <b>1</b>
+      {else:}
+          <b>2</b>
+      {end:}
+    {else:}
+      <b>1</b>
+    {end:}
+
+  </div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td width="1%" class="white-wrap">Предпочтительное <br> место лечения</td>
+      <td valign="middle">
+        {if: sanCurCardAct}
+            <b>{sanCurCardAct[u'Название санаторно-курортной организации']}</b>
+        {end:}
+      </td>
+    </tr>
+  </table>
+
+  <div>Рекомендуемые сезоны лечения: зима - 1, весна - 2, лето - 3, осень - 4</div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        Лечащий врач, должность врача-специалиста
+      </td>
+      <td width="1%" class="white-wrap">
+        <div class="white-wrap">
+          {person_fio}, <br>
+          {person_post}</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Заведующий отделением
+      </td>
+      <td width="1%" class="white-wrap">
+        <div class="white-wrap">{chief_fio}&nbsp;</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Председатель врачебной комиссии
+      </td>
+      <td width="1%" class="white-wrap">{'_' * 20}</td>
+    </tr>
+  </table>
+  <p>М.П. (при наличии)</p>
+</div>
+</body>
+</html>

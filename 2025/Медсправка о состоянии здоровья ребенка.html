@@ -1,0 +1,254 @@
+<!--Начальная дата разработки 07.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5574 Медицинская справка о состоянии здоровья ребенка, направляемого  в организацию отдыха детей и их оздоровления -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинская справка о состоянии здоровья ребенка, направляемого в организацию отдыха детей и их оздоровления</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+    font-size: 6pt;
+}
+
+.bold {
+  font-weight: 900;
+}
+
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 7</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+  </table>
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">
+    Медицинская справка о состоянии здоровья ребенка, направляемого <br>
+    в организацию отдыха детей и их оздоровления
+  </div>
+
+  <div>
+    Фамилия, имя, отчество (при наличии) ребенка <b>{client.fullName}</b>
+  </div>
+
+  <div>
+    Дата рождения:
+    <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+    Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+    Гражданство: <b>{client.citizenship}</b>
+  </div>
+
+  <div>
+    Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+    <div>
+      {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      <br>
+      {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+    </div>
+  </div>
+
+  <div>
+    Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+    <div>
+      {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      <br>
+      {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+      {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+    </div>
+  </div>
+
+  <div>
+    Сведения об образовательной организации:
+    тип <b>{action[u'тип образовательного учреждения']}</b>
+    № <b>{action[u'номер образовательного учреждения ']}</b>
+    класс <b>{action[u'класс']}</b>
+    наименование <b>{action[u'наименование образовательного учреждения']}</b>
+  </div>
+
+  <div>
+    <div>
+      Перенесенные заболевания, операции, травмы
+      {action[u'Перенесенные заболевания, операции, травмы']}
+    </div>
+    
+
+    <b>{action[u'Перенесенные детские инфекционные заболевания']}</b>
+  </div>
+  <!--<div>-->
+  <!--  Дата-->
+  <!--</div>-->
+
+  <div>
+    Проведенные профилактические прививки и результаты обследований, в том числе в целях выявления туберкулеза
+    <b>{action[u'Проведенные профилактические прививки']}</b>
+  </div>
+
+  <div>
+    Состояние здоровья:
+  <b>{action[u'Состояние здоровья']}</b>
+  </div>
+
+  <div>
+    Диагноз заболевания
+    <b>{action[u'Врачебное описание диагноза']}</b>
+    код по МКБ
+    <b>{action[u'Шифр МКБ']}</b>
+  </div>
+
+  <div>
+    Аллергические заболевания (пищевая, лекарственная, бытовая аллергия), аллергические реакции:
+  <b>{action[u'Аллергические заболевания']}</b>
+  </div>
+
+  <div>
+    Назначенный лечащим врачом режим лечения (диета, прием лекарственных препаратов для медицинского применения и специализированных продуктов лечебного питания)
+    <b>{action[u'Назначенный лечащим врачом режим лечения']}</b>
+  </div>
+
+  <div>
+    Рост <b>{action[u'Рост (см)']}</b>
+    масса тела <b>{action[u'Масса тела (кг)']}</b>
+  </div>
+
+  <div>
+    Группа здоровья
+  <b>{action[u'Группа здоровья']}</b>
+  </div>
+
+  <div>
+    Медицинская группа для занятий физической культурой
+    <b>{action[u'Медицинская группа для занятий физической культурой']}</b>
+  </div>
+
+  <div>
+    Нуждаемость в условиях доступной среды: <b>{action[u'Нуждаемость в условиях доступной среды']}</b>
+  </div>
+
+  <div align="justify">
+    Необходимость сопровождения ребенка законным представителем в период пребывания в организации отдыха детей и их оздоровления и (или) нуждающегося в индивидуальной помощи в связи с имеющимися физическими, психическими, интеллектуальными или сенсорными нарушениями
+    <b>{action[u'Необходимость сопровождения пациента']}</b>
+  </div>
+
+  <div>
+    Отсутствие контакта с больными инфекционными заболеваниями
+    {action[u'Контакт с инфекционными больными']}
+  </div>
+
+  <div>
+    Осмотр на педикулез и чесотку
+    <b>{action[u'Осмотр на педикулез и чесотку']}</b>
+  </div>
+
+  <div>
+    Обследование на гельминтозы (энтеробиоз, гименолепидоз)
+  <b>{action[u'Обследование на гельминтозы (энтеробиоз, гименолепидоз)']}</b>
+  </div>
+
+  <div>
+    Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления
+    <b>{action[u'Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления']}</b>
+  </div>
+
+  <div align="justify">Должность, специальность, фамилия, имя, отчество (при наличии) и подпись врача</div>
+  <div class="bold">
+    {action.person.post}
+    {action.person.speciality.name}
+    {action.person.fullName}
+  </div>
+
+  <div align="justify">Фамилия, имя, отчество (при наличии) и подпись руководителя медицинской организации</div>
+  <hr>
+
+  <div>М.П. (при наличии)</div>
+  {if: action.endDate}
+      {:actionDate = action.endDate}
+  {else:}
+      {:actionDate = action.begDate}
+  {end:}
+  <b>«{forceString(actionDate.toString('dd'))}» {forceString(month[actionDate.date.month()])} {forceString(actionDate.date.year())} г.</b>
+
+</div>
+</body>
+</html>

@@ -1,9 +1,10 @@
+<!-- изменил Пулин дата 18.07.2025 задача SUP-52285 Создать новую амбулаторную карту -->
 <!--Начальная дата разработки 13.03.2024 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати:  -->
 <!--Задача: DEV_TEMP-3677 Форма для статотчетности 025-1/у "Талон пациента, получающего медицинскую помощь в амбулаторных условиях" -->
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -128,6 +129,34 @@ for stat in client.socStatuses:
 
 
 {:
+event_ref_list = db.getRecordList(stmt=u"""
+  select e.id,
+         DATE_FORMAT(e.setDate, '%d.%m.%Y') as event_set_date,
+         et.name                            as event_type
+    from Event e
+             join EventType et on e.eventType_id = et.id and e.deleted = 0
+    where e.client_id = {client_id}
+    order by e.id desc ;
+""".format(client_id=client.id))
+}
+{:
+event_str_list = []
+event_info_list = []
+if event_ref_list:
+    for ref in event_ref_list:
+        event_set_date = forceString(ref.value(u'event_set_date'))
+        event_type = forceString(ref.value(u'event_type'))
+        id = forceInt(ref.value(u'id'))
+        event_str_list.append(event_set_date + u' ' + event_type)
+        event_info_list.append([id, event_set_date])
+}
+
+{:
+event_id_dial = dialogs.dialList('выберите обращение', event_str_list, 1)
+event_id, event_set_date = event_info_list[event_id_dial.getVar() if event_id_dial.getVar() else 0]
+}
+
+{:
 eventInfoRef = db.getRecordEx(stmt=u"""
   select rbDR.name                                as event_result,
          -- первичный, вторичный
@@ -143,14 +172,14 @@ eventInfoRef = db.getRecordEx(stmt=u"""
          rbEG.code                                as visit_goal,
          IF(a.id is null, 0, 1)                   as is_hospital,
          e.`order`
-  from event e
-           join visit v on e.id = v.event_id
+  from Event e
+           join Visit v on e.id = v.event_id
            join rbEventGoal rbEG on e.goal_id = rbEG.id
-           left join action a on e.id = a.event_id and a.actionType_id = 134
-           join diagnostic dc on e.id = dc.event_id and e.deleted = 0 and dc.deleted = 0 and e.id = {event_id}
-           join rbdiagnosticresult rbDR on dc.result_id = rbDR.id
-           join diagnosis ds on dc.diagnosis_id = ds.id and ds.id = (select getEventDiagnosis({event_id}));
-""".format(event_id=event.id))
+           left join Action a on e.id = a.event_id and a.actionType_id = 134
+           join Diagnostic dc on e.id = dc.event_id and e.deleted = 0 and dc.deleted = 0 and e.id = {event_id}
+           join rbDiagnosticResult rbDR on dc.result_id = rbDR.id
+           join Diagnosis ds on dc.diagnosis_id = ds.id and ds.id = (select getEventDiagnosis({event_id}));
+""".format(event_id=event_id))
 }
 
 {:
@@ -180,8 +209,8 @@ financeRef = db.getRecordEx(stmt=u"""
   from Event e
        join Visit v on e.id = v.event_id and v.deleted = 0
        join rbFinance rf on v.finance_id = rf.id
-  where e.id = 166370;
-""".format(clientId=event.client.id))
+  where e.id = {event_id};
+""".format(event_id=event_id))
 
 if financeRef:
   finance = forceString(financeRef.value('name'))
@@ -230,13 +259,14 @@ else:
     </table>
   </header>
 
-<div align="center" class="h1">ТАЛОН ПАЦИЕНТА, ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ В АМБУЛАТОРНЫХ УСЛОВИЯХ, № {event.id}</div>
+<div align="center" class="h1">ТАЛОН ПАЦИЕНТА, ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ В АМБУЛАТОРНЫХ УСЛОВИЯХ, № {event_id}</div>
 <table width="100%" cellpadding="3" cellspacing="0" border="1">
   <tr>
     <td>
       <div>
+        {: day, month_str, year = event_set_date.split('.')}
         1. Дата открытия талона:
-        <b>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</b>
+        <b>«{day}» {forceString(month[forceInt(month_str)])} {year} г.</b>
       </div>
 
       <div>
@@ -386,9 +416,9 @@ else:
 {:
 visit_ref_list = db.getRecordList(stmt=u"""
   select DATE_FORMAT(v.date, '%d.%m.%Y') as date_visit
-  from event e
-  join visit v on e.id = v.event_id and v.deleted = 0 and e.id = {event_id}
-""".format(event_id=event.id))
+  from Event e
+  join Visit v on e.id = v.event_id and v.deleted = 0 and e.id = {event_id}
+""".format(event_id=event_id))
 }
    <table width="100%" cellpadding="3" cellspacing="0" border="1">
     <tr>
@@ -414,19 +444,19 @@ diagRef = db.getRecordEx(stmt=u"""
   select MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN mkb.DiagID END)   as base_diag_id,
          MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN mkb.DiagName END) as base_diag_name,
          MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN rbCH.code END)    as diseases_character,
-         MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN rbTT.code2 END)   as trauma_type,
-         MAX(IF(ds.diagnosisType_id in (1, 2), rbD.amb_talon_code, ''))     as dispanser_code,
+         MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN rbTT.code END)   as trauma_type,
+         MAX(IF(ds.diagnosisType_id in (1, 2), rbD.code, ''))     as dispanser_code,
          MAX(IF(ds.diagnosisType_id = 3, mkb.DiagID, ''))                   as difficulty_diag_id,
          MAX(IF(ds.diagnosisType_id = 3, mkb.DiagName, ''))                 as difficulty_diag_name
-  from event e
-         join diagnostic dc on e.id = dc.event_id and dc.deleted = 0 and e.id = {event_id}
-         join diagnosis ds on dc.diagnosis_id = ds.id and ds.deleted = 0
-         join rbdiseasecharacter rbCH on ds.character_id = rbCH.id
-         join rbdiagnosistype rbDT on ds.diagnosisType_id = rbDT.id
+  from Event e
+         join Diagnostic dc on e.id = dc.event_id and dc.deleted = 0 and e.id = {event_id}
+         join Diagnosis ds on dc.diagnosis_id = ds.id and ds.deleted = 0
+         join rbDiseaseCharacter rbCH on ds.character_id = rbCH.id
+         join rbDiagnosisType rbDT on ds.diagnosisType_id = rbDT.id
          left join rbTraumaType rbTT on ds.traumaType_id = rbTT.id
          left join rbDispanser rbD on ds.dispanser_id = rbD.id
-         join mkb on ds.MKB = mkb.DiagID;
-""".format(event_id=event.id))
+         join MKB as mkb on ds.MKB = mkb.DiagID;
+""".format(event_id=event_id))
 }
 
 {:
@@ -465,7 +495,7 @@ else:
           </tr>
           <tr>
             <td>
-              26.1. Осложнения основанного заболевания: 
+              26.1. Осложнения основанного заболевания:
               {if: difficulty_diag_name != ''}
                   <b>{difficulty_diag_name}</b>
               {else:}
@@ -549,7 +579,7 @@ else:
           </tr>
           <tr>
             <td>
-              32.1. Осложнения основанного заболевания: 
+              32.1. Осложнения основанного заболевания:
               {if: difficulty_diag_name != ''}
                   <b>{difficulty_diag_name}</b>
               {else:}
@@ -696,42 +726,7 @@ else:
     {end:}
   </table>
 
-{: eln_period_end = event.execDate.toString('yyyy-MM-dd') if event.execDate else datetime.strftime(datetime.now(), '%Y-%m-%d')}
-{: eln_period_start = event.setDate.toString('yyyy-MM-dd')}
-<!--  note запрос составлен коряво - нужно, чтобы подтягивал все записи при наличии продления ЭЛН -->
-{:
-eln_ref_list = db.getRecordList(stmt=u"""
-  select DATE_FORMAT(eln.lnDate, '%d.%m.%Y') as issue_date,
-         DATE_FORMAT(eln.endDate, '%d.%m.%Y') as end_date,
-         CASE eln.reason1_id
-             WHEN 5 THEN 2
-             WHEN 6 THEN 3
-             WHEN 8 THEN 4
-             ELSE 1
-         END     as reason,
-          eln.serv1_fio as care_fio,
-          eln.serv1_age as care_age
-  from tempinvalideln eln
-  where eln.deleted = 0
-    and DATE(eln.lnDate) between '{beg_date}' and '{end_date}'
-    and eln.client_id = {client_id}
-  order by eln.id;
-""".format(client_id=event.client.id, beg_date=eln_period_start, end_date=eln_period_end))
-}
-{:
-if eln_ref_list:
-  first_eln = eln_ref_list[0]
-  issue_date = forceString(first_eln.value(u'issue_date'))
-  reason = forceString(first_eln.value(u'reason'))
-  care_fio = forceString(first_eln.value(u'care_fio'))
-  care_age = forceString(first_eln.value(u'care_age'))
-  end_date = forceString(eln_ref_list[-1].value(u'end_date'))
-else:
-  reason = ''
-  issue_date = u'«____» ______ 20____г.'
-  end_date = u'«____» ______ 20____г.'
 
-}
 
   <table width="100%" cellpadding="3" cellspacing="0" border="1">
     <tr>
@@ -739,50 +734,44 @@ else:
         <div>
           <div align="justify">
             45. Документ о временной нетрудоспособности: листок нетрудоспособности – 1, справка – 2. <b>1</b>
-            46. Повод выдачи: заболевание – 1, уход за больным членом семьи – 2,
+            46. Повод выдачи: заболевание – 1, уход за больным членом семьи – 2 {'_' * 10}
 
             {if: reason == u'2'}
               (фамилия, имя, отчество (при наличии), пол, возраст
-              (<b>{care_fio}</b>,
-              <b>{care_age}</b>))
+              ({'_' * 20},
+              {'_' * 20}))
             {end:}
 
             в связи с карантином – 3,
             санаторно-курортного лечения – 4
-            <b>{reason}</b>
+            <b>{'_' * 10}</b>
           </div>
         </div>
 
         <div>
-          47. Дата выдачи: <b>{issue_date}</b>
+          47. Дата выдачи: «____» ______ 20____г.
         </div>
         <div>
           48. Даты продления:
-          {if: eln_ref_list and len(eln_ref_list) > 1}
-            {for: eln_ref in eln_ref_list[1:]}
-              <b>{forceString(eln_ref.value(u'issue_date'))}</b>
-            {end:}
-          {else:}
-            {for: _ in range(4)}
-              «____» ______ 20____г.
-            {end:}
+          {for: _ in range(4)}
+            «____» ______ 20____г.
           {end:}
         </div>
 
         <div>
-          49. Дата закрытия документа о временной нетрудоспособности: <b>{end_date}</b>
+          49. Дата закрытия документа о временной нетрудоспособности: {'_' * 10}
         </div>
 
         <div>
-          50. Дата закрытия талона: <b>{event.execDate.toString('dd.MM.yyyy')}</b>
+          50. Дата закрытия талона: «____» ______ 20____г.
         </div>
       </td>
     </tr>
   </table>
 
 <div>
-  51. Врач: должность, специальность <b>{event.execPerson.speciality}</b>
-  фамилия, имя, отчество (при наличии) <b>{event.execPerson.fullName}</b>,
+  51. Врач: должность, специальность {'_' * 20}
+  фамилия, имя, отчество (при наличии) {'_' * 20},
   подпись {'_' * 20}
 </div>
 

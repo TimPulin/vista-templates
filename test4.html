@@ -1,395 +1,778 @@
-<!-- изменил Пулин дата 23.06.2025 задача DEV_TEMP-5539 В шаблоне анализа крови необходимо изменить референсные значения -->
-<!--Начальная дата разработки 00/00/0000 г.-->
-<!--Версия 0.0.0.2, дата 29.05.2021 г.-->
-<!--Разработка: Солтанов Алекснадр Назимович-->
-<!--Контекст печати: f131pe -->
-<!-- Задача: SUP-17123 -->
-<!-- 35 ддд -->
-
+<!-- изменил Волков А.А. дата 18.02.2025 задача DEV_TEMP-5112 Увеличить шрифт ФИО, дата рождения и номер участка -->
+<!-- изменил Пулин дата 21.03.2024 задача DEV_TEMP-3723 Корректировка шаблона -->
+<!-- Разработал: ??? ??? ??? -->
+<!-- Изменил: Рыжко Назарий Олегович -->
+<!-- Дата: 13.10.2022 -->
+<!-- Задача: DEV_TEMP-309 -->
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <title>Анализ крови и флюшка</title>
-{ setPageSize('A5') }
-{ setOrientation('P') }
-{ setLeftMargin(10.0) }
-{ setTopMargin(2.0) }
-{ setRightMargin(10.0) }
-{ setBottomMargin(2.0) }
+<title>Медицинская карта пациента, получающего медицинскую помощь в амбулаторных условиях № __</title>
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db}
+{: from library.Utils import forceString, forceRef, forceInt, forceDate}
 
-{:
-write('''
-<style>
-.nowrap {
-    white-space: nowrap;
-}
-.big {
-    font-size: 12pt;
-}
-.small {
-    font-size: 5pt;
-}
-.bordered td {
-    font-size: 7pt;
-    padding-left: 2px;
-    padding-right: 1px;
-}
-.vertical {
-    line-height: 8px;
-}
-</style>
-''')}
+{ setPageSize('A4') }
+{ setOrientation('P') }
+{ setLeftMargin(5.0) }
+{ setTopMargin(1.0) }
+{ setRightMargin(5.0) }
+{ setBottomMargin(5.0) }
+
+{:Ychastki = client.allAttaches}
+{:CDate = client.chartBeginDate.date.toString('dd.MM.yyyy')}
+{:R3Date = client.birthDate.date.toString('dd.MM.yyyy')}
+{:AdrOKATO = unicode(client.regAddress.OKATO)}
+
+{:Adress = client.regAddress}
+{:Adressprov = client.locAddress}
+
+{: ref_number = db.getRecordEx(stmt=u"SELECT GROUP_CONCAT(ci.identifier SEPARATOR '; ') as num FROM ClientIdentification ci WHERE ci.client_id = {clientId} AND ci.accountingSystem_id = 15;".format(clientId=client.id)) }
+{if: ref_number}
+	{: notes = forceString(ref_number.value(u'num'))} </b><br />
+{else:}
+	{: notes = client.notes.replace(u'<br>', u' ').split(u' ')[-1]}
+{end:}
+
+{: regAddress_list = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress
+where client_id = {clientId}
+	and type = 0;
+""".format(clientId=client.id))}
+
+{: locAddress_list = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress ca
+where client_id = {clientId}
+	and type = 1
+""".format(clientId=client.id))
+
+prevLocAddressListRef = db.getRecordList(stmt=u"""
+select
+	formatClientAddress(id) as address
+from
+	ClientAddress ca
+where client_id = {clientId}
+	and type = 1
+    and ca.deleted = 1;
+""".format(clientId=client.id))}
+
+{:n = 1}
+
+<!--Адрес временной регистрации настоящие-->
+{: ref_add = db.getRecordEx(stmt=u"""
+  SELECT CONCAT(k.NAME, ' ', s.NAME, ' ', s.SOCR, ' ', 'д.', ah.number, ' ', 'кв.', a.flat) as addr FROM pnd8.Address a JOIN pnd8.AddressHouse ah ON a.house_id = ah.id JOIN kladr.STREET s ON ah.KLADRStreetCode = s.CODE JOIN kladr.KLADR k ON ah.KLADRCode= k.CODE where a.id = (SELECT ca.address_id FROM ClientAddress ca WHERE ca.client_id = {clientId} AND ca.type = 2 and ca.deleted = 0 ORDER BY ca.id DESC LIMIT 1);
+  """.format(clientId=client.id)) }
+<!--Адрес временной регистрации прошлые-->
+{: ref_add_del = db.getRecordList(stmt=u"SELECT CONCAT(k.NAME, ' ', s.NAME, ' ', s.SOCR, ' ', 'д.', ah.number, ' ', 'кв.', a.flat) as addr FROM pnd8.Address a JOIN pnd8.AddressHouse ah ON a.house_id = ah.id JOIN kladr.STREET s ON ah.KLADRStreetCode = s.CODE JOIN kladr.KLADR k ON ah.KLADRCode= k.CODE where a.id = (SELECT ca.address_id FROM ClientAddress ca WHERE ca.client_id = {clientId} AND ca.type = 2 and ca.deleted = 1 ORDER BY ca.id DESC LIMIT 1);".format(clientId=client.id)) }
+
+{ setPageSize('A4') }
+{ setOrientation('P') }
+
+{ setLeftMargin(25.0) }
+{ setTopMargin(10.0) }
+{ setRightMargin(15.0) }
+{ setBottomMargin(10.0) }
+
+{: QDate = type(client.birthDate.date)}
 
 </head>
 
+<body style="font-family: Times New Roman; font-size: 6pt; color: black;">
 
+<table width=100% cellpadding=1 cellspacing=0 border=0 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+	<tr>
+		<td width=100%>
 
-<body style="font-family: 'MS Shell Dlg 2'; font-size: 8pt;">
-
-
-
-<table cellpadding="0" cellspacing="0" style="font-size: 6pt;" width="100%">
-  <tr>
-      <td width="1%" class="small nowrap" align="center">
-        <div><span style="font-size: 10pt"> кабинет <b> 206, 8:30-11:00</b> </span></div>
-        <div>МИНЗДРАВ РФ</div>
-        <div>Наименование учреждения</div>
-        <div>{currentOrganisation.shortName}</div>
-        <div>Лаборатория</div>
-      </td>
-      <td width="98%"></td>
-      <td width="1%" class="small nowrap">
-        <div>Код формы по ОКУД ________</div>
-        <div>Код формы по ОКПО {currentOrganisation.OKPO}</div>
-        <div>Медицинская документация</div>
-        <div>Форма № 224/у</div>
-        <div>Утверждена Минздравом СССР&nbsp;</div>
-        <div>04.10.80 № 1030</div>
-      </td>
-  </tr>
+			<table width=100% cellpadding=3 cellspacing=0 border=0 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+				<tr>
+					<td width=100%>
+						<table width=100% cellpadding=1 cellspacing=0 border=1 STYLE="font-family: Times New Roman; font-size: 7pt; color: black">
+<tr>
+	<td align="center" width="40%">МИНИСТЕРСТВО ЗДРАВООХРАНЕНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ</td>
+	<td rowspan="4" width="60%">
+		<table style="font-family: Times New Roman; font-size: 8pt; color: black;" border="0" cellspacing="0" cellpadding="1">
+			<tbody>
+				<tr>
+					<td>Код учреждения по ОКПО</td>
+					<td>
+					<table border="1" cellspacing="0" cellpadding="0">
+					<tbody>
+					<tr>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;3&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;4&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;3&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;5&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;4&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;2&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;0&nbsp;&nbsp;</strong></td>
+					<td align="left" valign="middle"><strong>&nbsp;&nbsp;6&nbsp;&nbsp;</strong></td>
+				</tr>
+			</tbody>
+		</table>
+	</td>
+</tr>
+</tbody>
 </table>
-
-
-
-<center>
-    <div><strong>АНАЛИЗ КРОВИ №</strong></div>
-    <div>«_____»  «___________»  20___г.</div>
-    <div><sup>Дата взятия биоматериала</sup></div>
-</center>
-
-<table cellpadding="0" cellspacing="0" border="0" width="100%">
-  <tr>
-    <td colspan="2">
-      <nobr>Ф.И.О. <span class="big"><b>{client.fullName}</b></span></nobr>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      Дата рождения <b>{client.birthDate}</b> &nbsp;&nbsp;&nbsp;
-      <nobr>Возраст <b>{if: client.birthDate and len(client.age.split()) <= 2} {client.age}{end:}</b></nobr>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <nobr>Учреждение <span class="big"><b>{client.work}</b></span></nobr>
-    </td>
-  </tr>
-  <tr>
-    <td width="40%">Участок ____________________</td>
-    <td> Медицинская карта № ____________________</td>
-  </tr>
+<table style="font-family: Times New Roman; font-size: 7pt; color: black;" border="0" cellspacing="0" cellpadding="1">
+<tbody>
+<tr>
+<td>Медицинская документация
+Учетная форма N 025/у </td>
+</tr>
+<tr>
+<td>Утверждена приказом Минздрава России
+от 15 декабря 2014 г. N 834н </td>
+</tr>
+</tbody>
 </table>
-
-<!-- note анализы -->
-<table cellpadding="0" cellspacing="0" border="1" width="100%" class="bordered">
-  <tr>
-    <td width="30%" rowspan="2" colspan="2"></td>
-    <td align="center" width="15%" rowspan="2">Результат</td>
-    <td align="center" width="55%" colspan="4">Норма</td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2" width="30%">
-      <nobr>Единицы СИ</nobr>
-    </td>
-    <td align="center" colspan="2" width="30%">
-      <nobr>Един., подлеж. замене</nobr>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <table cellpadding="0" cellspacing="0" border="0" width="100%">
-        <tr>
-          <td style="font-size: 7pt">Гемоглобин</td>
-          <td><font size="30%">М<br>Ж</font></td>
-        </tr>
-      </table>
-    <td></td>
-    <td align="center" width="20%">120,0-160,0<br>110,0-150,0</td>
-    <td align="center">г/л</td>
-    <td align="center">12,0-16,0<br>11,0-15,0</td>
-    <td align="center" width="20%">г%</td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <table cellpadding="0" cellspacing="0" border="0" width="100%">
-        <tr>
-          <td style="font-size: 7pt">Эритроциты</td>
-          <td><font size="30%">М<br>Ж</font></td>
-        </tr>
-      </table>
-    </td>
-    <td></td>
-    <td align="center">4,0-5,5<br>3,5-5,0</td>
-    <td align="center">.10 12/л</td>
-    <td align="center">4,0-5,5<br>3,5-5,0</td>
-    <td class="nowrap" align="center">млн<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">Цветовой показатель</td>
-    <td></td>
-    <td align="center">0,85-1,05</td>
-    <td align="center"></td>
-    <td align="center">0,85-1,05</td>
-    <td align="center"></td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      Среднее содержание<br>гемоглобина в 1 эритроците
-    </td>
-    <td></td>
-    <td align="center">30-35</td>
-    <td align="center">пг</td>
-    <td align="center">30-35</td>
-    <td align="center">пг</td>
-  </tr>
-
-  <tr>
-    <td colspan="2">Ретикулоциты</td>
-    <td></td>
-    <td align="center">2-10</td>
-    <td align="center">‰</td>
-    <td align="center">2-10</td>
-    <td align="center"><‰</td>
-  </tr>
-
-  <tr>
-    <td colspan="2">Тромбоциты</td>
-    <td></td>
-    <td align="center">100,0-300,0</td>
-    <td align="center">.10 9/л</td>
-    <td align="center">100,0-300,0&nbsp;</td>
-    <td class="nowrap" align="center">тыс<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-
-  <tr>
-    <td colspan="2">Лейкоциты</td>
-    <td></td>
-    <td align="center">4,0-10,0</td>
-    <td align="center">.10 9/л</td>
-    <td align="center">4,0-10,0</td>
-    <td class="nowrap" align="center">тыс<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-
-  <tr>
-    <td colspan="2">Метгемоглобин</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-
-  <tr>
-    <td colspan="2">Карбоксигемоглобин</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-
-  <tr>
-    <td colspan="2">ВСК</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-
-
-  <tr>
-    <td valign="middle" align="center" rowspan="4">
-      <div class="vertical">Н</div>
-      <div class="vertical">е</div>
-      <div class="vertical">й</div>
-      <div class="vertical">т</div>
-      <div class="vertical">р</div>
-      <div class="vertical">о</div>
-      <div class="vertical">ф</div>
-      <div class="vertical">и</div>
-      <div class="vertical">л</div>
-      <div class="vertical">ы</div>
-    </td>
-    <td width="25%">Миелоциты</td>
-    <td align="center"></td>
-    <td align="center">.<br>.</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">.<br>.</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td>Метамиелоциты</td>
-    <td align="center"></td>
-    <td align="center">.<br>.</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">.<br>.</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td>Палочкоядерные</td>
-    <td align="center"></td>
-    <td align="center">1-6<br>0,040-0,300</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">1-6<br>40-300</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td>Сегментоядерные&nbsp;</td>
-    <td align="center"></td>
-    <td align="center">50-70<br>2,000-7,000</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">50-70<br>2000-7000</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">Эозинофилы</td>
-    <td align="center"></td>
-    <td align="center">0,5-5<br>0,020-0,300</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">0,5-5<br>20-300</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">Базофилы</td>
-    <td align="center"></td>
-    <td align="center">0-1<br>0-0,065</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">0-1<br>0-65</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">Лимфоциты</td>
-    <td align="center"></td>
-    <td align="center">20-40<br>0,800-4,000</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">20-40<br>800-4000</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">Моноциты</td>
-    <td align="center"></td>
-    <td align="center">3-15<br>0,100-1,500</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">3-15<br>100-1500</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      Плазматические клетки
-    </td>
-    <td align="center"></td>
-    <td align="center">.<br>.</td>
-    <td align="center">%<br>.10 9./л</td>
-    <td align="center">.<br>.</td>
-    <td class="nowrap" align="center">%<br>в 1 мм<sup>3</sup>(мкл)&nbsp;</td>
-  </tr>
-  <tr>
-    <td colspan="2">
-      <table cellpadding="0" cellspacing="0" border="0" style="border-style: dotted;" width="100%">
-        <tr>
-          <td>
-            Скорость (реакция)<br>оседания эритроцитов
-          </td>
-          <td><font size="30%">М<br>Ж</font></td>
-        </tr>
-      </table>
-    </td>
-    <td align="center"></td>
-    <td align="center">2-10<br>2-15
-    </td>
-    <td align="center">мм/ч
-    </td>
-    <td align="center">2-10<br>2-15
-    </td>
-    <td align="center">мм/ч
-    </td>
-  </tr>
+</td>
+</tr>
+<tr>
+<td align="center">{currentOrganisation.fullName}</td>
+</tr>
 </table>
+</td>
+<td width="30%">&nbsp;</td>
+</tr>
+<tr>
+<td>
+<table style="font-family: Times New Roman; font-size: 9pt; color: black;" border="0" width="100%" cellspacing="0" cellpadding="1">
+<tbody>
+<tr>
+<td align="right" style="font-size: 12pt ;"><font size="5pt">Номер участка </font>&nbsp;&nbsp;
+	{:ychastki = filter(lambda ych: ych.endDate >= currentDate.date or not ych.endDate, client.allAttaches)}
+	{if: len(ychastki) > 1 and len(ychastki) != 0}
+	<b>	{', '.join(map(lambda a: a.orgStructure.code, ychastki))}</b>
+	{elif: len(ychastki) != 0}
+	<b>	{ychastki[0].orgStructure.code}</b>
+	{end:}
 
-
-<!-- Флюшка -->
-
-<div style="page-break-after:always;"></div>
-<TABLE BORDER=0 WIDTH="100%" cellpadding="0" cellspacing="0" STYLE="font-family: Arial; font-size: 10pt; color: black" BORDER=0>
-  <br><br>
-  <tr>
-    <td align=center> АO Балтийский завод</td>
-  </tr>
-  <tr>
-    <td align=center> Медико-санитарная часть №3</td>
-  </tr>
-  <tr>
-    <td align=center><big><b> НАПРАВЛЕНИЕ В ФЛЮОРОКАБИНЕТ</b></big></td>
-  </tr>
-  <tr>
-    <td align=center><b><span class="big">
-      {:office = ''}
-      {for: action in event.actions}
-        {if: action.code in (u'14023')}
-          {:office = action._action.getType().office}
-        {end:}
-      {end:}
-      Кабинет
-      {if: office}
-        {office}
-      {else:}
-        Кабинет 104 ,  9:30 - 11:00
-      {end:} </span></b>
-    </td>
-  </tr>
-  <tr>
-    <td> ФИО <span class="big"><b><i>{client.fullName}</i></b></span>
-      <hr>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      Дата рождения <i> {client.birthDate} </i>
-      Возраст {if: client.birthDate and len(client.age.split()) <= 2} {client.age}{else:}{end:}
-      <hr>
-    </td>
-  </tr>
-  <tr>
-    <td> Адрес регистрации <i> {client.regAddress} </i>
-      <hr>
-    </td>
-  </tr>
-  <tr>
-    <td> Адрес проживания <i> {client.locAddress} </i>
-      <hr>
-    </td>
-  </tr>
-  <tr>
-    <td> Телефон <i> {client.phones}</i>
-      <hr>
-    </td>
-  </tr>
-  <tr>
-    <td> Место работы <span class="big"><b><i>{client.work.shortName} </i></b></span>
-      <hr>
-    </td>
-  </tr>
-
+<td align="right"></td>
+<td>
+	{if: CDate != ''}
+	<td><font size="-1">1. Дата заполнения медицинской карты: </font></td>
+ 	<b>{client.chartBeginDate.date.toString('dd.MM.yyyy')}</b>
+	{else:}
+	<tr>
+		<td style="font-size: 9pt;">1. Дата заполнения медицинской карты: </td>
+	</tr>
+	<tbody>
+	</tbody>
+	</table>
+	{end:}
+</td>
+</tr>
 </table>
+</td>
+</tr>
+</table>
+<tr>
+<td colspan="2">&nbsp;</td>
+</tr>
+<tr>
+<td align="center">
+<h4>МЕДИЦИНСКАЯ КАРТА № <font style="font-size: 10pt;">{client.id}</font></h4>
+	<tr >
+		<td style="font-size: 9pt;" >
+			2. Фамилия, имя, отчество: <font style="font-size: 12pt;"><b>{client.fullName}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			3. Пол <b><font style="font-size: 9pt;">{if: client.sexCode == 1}мужской{else:}женский{end:}</font></b>. &nbsp;
+			4. Дата рождения: <b><font style="font-size: 11pt;">{client.birthDate.date.toString(u"dd.MM.yyyy")}</font></b>
+		</td>
+	</tr>
+
+	{if: client.regAddress}{: regAddr = client.regAddress}{else:}{: regAddr = client.locAddress}{end:}
+	{if: client.locAddress}{: locAddr = client.locAddress}{else:}{: locAddr = client.regAddress}{end:}
+	<tr>
+		<td>
+			<table>
+			<tr>
+			<td style="font-size: 9pt;"> 5. Место регистрации:</td>
+			<td align='center' style="font-size: 9pt;"><b>{regAddr}</b></td>
+			</tr>
+
+			<tr>
+
+			<td style="font-size: 9pt;">Место проживания:</td><td align='center' style="font-size: 9pt;"> <b>{locAddr}</b></td>
+			</tr>
+			</table>
+			{if: client.phones}&nbsp;&nbsp;&nbsp;<b style="font-size: 9pt;">{client.phones}</b>{else:}телефон: _______________{end:}. &nbsp;
+		</td>
+	</tr>
+	<table style="font-size: 9pt;">
+	<tr>
+		<td style="font-size: 9pt;">
+			6. Житель:<b style="font-size: 9pt;"> {if: client.regAddress.isVillager == 0}города{else:}села{end:}</b>
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			7.  Полис ОМС:
+			серия
+				{if: client.compulsoryPolicy.serial}
+					<b style="font-size: 9pt;">{client.compulsoryPolicy.serial}</b>
+				{else:}
+					____
+				{end:}
+			номер
+				{if: client.compulsoryPolicy.number}
+					<b style="font-size: 9pt;">{client.compulsoryPolicy.number}</b>
+				{else:}
+					_______________
+				{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			8. СНИЛС: {if: client.SNILS}<b style="font-size: 9pt;">{client.SNILS}</b>.{else:}_______________{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			9. Наименование страховой мед. организации: {if: client.policy.insurer}<b style="font-size: 9pt;">{client.policy.insurer}</b>{else:}____________________{end:}
+		</td>
+	</tr>
+	<tr>
+		<td style="font-size: 9pt;">
+			10. Код категории льготы:
+				{: string = ''}
+				<!-- проверяю наличие "льгота" в соц статусах -->
+				{for: status in client.socStatuses}
+					{if: status.classes == u"льгота"}
+						{:string = status.code}
+					{end:}
+				{end:}
+				<!-- если есть "льгота", вывожу "код", если нет, вывожу нижнее подчеркивание -->
+				{if: string != ''}
+					<b style="font-size: 9pt;">{string}</b>
+				{else:}
+					_____
+				{end:}
+
+			11.  Документ {if: client.document}<b style="font-size: 9pt;">{client.document}</b>{else:}______________________________{end:}
+		</td>
+	</tr>
+		<tr>
+		</tr>
+	<tr>
+		<td style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px; line-height: 0.5; margin: 0;">
+			12. Заболевания, по поводу которых осуществляется диспансерное наблюдение:
+		</td>
+	</tr>
+	<tr>
+		<td>
+
+			<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" width="100%" border="1" cellpadding="2" cellspacing="0" >
+				<tr>
+					<td width="23%" align="center">Дата начала<br>диспансерного<br>наблюдения</td>
+					<td width="23%" align="center">Дата<br>прекращения<br>дисп. наблюдения</td>
+					<td width="12%" align="center">Диагноз</td>
+					<td width="12%" align="center">Код по<br><b style="font-family: Times New Roman; font-size: 6pt;"> МКБ-10</b></td>
+					<td width="30%" align="center">Врач</td>
+				</tr>
+				{for: status in client.allSocStatuses}
+					{if: (status.code==u"К" or status.code==u"АПЛ" or status.code==u"АДН" or status.code==u"Д" or status.code==u"КЛП") and not status.endDate}
+						<tr>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">{status.begDate.toString('dd.MM.yyyy')}</td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">{status.endDate.toString('dd.MM.yyyy')}</td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center"><b>{status.name}</b></td>
+							<td style="font-family: Times New Roman; font-size: 6pt;" align="center">
+							<!--перебираю ДИАГНОЗЫ клиента-->
+								{for: diag in client.diagnosises}
+										{if: (diag.endDate.date>currentDate.date or not diag.endDate) and diag.MKB and (diag.type==u"заключительный" or diag.type==u"основной")}
+												{diag.MKB},
+									{end:}
+								{end:}
+							</td>
+							<td align="center">{client.attendingPerson}</td>
+						</tr>
+					{end:}
+				{end:}
+				<tr>
+					<td>
+					{for: status in client.allSocStatuses}
+					{if: (status.code==u"Д"  or status.code==u"АПЛ" or status.code==u"АДН")}
+					<!--перебираю ДИАГНОЗЫ клиента-->
+								<h4>{for: diag in client.diagnosises}
+										{if: (not diag.endDate) and diag.MKB and (diag.type==u"заключительный" or diag.type==u"основной")}
+												{diag.MKB},</h4>
+									{end:}
+								{end:}
+					{end:}
+				{end:}
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+	<tr>
+		<td nowrap>
+			13. Семейное положение: <font style="font-size: 6pt;"><b>{client.relations}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			14. Образование:
+				{: string = ''}
+				<!-- проверяю наличие "Образование" в соц статусах -->
+				{for: status in client.socStatuses}
+					{if: status.classes == u"Образование"}
+						{:string = status.name}
+					{end:}
+				{end:}
+				<!-- если есть "Образование", вывожу "Type", если нет, вывожу нижнее подчеркивание -->
+				{if: string != ''}
+					<font style="font-size: 6pt;"><b>{string}</b></font>
+				{else:}
+					_____
+				{end:}
+		</td>
+	</tr>
+	<tr>
+		<td>
+			15.  Занятость: <font style="font-size: 6pt;"><b>{client.work}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			16.  Инвалидность (первичная, повторная, группа, дата):
+			{if: client.disabilities}
+				{if: client.disabilities[-1].recertificationDate}
+					<font style="font-size: 6pt;"><b>{client.disabilities[-1].groupNumber} гр., {client.disabilities[-1].setDate}, переосвидетельствование {client.disabilities[-1].recertificationDate}</b></font>
+				{else:}
+					<font style="font-size: 6pt;"><b>{client.disabilities[-1].groupNumber} гр., {client.disabilities[-1].setDate}</b></font>
+				{end:}
+			{else:}
+				{"_" * 79}
+			{end:}
+		</td>
+	</tr>
+	<tr>
+		<td>
+			17.  Место работы, должность: <font style="font-size: 6pt;"><b>{client.work}</b></font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<!-- берется из диалога -->
+			18.  Изменения места работы: <font style="font-size: 6pt;">________________________________</font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<!-- берется из диалога -->
+			19.  Изменения места регистрации: <font style="font-size: 6pt;">_______________________________</font>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			20. Лист записи заключительных (уточненных) диагнозов:
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" width="100%" border="1" cellpadding="2" cellspacing="0">
+				<tr>
+					<td width="22%" align="center">Дата (число,<br> месяц, год)</td>
+					<td width="22%" align="center">заключительные (уточненные)<br>диагнозы</td>
+					<td width="22%" align="center">Установленные впервые или<br> повторно (+/-)</td>
+					<td width="34%" align="center">Врач</td>
+				</tr>
+				{if: client.diagnosises}
+					{for: diag in sorted(client.diagnosises, key = lambda x: x.setDate)[-3:]}
+						<tr>
+							<td>{diag.setDate}</td>
+							<td>{diag.MKB}</td>
+							<td></td>
+							<td>{diag.person.shortName}</td>
+						</tr>
+					{end:}
+				{end:}
+			</table>
+<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+	<tr>
+		<td>
+			21. Группа крови: {if: client.bloodType}<font style="font-size: 6pt;"><b>{client.bloodType[:-3]}</b></font>{else:}__________{end:}
+			22. Rh-фактор: {if: client.bloodType and 'Rh' in client.bloodType}<font style="font-size: 6pt;"><b>{client.bloodType}[-3:]</b></font>{else:}__________{end:}
+			23. Аллергические реакции: {if: client.allergies}<font style="font-size: 6pt;"><b>{client.allergies}</b></font>{else:}______________________________{end:}
+		</td>
+	</tr>
+			<tr>
+				<td>24. Записи врачей-специалистов:</td>
+			</tr>
+			<tr>
+				<td>Дата осмотра _________ на приеме, на дому, в фельдшерско-акушерском пункте,</td>
+			</tr>
+			<tr>
+				<td>прочее.</td>
+			</tr>
+			<tr>
+				<td>Врач (специальность) ___________</td>
+			</tr>
+			<tr>
+				<td>Жалобы пациента _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>________________________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Анамнез заболевания, жизни ___________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Объективные данные ___________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Группа здоровья ________ Диспансерное наблюдение _________________________________________________________________</td>
+			</tr>
+		</table>
+		<table border="1" cellspacing="0" width="100%" style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<tr>
+				<td align="center">
+					Назначения (исследования, консультации)
+				</td>
+				<td valign="top" align="center">
+					Лекарственные препараты, физиотерапия
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td align="center">
+					Листок нетрудоспособности, справка
+				</td>
+				<td valign="top" align="center">
+					Льготные рецепты
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td colspan="2" align="center">
+					Информированное добровольное согласие на медицинское вмешательство, отказ от медицинского вмешательства
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Врач
+				</td>
+			</tr>
+		</table>
+		<p style="font-family: Times New Roman; font-size: 6pt;">
+			25. Медицинское наблюдение в динамике:
+		</p>
+		<table border="1" cellspacing="0" width="100%" cellpadding="2" style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px;">
+			<tr>
+				<td colspan="2">
+					Дата
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Жалобы
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					Данные наблюдения в динамике
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2"></td>
+			</tr>
+			<tr>
+				<td>
+					Назначения (исследования, консультации)
+				</td>
+				<td valign="top">
+					Лекарственные препараты, физиотерапия
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td>
+					Листок нетрудоспособности, справка
+				</td>
+				<td valign="top">
+					Льготные рецепты
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td>
+					Врач
+				</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>
+				<br>
+				26. Этапный эпикриз
+			</caption>
+			<tr>
+				<td>Дата _________ Временная нетрудоспособность с _______ (____ дней).</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния _________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 ___________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Листок нетрудоспособности ____________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Врач _______________</td>
+			</tr>
+		</table>
+
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>27. Консультация заведующего отделением</caption>
+			<tr>
+				<td>Дата _________ Временная нетрудоспособность с _______ (____ дней).</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния __________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации по дальнейшему наблюдению, дообследованию и лечению _____________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Листок нетрудоспособности ____________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Зав. отделением _______________ Лечащий врач _________________________________________________________________________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px">
+			<caption>28. Заключение врачебной комиссии</caption>
+			<tr>
+				<td>Дата ____________</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния _________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проведенное обследование и лечение ___________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ______________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Заключение врачебной комиссии: _______________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации _________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Председатель _____________ Члены комиссии ____________________________________________________________________________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px;">
+			<caption>29. Диспансерное наблюдение</caption>
+			<tr>
+				<td>Дата ____________</td>
+			</tr>
+			<tr>
+				<td>Жалобы и динамика состояния __________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Проводимые лечебно-профилактические мероприятия ______________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Диагноз основного заболевания: _______________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Осложнения: __________________________________________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Сопутствующие заболевания ____________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>______________________________________________________ код по МКБ-10 _________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Внешняя причина при травмах (отравлениях) ____________________________________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Рекомендации и дата следующего диспансерного осмотра, консультации ___________________________________________________</td>
+			</tr>
+			<tr>
+				<td>Врач _______________</td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>30. Сведения о госпитализациях</caption>
+			<tr>
+				<td align="center">
+					Дата поступления и выписки
+				</td>
+				<td align="center">
+					Медицинская организация, в которой была оказана мед. помощь в стационарных условиях
+				</td>
+				<td align="center">
+					Заключительный клинический диагноз
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>31. Сведения о проведенных оперативных вмешательствах в амбулаторных</caption>
+			<tr>
+				<td align="center">
+					Дата проведения
+				</td>
+				<td align="center">
+					Название оперативного вмешательства
+				</td>
+				<td align="center">
+					Врач
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<table style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px; margin-bottom: 5px" border="1" cellspacing="0" width="100%">
+			<caption>32. Лист учета доз облучения при рентгенологических исследованиях</caption>
+			<tr>
+				<td align="center">
+					Дата проведения
+				</td>
+				<td align="center">
+					Название рентгенологического исследования
+				</td>
+				<td align="center">
+					Доза облучения
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+		<p style="font-family: Times New Roman; font-size: 6pt; margin-top: 5px;">
+			33. Результаты функциональных методов исследования:________________________________________________________________________
+			<br>
+			34. Результаты лабораторных методов исследования:__________________________________________________________________________
+			<br>
+			35. Эпикриз: __________________________________________________________________________________________
+		</p>
 </body>
 </html>
+
+

@@ -1,0 +1,200 @@
+<!--Начальная дата разработки 21.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Извещение о прекращении диспансерного наблюдения в медицинской противотуберкулезной организации</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+
+.page-break {
+    page-break-after: always;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.tear-off {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+}
+.dotted {
+    display: inline-block;
+    border: 1px dotted #000;
+    flex-grow: 2;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header>
+    <div class="small">Наименование медицинской организации</div>
+    <div>ГБУЗ "ПТД №4"</div>
+    <table width="100%" cellpadding="0" cellspacing="3">
+      <tr>
+        <td width="1%" class="white-wrap">
+          Адрес
+        </td>
+        <td>
+          <b>
+            г. Кропоткин, ул. Дорожная, 17
+          </b>
+        </td>
+      </tr>
+      <tr>
+        <td width="1%" class="white-wrap">
+          Телефон
+        </td>
+        <td>
+          <b>
+            8(86138) 7-25-07
+          </b>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">
+    Извещение о прекращении диспансерного наблюдения в медицинской <br>
+    противотуберкулезной организации
+  </div>
+
+  <br>
+  
+  <div>
+    Уважаемая <b>{client.fullName}</b>
+  </div>
+  <div>
+    Настоящим <b>{currentOrganisation.fullName}</b>
+  </div>
+  <div>
+    извещает, что в отношении Вас, 
+    решением врачебной комиссии прекращено диспансерное наблюдение <b>{action[u'Дата врачебной комиссии']}</b>
+    в связи <b>{action[u'Причина прекращения ДН']}</b>
+  </div>
+
+
+
+  <div>
+    <b>Обращаем внимание!</b>
+  </div>
+  <div>
+    Продление диспансерного наблюдения в другой медицинской противотурберкулезной организации необходимо в случаях:
+  </div>
+
+  <ul>
+    <li>
+      Выезд за пределы территории субъекта Российской Федерации в связи с изменением места жительства (места пребывания) на срок более 6 месяцев — обратиться в медицинскую противотуберкулезную организацию в течение 10 календарных дней с даты прибытия на новое место жительства (место пребывания).
+    </li>
+    <li>
+      Освобождение из мест отбывания наказания в виде лишения свободы и мест содержания под стражей — обратиться в медицинскую противотуберкулезную организацию в течение 10 календарных дней с даты прибытия на место жительства (место пребывания).
+    </li>
+  </ul>
+
+  <div>
+    {:actDate = False}
+    Дата выдачи извещения:
+    {if: action.endDate}
+        {: actDate = action.endDate}
+    {elif: action.begDate}
+        {: actDate = action.begDate}
+    {end:}
+
+    {if: actDate}
+        <b>«{forceString(actDate.toString('dd'))}» {forceString(month[actDate.date.month()])} {forceString(actDate.date.year())} г.</b>
+    {else:}
+        "{'_' * 6}" {'_' * 8} 	20	г.
+    {end:}
+
+
+  </div>
+
+  <div>
+    Председатель врачебной комиссии {action[u'Председатель врачебной комиссии']}
+  </div>
+
+  <div class="tear-off">
+    <span class="dotted"></span>
+    <span>ОТРЫВНОЙ КОРЕШОК</span>
+    <span class="dotted"></span>
+  </div>
+
+  <div>
+    Я, <b>{client.fullName}</b> получил(а) извещение
+  </div>
+  {: data = action[u'Прекращение/Продление ДН']}
+  {if: data.value}
+      <ul>
+        {if: u'прекращение ДН' in data.value}
+          <li>
+            <div align="justify">
+              о прекращении в отношении меня диспансерного наблюдения в медицинской противотуберкулезной организации
+            <b>{currentOrganisation.fullName}</b>
+            </div>
+          </li>
+        {end:}
+        {if: u'необходимость продления ДН' in data.value}
+          <li>
+            <div align="justify">о необходимости продления диспансерного наблюдения в другой медицинской противотуберкулезной организации</div>
+          </li>
+        {end:}
+      </ul>
+  {end:}
+
+  <br>
+
+  <div>
+    {'_' * 20} <b>{client.fullName}</b>
+  </div>
+
+  <div>
+    Дата
+    {if: actDate}
+        <b>«{forceString(actDate.toString('dd'))}» {forceString(month[actDate.date.month()])} {forceString(actDate.date.year())} г.</b>
+    {else:}
+        "{'_' * 6}" {'_' * 8} 	20	г.
+    {end:}
+  </div>
+</div>
+</body>
+</html>
+

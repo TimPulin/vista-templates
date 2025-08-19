@@ -1,0 +1,663 @@
+<!-- изменил Пулин дата 13.08.2025 задача  -->
+<!-- изменил Пулин дата 15.07.2025 задача  -->
+<!--Начальная дата разработки 07.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: skl -->
+<!--Задача: Chel-707 Служебная записка по санаторно-курортному лечению -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Санаторно-курортная карта</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.break-line {
+    line-height: 5px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+referral_info_ref_list = db.getRecordList(stmt=u"""
+  SELECT DATE_FORMAT(st.createDate, '%d.%m.%Y')                             as actDate,
+         IF(st.guardian_fio is null, 2, 1)                                  as is_need_gurdian,
+         st.card_num                                                        as card_number,
+         st.voucher_num                                                     as voucher_number,
+         rbS.name                                                           as sanatorium,
+         CONCAT_WS(' ', p.lastName, p.firstName, p.patrName)                as person_fio,
+         CONCAT_WS(' ', pChief.lastName, pChief.firstName, pChief.patrName) as chief_fio
+
+  FROM SpaTreatment st
+           join rbSpaTreatmentSanator rbS on st.sanator_id = rbS.id
+           join Person p on st.person_id = p.id
+           join OrgStructure os on p.orgStructure_id = os.id
+           join Person pChief on os.chief_id = pChief.id
+  where st.event_id = {event_id};
+""".format(event_id=event.id))
+}
+
+{:
+option_list = []
+if referral_info_ref_list:
+  for referral_info_ref in referral_info_ref_list:
+    actDate = forceString(referral_info_ref.value('actDate'))
+    voucher_number = forceString(referral_info_ref.value('voucher_number'))
+    sanatorium = forceString(referral_info_ref.value('sanatorium'))
+    str = actDate + ' ' + voucher_number + ' ' + sanatorium
+    option_list.append(str)
+}
+
+
+
+{:
+ref_index = None
+if referral_info_ref_list:
+  if len(referral_info_ref_list) == 1:
+    ref_index = 0
+  else:
+    dial =  dialogs.dialList("Выберите направление", option_list, 0)
+    ref_index = dial.getVar()
+}
+
+{:
+if referral_info_ref_list and ref_index is not None:
+  ref = referral_info_ref_list[ref_index]
+  actDate = forceString(ref.value('actDate'))
+  is_need_gurdian = forceString(ref.value('is_need_gurdian'))
+  card_number = forceString(ref.value('card_number'))
+  voucher_number = forceString(ref.value('voucher_number'))
+  sanatorium = forceString(ref.value('sanatorium'))
+  person_fio = forceString(ref.value('person_fio'))
+  chief_fio = forceString(ref.value('chief_fio'))
+else:
+  actDate = ''
+  is_need_gurdian = 0
+  card_number = ''
+  voucher_number = ''
+  sanatorium = ''
+  person_fio = ''
+  chief_fio = ''
+}
+
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%"></td>
+      <td width="98%"></td>
+      <td width="1%" class="small">
+        <div class="white-wrap">Приложение № 7</div>
+        <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+        <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+      </td>
+    </tr>
+      <tr>
+        <td valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+
+  <div align="center" class="h1">Санаторно-курортная карта № {card_number}</div>
+
+  <div align="center"><b>{actDate} г.</b></div>
+
+  <div align="center">Выдается при предъявлении путевки на санаторно-курортное лечение. Без настоящей карты путевка недействительна</div>
+
+  <!-- note верхняя часть 1 -->
+  <section>
+    <div>
+      Фамилия, имя, отчество (при наличии) <b>{client.fullName}</b>
+    </div>
+
+    <div>
+      Дата рождения:
+      <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+      Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+    </div>
+
+    <div>
+      Регистрация по месту жительства: субъект Российской Федерации {forceString(client.regAddress.region)[:-1]}
+      <div>
+        <div>
+          {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      Регистрация по месту пребывания: субъект Российской Федерации {forceString(client.locAddress.region)[:-1]}
+      <div>
+        <div>
+          {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      Полис обязательного медицинского страхования
+      серия <b>{client.policy.serial}</b>
+      № <b>{client.policy.number}</b>
+    </div>
+
+    <div>
+      дата выдачи полиса обязательного медицинского страхования:
+      <b>«{forceString(client.policy.begDate.toString('dd'))}» {forceString(month[client.policy.begDate.date.month()])} {forceString(client.policy.begDate.date.year())} г.</b>
+    </div>
+
+    <div>
+      данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+      <b>{client.compulsoryPolicy.insurer}</b>
+    </div>
+
+{:
+kladr_ref = db.getRecordEx(stmt=u"""
+  select LEFT(ah.KLADRCode, 2) as region_code
+  from ClientAddress ca
+           join Address a on ca.address_id = a.id and ca.deleted = 0 and ca.client_id = {clientId}
+           join AddressHouse ah on a.house_id = ah.id and ah.deleted = 0
+  limit 1;
+""".format(clientId=client.id))
+
+if kladr_ref:
+    region_code = forceString(kladr_ref.value(u'region_code'))
+else:
+    region_code = ''
+}
+
+
+    <div>
+      Код субъекта Российской Федерации
+      <b>{region_code}</b>
+    </div>
+
+    <div>
+      Климат в месте проживания пациента (код)
+      <b><!-- note DATA --></b>
+    </div>
+    <div>
+      Климатические факторы в месте проживания пациента (код)
+      <b><!-- note DATA --></b>
+    </div>
+    <div>
+      Код меры социальной поддержки
+      <b><!-- note DATA --></b>
+    </div>
+    <div>
+      Сопровождение: <span class="small">да – 1, нет – 2</span>
+      <b>{is_need_gurdian}</b>
+    </div>
+
+    <div>Документ, подтверждающий право на получение мер социальной поддержки в виде набора социальных услуг:</div>
+
+    <div>
+      серия <b><!-- note DATA --></b>
+      номер <b><!-- note DATA --></b>
+      дата выдачи <b><!-- note DATA --></b>
+    </div>
+
+    <div>
+      Страховой номер индивидуального лицевого счета: <b>{client.SNILS}</b>
+    </div>
+
+  </section>
+  <!-- note END верхняя часть 1 -->
+
+  <!-- note верхняя часть 2 -->
+  <section>
+    <div>
+      <b>Жалобы:</b> <!-- note DATA -->
+    </div>
+
+{:
+anamnesRef = db.getRecordEx(stmt=u"""
+  select aps.value as anamnes
+  from Action a
+           join ActionProperty ap on a.id = ap.action_id and ap.type_id = 159670
+           join ActionProperty_String aps on ap.id = aps.id
+  where a.event_id = {event_id}
+  order by a.id desc
+  limit 1;
+""".format(event_id=event.id))
+}
+
+
+    <div>
+      <b>Анамнез заболевания (включая данные о предшествующем лечении, в том числе санаторно-курортном):</b>
+      {if: anamnesRef}
+          {forceString(anamnesRef.value('anamnes')):n}
+      {end:}
+    </div>
+
+{:
+analRefList = db.getRecordList(stmt=u"""
+  with cte as (select row_number() over (partition by apt.id order by a.id desc ) as rowNumber,
+                      a.id                                                           a_id,
+                      DATE_FORMAT(a.begDate, '%d.%m.%Y')                             a_date,
+                      at.id                                                          at_id,
+                      at.name                                                        at_name,
+                      apt.name                                                       apt_name,
+                      aps.value                                                      aps_value
+               from Event e
+                        join Action a on e.id = a.event_id and a.deleted = 0 and e.id = {event_id}
+                        join ActionProperty ap on a.id = ap.action_id
+                        join ActionProperty_String aps on ap.id = aps.id
+                        join ActionPropertyType apt on ap.type_id = apt.id and apt.typeName not in ('TissueType', 'JobTicket')
+                        join ActionType at on a.actionType_id = at.id
+               where a.actionType_id in ((select id from ActionType where group_id in (20939, 20933) or id in (21437, 21439) and !deleted)))
+  select a_date,
+         at_name,
+         GROUP_CONCAT(apt_name, ' - ', aps_value separator '\n') as value
+  from cte
+  where cte.rowNumber = 1
+  group by at_id;
+""".format(event_id=event.id))
+}
+
+{:
+researchRefList = db.getRecordList(stmt=u"""
+  with cte as (select row_number() over (partition by apt.id order by a.id desc ) as rowNumber,
+                      a.id                                                           a_id,
+                      DATE_FORMAT(a.begDate, '%d.%m.%Y')                             a_date,
+                      at.id                                                          at_id,
+                      at.name                                                        at_name,
+                      apt.name                                                       apt_name,
+                      aps.value                                                      aps_value
+               from Event e
+                        join Action a on e.id = a.event_id and a.deleted = 0 and e.id = {event_id}
+                        join ActionProperty ap on a.id = ap.action_id and ap.type_id in (153686, 151736, 151515)
+                        join ActionProperty_String aps on ap.id = aps.id
+                        join ActionPropertyType apt
+                             on ap.type_id = apt.id and apt.typeName not in ('TissueType', 'JobTicket')
+                        join ActionType at on a.actionType_id = at.id)
+  select a_date,
+         at_name,
+         GROUP_CONCAT(apt_name, ' - ', aps_value separator '\n') as value
+  from cte
+  where cte.rowNumber = 1
+  group by at_id;
+""".format(event_id=event.id))
+}
+
+
+    <div>
+      <b>Данные клинического, лабораторного, рентгенологического и других исследований (даты проведения исследований)</b>
+    </div>
+
+    {if: analRefList}
+        {for: ref in analRefList}
+          <div>
+            <b>{forceString(ref.value('a_date'))} {forceString(ref.value('at_name'))}</b>:
+            {forceString(ref.value('value'))}
+          </div>
+        {end:}
+    {end:}
+
+    {if: researchRefList}
+        {for: ref in researchRefList}
+          <div>
+            <b>{forceString(ref.value('a_date'))} {forceString(ref.value('at_name'))}</b>:
+            {forceString(ref.value('value'))}
+          </div>
+        {end:}
+    {end:}
+
+
+
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 3 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ' '
+      ) AS diffDiags,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 21 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ''
+      ) AS relatedDiags
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  WHERE e.id = {event_id};
+""".format(event_id=event.id))
+}
+{:
+if diagRef:
+    mainId = forceString(diagRef.value('mainId'))
+    mainName = forceString(diagRef.value('mainName'))
+    diffDiags = forceString(diagRef.value('diffDiags'))
+    relatedDiags = forceString(diagRef.value('relatedDiags'))
+else:
+  mainId = ''
+  mainName = ''
+  diffDiags = ''
+  relatedDiags = ''
+}
+
+{:
+def diag_layout(type, mkd_id='', mkb_name=''):
+    return """
+      <tr>
+        <td>
+          {type}
+          <b>{mkb_name}</b>
+        </td>
+        <td class="white-wrap">код по МКБ </td>
+        <td class="white-wrap"><b>{mkd_id}</b></td>
+      </tr>
+    """.format(type=type, mkd_id=mkd_id, mkb_name=mkb_name)
+}
+
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td></td>
+        <td width="1%"></td>
+        <td width="1%"></td>
+      </tr>
+      {if: diagRef}
+        {write(diag_layout(u'Диагноз основного заболевания:', mainId, mainName))}
+
+        {if: diffDiags != ''}
+          {for: index, diag in enumerate(diffDiags.split(';'))}
+            {: code, _, name = diag.partition('$')}
+            {: title = u'Осложнения основного заболевания:' if index == 0 else ''}
+            {write(diag_layout(title, code, name))}
+          {end:}
+        {else:}
+          {write(diag_layout(u'Осложнения основного заболевания:'))}
+        {end:}
+
+        {if: relatedDiags != ''}
+          {for: index, diag in enumerate(relatedDiags.split(';'))}
+            {: code, _, name = diag.partition('$')}
+            {: title = u'Сопутствующие заболевания:' if index == 0 else ''}
+            {write(diag_layout(title, code, name))}
+          {end:}
+        {else:}
+          {write(diag_layout(u'Сопутствующие заболевания:'))}
+        {end:}
+
+      {else:}
+        {: diag_type_name_list = [u'Диагноз основного заболевания', u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+        {for: diag_type_name in diag_type_name_list}
+          <tr>
+            <td class="white-wrap">{diag_type_name}&nbsp;</td>
+            <td class="white-wrap">код по МКБ</td>
+            <td class="white-wrap">{'_' * 6}</td>
+          </tr>
+        {end:}
+      {end:}
+
+
+      <tr>
+        <td colspan="3">
+          Дополнительные сведения о заболевании:
+          <!-- note DATA -->
+        </td>
+      </tr>
+
+        <tr>
+          <td class="white-wrap">Заболевание, явившееся причиной инвалидности:&nbsp;</td>
+          <td class="white-wrap">код по МКБ</td>
+          <td class="white-wrap">{'_' * 6}</td>
+        </tr>
+    </table>
+
+
+    <div align="center">ЗАКЛЮЧЕНИЕ</div>
+
+    <div>
+      Наименование санаторно-курортной организации: <b>{sanatorium}</b>
+    </div>
+
+    <div>
+      Лечение: <span class="small">в условиях пребывания в санаторно-курортной организации – 1, амбулаторно – 2</span>
+      {if: True} <!-- note DATA -->
+          <b>1</b>
+      {else:}
+          <b>2</b>
+      {end:}
+    </div>
+    <div>
+      Продолжительность курса лечения <b><!-- note DATA --></b> дней
+    </div>
+    <div>
+      Путевка № <b>{voucher_number}</b>
+    </div>
+    <div>
+      Фамилия, имя, отчество (при наличии) и подпись лица, заполнившего карту
+      <b>{person_fio}</b>
+      {'_' * 20}
+    </div>
+
+    <div>
+      Заведующий отделением (председатель врачебной комиссии) <b>{chief_fio}</b> {'_' * 20}
+    </div>
+    <div>М.П. (при наличии)</div>
+  </section>
+  <!-- note END верхняя часть 2 -->
+
+  <div style="page-break-after: always"></div>
+
+<!--  note Обратный талон -->
+  <!-- note Обратный талон part 1-->
+  <section>
+    <div align="center">Обратный талон</div>
+
+    <div>
+      Наименование санаторно-курортной организации {render_line(u'Наименование санаторно-курортной организации')}
+    </div>
+    <div>
+      Основной государственный регистрационный номер санаторно-курортной организации {render_line(u'Основной государственный регистрационный номер санаторно-курортной организации')}
+    </div>
+    <div>
+      Фамилия, имя, отчество (при наличии) пациента {render_line(u'Фамилия, имя, отчество (при наличии) пациента')}
+    </div>
+
+    <div>
+      Период санаторно-курортного лечения: с «____» ___________ 20____г. по «____» ___________ 20____г.
+    </div>
+
+    <div>
+      Диагноз, установленный направившей медицинской организацией:
+    </div>
+
+    <div>
+      Основное заболевание {render_line(u'Основное заболевание')}
+    </div>
+    <div align="justify">
+      код по Международной статистической классификации болезней и проблем, связанных со здоровьем (далее – МКБ)
+    </div>
+
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td></td>
+        <td width="1%"></td>
+        <td></td>
+      </tr>
+      {: diag_type_name_list = [u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+      {for: diag_type_name in diag_type_name_list}
+        <tr>
+          <td class="white-wrap">
+            {diag_type_name}&nbsp;
+            {render_line(diag_type_name, 60)}
+          </td>
+          <td class="white-wrap">код по МКБ</td>
+          <td>{'_' * 12}</td>
+        </tr>
+      {end:}
+    </table>
+  </section>
+  <!-- note END Обратный талон part 1-->
+
+  <!-- note Обратный талон part 2-->
+  <section>
+    <div>
+      Проведено лечение {render_line(u'Проведено лечение')}
+    </div>
+    <div class="break-line">&nbsp;</div>
+    <div>
+      {render_line(u'')}
+    </div>
+    <div align="center"><sup>(виды лечения, количество процедур, их переносимость, даты проведения санаторно-курортного лечения)</sup></div>
+
+    <div>
+      Эпикриз (включая данные обследования) {render_line(u'Эпикриз (включая данные обследования)')}
+    </div>
+    {for: _ in range(3)}
+      <div class="break-line">&nbsp;</div>
+      <div>
+        {render_line(u'')}
+      </div>
+    {end:}
+
+    <div>
+      Результат санаторно-курортного лечения: <span class="small">значительное улучшение – 1, улучшение – 2, без перемен – 3, ухудшение – 4</span>
+    </div>
+    <div>
+      Наличие обострений, потребовавших отмену процедур: <span class="small">да – 1, нет – 2</span>
+    </div>
+
+    <div>
+      Рекомендации по дальнейшему лечению: {render_line(u'Рекомендации по дальнейшему лечению:')}
+    </div>
+    {for: _ in range(3)}
+      <div class="break-line">&nbsp;</div>
+      <div>
+        {render_line(u'')}
+      </div>
+    {end:}
+
+    <br>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      {: row_title_list = [u'Лечащий врач, должность врача-специалиста', u'Главный врач санаторно-курортной организации']}
+      {for: row_title in row_title_list}
+        <tr>
+          <td valign="top">
+            <div class="white-wrap">{row_title}</div>
+          </td>
+          <td>
+            <div align="center">{'_' * 40}</div>
+            <div align="center"><sup>(фамилия, имя, отчество (при наличии)</sup></div>
+          </td>
+          <td>
+            <div align="center">{'_' * 15}</div>
+            <div align="center"><sup>подпись</sup></div>
+          </td>
+        </tr>
+      {end:}
+    </table>
+    <div>
+      М.П. (при наличии)
+    </div>
+  </section>
+<!--  note END Обратный талон -->
+
+
+
+</div>
+</body>
+</html>

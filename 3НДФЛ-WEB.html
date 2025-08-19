@@ -1,0 +1,724 @@
+<!-- изменил Пулин дата 15.08.2025 задача  -->
+<!--Начальная дата разработки 13.08.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5378 Настроить шаблон печати "Справка в налоговую" -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка для налогового вычета</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from PyQt4.QtCore import QDate}
+{: import re}
+{:
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    min-height: 100%;
+    font-family: 'Courier New';
+    font-size: 10pt;
+}
+
+.h1 {
+    text-align: center;
+    font-size: 14pt;
+    font-weight: 900;
+}
+
+
+.page {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+}
+
+
+.barcode--custom {
+  text-align: center;
+  font-family: 'Code 3 de 9';
+  font-size: 30px;
+}
+
+.black-square {
+    width: 25px;
+    height: 25px;
+    background-color: #000;
+}
+
+@media print {
+  .black-square {
+    background-color: black; /* иногда для печати нужно дублировать */
+    -webkit-print-color-adjust: exact; /* для Chrome и Safari */
+    print-color-adjust: exact;         /* для стандарта */
+  }
+
+  .page {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: calc(100vh - 10pt);
+  }
+  .page:not(:last-child) {
+      page-break-after: always;
+  }
+}
+.remark {
+    font-size: 10px;
+}
+
+.separator-l {
+    height: 10px;
+}
+
+.separator-m {
+    height: 5px;
+}
+
+.dot {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    font-size: 14px;
+}
+
+.barcode-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.vertical-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100%;
+}
+
+/* note сетка */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(40, 25px);
+    row-gap: 5px;
+}
+.grid-21 {
+    display: grid;
+    grid-template-columns: repeat(21, 25px);
+    row-gap: 5px;
+}
+
+.col-2 {
+    grid-column: span 2;
+}
+.col-3 {
+    grid-column: span 3;
+}
+.col-4 {
+    grid-column: span 4;
+}
+.col-5 {
+    grid-column: span 5;
+}
+.col-6 {
+    grid-column: span 6;
+}
+.col-7 {
+    grid-column: span 7;
+}
+.col-8 {
+    grid-column: span 8;
+}
+.col-9 {
+    grid-column: span 9;
+}
+.col-11 {
+    grid-column: span 11;
+}
+.col-13 {
+    grid-column: span 13;
+}
+.col-15 {
+    grid-column: span 15;
+}
+.col-16 {
+    grid-column: span 16;
+}
+.col-19 {
+    grid-column: span 19;
+}
+.col-20 {
+    grid-column: span 20;
+}
+.col-21 {
+    grid-column: span 21;
+}
+.col-22 {
+    grid-column: span 22;
+}
+.col-23 {
+    grid-column: span 23;
+}
+.col-31 {
+    grid-column: span 31;
+}
+.col-38 {
+    grid-column: span 38;
+}.col-40 {
+    grid-column: span 40;
+}
+
+.row-span-2 {
+    grid-row: span 2;
+}
+
+.cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 30px;
+}
+.cell-bordered {
+    border: 1px dotted #999;
+}
+.cell-bordered + .cell-bordered {
+    border-left: none;
+}
+.cell-bordered:nth-child(40n + 1) {
+  border-left: 1px dotted #999;
+}
+
+.row-title {
+    display: flex;
+    align-items: center;
+
+}
+
+.row-title--right {
+    justify-content: flex-end;
+    padding-right: 5px;
+}
+
+.left {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+
+.document-info-first {
+  border-top: 1px solid #333;
+  border-right: 1px solid #333;
+}
+
+.document-info-second {
+  border-top: 1px solid #333;
+}
+
+</style>
+''')}
+
+
+
+
+{:
+# <!-- note данные документа -->
+
+orgINN = currentOrganisation.INN
+orgKPP = currentOrganisation.KPP
+orgNameList = [u'ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ', u'УЧРЕЖДЕНИЕ ЗДРАВООХРАНЕНИЯ', u'"ЛЕНИНГРАДСКАЯ ОБЛАСТНАЯ', u'КЛИНИЧЕСКАЯ БОЛЬНИЦА"']
+
+documentNumber = forceString(action[u'Номер медицинской справки'].value)
+documentCorrect = forceString(action[u'Номер корректировки'].value)
+documentYear = action[u'Отчетный год'].value
+
+
+taxpayer = action[u'Услуга оказана налогоплательщику'].value
+
+if taxpayer == u'да':
+    isTaxpayerSame = 1
+    pageAmount = '001'
+else:
+    isTaxpayerSame = 0
+    pageAmount = '002'
+
+whoPayer = u'1' if isTaxpayerSame else u'0'
+
+}
+
+<!--  note платеж -->
+{:
+serviceCode = 1 if forceString(action[u'Код услуги'].value) == u'Медицинская услуга' else 2
+# <!-- note проверка на цифры -->
+pattern = u'^\d+\.\d{2}$'
+sum = action[u'Стоимость медицинских услуг'].value
+paymentSum = sum if re.match(pattern, sum) else u'0'
+
+cheapServiceSum = paymentSum if serviceCode == 1 else u'0'
+expensiveServiceSum = paymentSum if serviceCode == 2 else u'0'
+}  
+
+
+
+<!--  note Данные пациента -->
+{:
+# <!--  note clientDocumentCode-->
+doc_type_ref = db.getRecordEx(stmt=u"""
+  SELECT rbdoc.EGIZ_code, rbdoc.name
+  FROM Client c
+           JOIN ClientDocument cdoc ON c.id = cdoc.client_id
+           JOIN rbDocumentType rbdoc ON cdoc.documentType_id = rbdoc.id
+  WHERE c.id = 465130
+""".format(clientId=client.id))
+if doc_type_ref:
+  clientDocumentCode = forceString(doc_type_ref.value('EGIZ_code'))
+elif client.document.documentTypeCode:
+  clientDocumentCode = client.document.documentTypeCode
+else:
+  clientDocumentCode = ''
+}
+
+{:
+if u'ИНН' in action:
+  payerINN = action[u'ИНН'].value
+else:
+  payerINN = ''
+
+if isTaxpayerSame:
+    payerLastName = client.lastName
+    payerFirstName = client.firstName
+    payerPatrName = client.patrName
+    payerBirthDate = client.birthDate
+
+    payerDocumentCode = clientDocumentCode
+    payerDocumentSerialAndNumber = client.document.serial + ' ' + client.document.number
+    payerDocumentSerial = client.document.serial
+    payerDocumentNumber = client.document.number
+    payerDocumentDate = client.document.date
+else:
+    if action[u'ФИО налогоплательщика'].value:
+        fioList = forceString(action[u'ФИО налогоплательщика'].value).split(' ')
+    else:
+        fioList = []
+
+    payerLastName = fioList[0].strip() if len(fioList) > 0 else ''
+    payerFirstName = fioList[1].strip() if len(fioList) > 1 else ''
+    payerPatrName = fioList[2].strip() if len(fioList) > 2 else ''
+
+    date_list = map(int, action[u'Дата рождения'].value.split(u'.'))
+    if len(date_list) == 3:
+      day, month, year = date_list
+      payerBirthDate = QDate(year, month, day)
+    else:
+      payerBirthDate = currentDate
+
+    payerDocumentCode =  ''
+
+    payerDocumentSerial = ''
+    payerDocumentNumber = ''
+    payerDocumentSerialAndNumber = payerDocumentSerial + ' ' + payerDocumentNumber
+    payerDocumentDate = ''
+
+}
+
+
+
+
+
+{:
+def create_cell(letter):
+  return """<div class="cell cell-bordered">{letter}</div>""".format(letter=letter)
+
+def render_cell_right_padding(text, amount):
+  empty_cells = amount - len(text)
+  line = ''
+  for letter in text:
+    line += create_cell(letter)
+
+  for _ in range(empty_cells):
+    line += create_cell('')
+
+  return line
+
+def render_cell_left_padding(text, amount):
+  empty_cells = amount - len(text)
+  line = ''
+
+  for _ in range(empty_cells):
+    line += create_cell('')
+
+  for letter in text:
+    line += create_cell(letter)
+
+  return line
+}
+<!-- @formatter:on -->
+</head>
+<body class="body">
+<h2>{sum}</h2>
+<div class="main">
+  <!-- note page 1-->
+  <section class="page">
+    <div class="grid">
+        <div class="col-9 row-span-2">
+          <div class="barcode-block">
+            <div class="black-square"></div>
+            <div>
+              <div class="barcode--custom">26901015</div>
+              <div align="center">26901015</div>
+            </div>
+            <div class="black-square"></div>
+          </div>
+        </div>
+
+        <div class="col-4 row-title row-title--right">
+          ИНН
+        </div>
+
+        <!-- ИНН 12 -->
+        {: write(render_cell_right_padding(orgINN, 12))}
+
+        <div class="col-15"></div>
+
+
+        <div class="col-4 row-title row-title--right">
+          КПП
+        </div>
+
+        <!-- кпп 9-->
+        {: write(render_cell_right_padding(orgKPP, 9))}
+
+        <div class="col-2 row-title row-title--right">Стр.</div>
+
+        <!-- стр 3 -->
+        {: write(render_cell_right_padding('001', 3))}
+
+
+        <div class="col-13"></div>
+
+        <div class="col-9 row-title row-title--right"><b>Форма по КНД 1151156</b></div>
+        <div class="col-31"></div>
+
+        <div class="col-40 h1">Справка</div>
+        <div class="col-40 h1">об оплате медицинских услуг для представления</div>
+        <div class="col-40 h1">в налоговый орган</div>
+
+        <div class="col-5 left">Номер справки</div>
+
+        <!-- Номер 12 -->
+        {: write(render_cell_left_padding(documentNumber, 12))}
+
+        <div class="col-9 row-title row-title--right">Номер корректировки</div>
+
+        <!-- корректировки 3 -->
+        {: write(render_cell_left_padding(documentCorrect, 3))}
+
+        <div class="col-7 row-title row-title--right">Отчетный год</div>
+        <!-- 4 -->
+        {: write(render_cell_left_padding(documentYear, 4))}
+
+
+        <div class="col-40 separator-l"></div>
+
+        <div class="col-40">
+          Данные медицинской организации / индивидуального предпринимателя, осуществляющего медицинскую деятельность:
+        </div>
+
+
+        <!-- 4 x 40 -->
+        {for: line in orgNameList}
+          {: write(render_cell_right_padding(line, 40))}
+        {end:}
+
+
+        <div class="col-40" align="center">
+          <span class="remark">(наименование медицинской организации / фамилия, имя, отчество индивидуального предпринимателя)</span>
+        </div>
+
+        <div class="col-40 separator-m"></div>
+
+        <div class="col-40">
+          Данные физического лица (его супруга/супруги), оплатившего медицинские услуги (далее - налогоплательщик)<sup>1</sup>
+        </div>
+
+        {for: title, text in [[u'Фамилия', payerLastName], [u'Имя', payerFirstName], [u'Отчество', payerPatrName]] }
+          <div class="col-4 row-title">{title}</div>
+          {: write(render_cell_right_padding(text, 36))}
+        {end:}
+
+        <div class="col-4 row-title">ИНН</div>
+        {: write(render_cell_right_padding(payerINN, 12))}
+
+        <div class="col-9 row-title row-title--right">Дата рождения</div>
+        {: write(render_cell_right_padding(payerBirthDate.toString('dd'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(payerBirthDate.toString('MM'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(payerBirthDate.toString('yyyy'), 4))}
+
+        <div class="col-5"></div>
+
+        <div class="col-40 separator-m"></div>
+
+        <!-- note Сведения о документе плательщика -->
+        <div class="col-40">Сведения о документе, удостоверяющем личность:</div>
+
+        <div class="col-7 row-title">Код вида документа</div>
+        {: write(render_cell_right_padding(payerDocumentCode, 2))}
+        <div class="col-11 row-title row-title--right">Серия и номер</div>
+        {: write(render_cell_right_padding(payerDocumentSerialAndNumber, 20))}
+
+
+        <div class="col-7 row-title">Дата выдачи</div>
+        {: write(render_cell_right_padding('', 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding('', 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding('', 4))}
+        <div class="col-23"></div>
+
+
+        <div class="col-22 row-title">Налогоплательщик и пациент являются одним лицом</div>
+        {: write(render_cell_right_padding(whoPayer, 1))}
+
+        <div></div>
+        <div class="col-16">
+          <div class="vertical-block">
+            <div class="remark">0 - нет</div>
+            <div class="remark">1 - да</div>
+          </div>
+        </div>
+
+        <div class="col-40 separator-m"></div>
+
+
+{:
+def split_sum(sum):
+  current_list = sum.split('.')
+  rubble = current_list[0] if len(current_list) > 0 else '0'
+  penny = current_list[1] if len(current_list) > 1 else '00'
+  return [rubble, penny]
+}
+
+        <div class="col-22 row-title">Сумма расходов на оказанные медицинские услуги по коду услуги «1»</div>
+        {: rubble, penny = split_sum(cheapServiceSum)}
+        {: write(render_cell_left_padding(rubble, 13))}
+        <div class="dot">.</div>
+        {: write(render_cell_left_padding(penny, 2))}
+        <div class="col-2"></div>
+
+        <div class="col-22 row-title">Сумма расходов на оказанные медицинские услуги по коду услуги «2»</div>
+        {: rubble, penny = split_sum(expensiveServiceSum)}
+        {: write(render_cell_left_padding(rubble, 13))}
+        <div class="dot">.</div>
+        {: write(render_cell_left_padding(penny, 2))}
+        <div class="col-2"></div>
+
+        <div class="col-40 separator-m"></div>
+
+        <!-- note подпись -->
+        <div class="col-21 document-info-first">
+          <div class="grid-21">
+            <div class="col-21" align="center"><b>Достоверность и полноту сведений, указанных</b></div>
+            <div class="col-21" align="center"><b>в настоящей справке, подтверждаю:</b></div>
+
+            <div class="col-21 separator-m"></div>
+
+            {: write(render_cell_right_padding(action.person.lastName, 20))}
+            <div></div>
+            {: write(render_cell_right_padding(action.person.firstName, 20))}
+            <div></div>
+            {: write(render_cell_right_padding(action.person.patrName, 20))}
+            <div></div>
+
+            <div class="col-21" align="center"><span class="remark">(фамилия, имя, отчество)</span></div>
+
+            <div class="col-21 separator-m"></div>
+
+            <div class="col-7">
+              Подпись {'_' * 10}
+            </div>
+
+            <div class="col-2">Дата</div>
+            {: write(render_cell_right_padding(action.endDate.toString('dd'), 2))}
+            <div class="dot">.</div>
+            {: write(render_cell_right_padding(action.endDate.toString('MM'), 2))}
+            <div class="dot">.</div>
+            {: write(render_cell_right_padding(action.endDate.toString('yyyy'), 4))}
+            <div></div>
+
+            <div class="col-8 row-title">
+              Справка составлена на
+            </div>
+            {: write(render_cell_right_padding(pageAmount, 3))}
+            <div></div>
+            <div class="col-9 row-title">страницах</div>
+
+            <div class="col-21 separator-l"></div>
+            <div class="col-21 separator-l"></div>
+            <div class="col-21 separator-l"></div>
+            <div class="col-21 separator-l"></div>
+          </div> <!-- note END grid-21 -->
+        </div> <!-- note END подпись -->
+        <!-- note QR -->
+        <div class="col-19 document-info-second">
+
+        </div>
+      </div> <!--  END grid -->
+
+      <footer class="footer">
+        <div>
+          <div class="remark">
+            <sup>1</sup> Отчество указывается при наличии (относится ко всем листам документа)
+          </div>
+        </div>
+        <div>
+          <div class="remark">
+            <sup>2</sup> ИНН указывается при наличии
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <div class="black-square"></div>
+          </div>
+          <div class="col-38"></div>
+          <div>
+            <div class="black-square"></div>
+          </div>
+        </div>
+      </footer>
+  </section> <!-- note END page 1-->
+
+
+  <!-- note page 2-->
+  {if: isTaxpayerSame == 0}
+    <section class="page">
+      <div class="grid">
+
+        <div class="col-9 row-span-2">
+          <div class="barcode-block">
+            <div class="black-square"></div>
+            <div>
+              <div class="barcode--custom">26901015</div>
+              <div align="center">26901015</div>
+            </div>
+            <div class="black-square"></div>
+          </div>
+        </div>
+
+        <div class="col-4 row-title row-title--right">
+          ИНН
+        </div>
+
+        <!-- ИНН 12 -->
+        {: write(render_cell_right_padding(orgINN, 12))}
+
+        <div class="col-15"></div>
+
+
+        <div class="col-4 row-title row-title--right">
+          КПП
+        </div>
+
+        {: write(render_cell_right_padding(orgKPP, 9))}
+
+        <div class="col-2 row-title row-title--right">Стр.</div>
+
+        {: write(render_cell_right_padding('002', 3))}
+
+        <div class="col-40 separator-l"></div>
+        <div class="col-40 separator-l"></div>
+
+
+        <div class="col-40">
+          Данные физического лица, которому оказаны медицинские услуги<sup>1</sup>
+        </div>
+
+        {for: title, text in [[u'Фамилия', client.lastName], [u'Имя', client.firstName], [u'Отчество', client.patrName]] }
+          <div class="col-4 row-title">{title}</div>
+          {: write(render_cell_right_padding(text, 36))}
+        {end:}
+
+        <div class="col-4">ИНН <sup>2</sup></div>
+        {: write(render_cell_right_padding('', 12))}
+
+        <div class="col-9 row-title row-title--right">Дата рождения</div>
+        {: write(render_cell_right_padding(client.birthDate.date.toString('dd'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(client.birthDate.date.toString('MM'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(client.birthDate.date.toString('yyyy'), 4))}
+
+        <div class="col-5"></div>
+
+        <div class="col-40 separator-m"></div>
+
+        <!-- note Сведения о документе плательщика -->
+        <div class="col-40">Сведения о документе, удостоверяющем личность:</div>
+
+        <div class="col-7">Код вида документа</div>
+        {: write(render_cell_right_padding(clientDocumentCode, 2))}
+        <div class="col-11 right">Серия и номер</div>
+        {: write(render_cell_right_padding(client.document.serial + ' ' + client.document.number, 20))}
+
+
+        <div class="col-7 cell">Дата выдачи</div>
+        {: write(render_cell_right_padding(client.document.date.toString('dd'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(client.document.date.toString('MM'), 2))}
+        <div class="dot">.</div>
+        {: write(render_cell_right_padding(client.document.date.toString('yyyy'), 4))}
+        <div class="col-23"></div>
+      </div> <!-- note END grid-->
+
+      <footer class="footer">
+        <div>
+          <div class="remark">
+            <sup>1</sup> Отчество указывается при наличии (относится ко всем листам документа)
+          </div>
+        </div>
+        <div>
+          <div class="remark">
+            <sup>2</sup> ИНН указывается при наличии
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <div class="black-square"></div>
+          </div>
+          <div class="col-38"></div>
+          <div>
+            <div class="black-square"></div>
+          </div>
+        </div>
+      </footer>
+
+    </section> <!-- note END page 2-->
+  {end:}
+
+
+</div>
+</body>
+</html>

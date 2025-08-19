@@ -1,0 +1,231 @@
+<!--Начальная дата разработки 15.08.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Стоимость лечения</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+
+.main {
+  font-family: 'Avenir Next Cyr Medium';
+  font-size: 10pt;
+
+  margin-left: 30mm;
+  margin-right: 10mm;
+  margin-top: 5mm;
+  margin-bottom: 5mm;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.header-custom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.header-custom__title {
+    flex-grow: 2;
+    text-align: center;
+}
+
+
+
+.tbl-base {
+    border-collapse: collapse;
+}
+.tbl-base td,
+.tbl-base th {
+    border: 1px solid #666;
+}
+.tbl-base .un-bordered {
+    border: none;
+}
+
+.payment-line > td {
+    text-align: center;
+}
+</style>
+''')}
+
+
+{: clientNumber = db.getRecordEx(stmt="""SELECT c.ambCardNumber AS cNumber FROM Client c WHERE id = {clientId};""".format(clientId=event.client.id)) }
+{:
+move_act_list = filter(lambda x: x.flatCode==u'moving', event.actions)
+move_act = move_act_list[0] if len(move_act_list) > 0 else None
+}
+
+{:
+paymentServiceRefList = db.getRecordList(stmt=u"""
+  SELECT at.name   as serviceName,
+         rbF.name  as financeType,
+         ai.amount as serviceAmount,
+         ai.sum    as servicePayedSum,
+         ai.price  as servicePrice
+  FROM Account_Item ai
+           JOIN Action a ON ai.action_id = a.id AND a.deleted = 0 and ai.deleted = 0
+           JOIN ActionType at
+                ON a.actionType_id = at.id AND at.deleted = 0 AND at.flatCode NOT IN ('prepayment', 'extrapayment')
+           join Contract_Tariff ct on ai.tariff_id = ct.id
+           join Contract c on ct.master_id = c.id
+           join rbFinance rbF on c.finance_id = rbF.id
+  WHERE ai.event_id = {eventId};
+""".format(eventId=event.id))
+
+if paymentServiceRefList:
+  firstRef = paymentServiceRefList[0]
+  settleDate = forceString(firstRef.value(u'settleDate'))
+else:
+  settleDate = u'___________'
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+   <div style="font-size: 8pt;">
+      {:record = db.getRecordEx(stmt=
+            """SELECT
+                TO_BASE64(api.value) as image
+            FROM
+                ActionProperty_Image api
+            WHERE
+                api.id = 2748481;""")}
+      <table align = "center" width="100%" border="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black" cellpadding="0" cellspacing="0">
+         <tr>
+            <td width="50%">
+            <img src="data:image/png;base64, {if: record}{forceString(record.value('image'))}{end:}"  width = "265" height = "94"/>
+            </td>
+            <td width="50%" valign = "middle" align = "left">
+               <table width = "90%" border="0" cellpadding="0" cellspacing="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black">
+                  <tr>
+                     <td align = "left" colspan="3">
+                         188663, Ленинградская область, Всеволожский район,<br> г.п. Кузьмоловский, ул. Заозерная, д. 2
+                     <br><br></td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left"  style="white-space: nowrap; padding-right: 0em; padding-left: 0em; margin-left: 0em; margin-right: 0em;" nowrap>ИНН 4700001254&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 655-89-27</td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left" style="white-space: nowrap; margin-left: 0em; margin-right: 0em; padding-right: 0em; padding-left: 0em;" nowrap>lokb@47lokb.ru&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 670-18-88</td>
+                  </tr>
+               </table>
+            </td>
+         </tr>
+         <tr>
+            <td colspan = "2" valign = "top" align = "right">
+               <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAVCAIAAABHbRCDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAALkSURBVEhL3ZXPTxNBFMd3Z3f7awu23bb8LD9U0EZJwAOQcGqiIcajMaIX/gX9N/SiN9A/QYwSlERijIkeSINeMLSNYBNKf2+hP3fpzuysA7N6QCjLgYufTHZnX2be9703b3dZwzCYcwaY9/PEqgY28ML6wpMvT3O1nGmyjFUNBSrxUgIJKC7HTZNlrGqU1TJCSEd6tppjzniCVjVktcRwDNHI1DIa1kyrNVppKJqCDZ3OSw2ZEzgDGzWtVlJK1GiREzW2Sltz3+Zf/3hDm/vAL2ZYhmUBm6lm6BqLHK+hQvV9Ynkf7G8UNyrNisEYRUXGmh50BUg2mWqWLtOQpaIdr/Fp63Md1FETYQbvVNJN2NxT9jiOG+0ahSpMH+aR3EvOfZ9/l1imW1pgaiCM/o7N0uZabg2pyG+XbE57urojKzJEULS5h/xDAi/ISmFX3V3Z/NhgGmvpaKqSok4IUIdkECf0So08vT37+pxOSFnqqC56xEnvhNflfftzMVVOeRwe3sn7XJLX6Q24/NlabjG2lK1nOJ7j7cLq9mpoJERe0qWNpV+VJIQQsACzWADC46lHxKepEWgL0gmhG3T7nL6pgamKWjaaRg7m7UU7cRdwSjzgO9s6C1oxVd8mK8OecKwYi8nxYqNIso8pCRJ9b3uI+uFZs0itvokk2RfRl4X9gqFjjuenL05PhMajO9EPyRWWZTvtHbM3Zl+tLyTVZJAP5ht5EvvMtfvD/mFz/x9O7F0CiTrk7SMZkIbFCPtFiRi723ugRk5Hv3n5lsAJk/2TUIG5Zh44wETX+L8ChFYahL72Xh3q5JBIcSXXgUZve8+DkZmH12cGvP3kcdAz0OfpFy+4fKwUuRQ53HSUUzRCnhAwAOBAm8Mt2kRqDAfDwwEzXlK0O1duj7lH743ctXE2ajzCKRqko/yi3+awSU5JAGaDHKHD3REZjNAsj+UUDdKFY11jPOauBsMkaNN6Rv6Pfy3D/AYyAlKpYFHkOgAAAABJRU5ErkJggg==" />
+            </td>
+         </tr>
+      </table>
+   </div>
+
+<!--ФИО пациента, отделение, период лечения,  номер ИБ.  -->
+
+  <div>
+    <div>
+      <b>ФИО пациента:</b> {event.client.fullName}
+    </div>
+    <div>
+      <b>Дата рождения (возраст):</b> {event.client.birthDate}, {event.client.age}
+    </div>
+    <div>
+      <b>Период лечения</b>
+      {event.setDate.toString('dd.MM.yyyy')}
+      {event.execDate.toString('dd.MM.yyyy') if event.execDate else 'по настоящее время'}
+    </div>
+
+    <div>
+      <b>Отделение</b>
+      {if: move_act}
+        {move_act[u'Отделение пребывания'].value}
+      {end:}
+    </div>
+    <div>
+      <b>ИБ</b> {event.externalId}
+    </div>
+
+  </div>
+
+  <br>
+
+
+
+  <table width="100%" cellpadding="3" cellspacing="0" class="tbl-base">
+    <tr>
+      <th width="1%">№</th>
+      <th>Наименование</th>
+      <th>ИФ</th>
+      <th>Кол.</th>
+      <th>Цена</th>
+      <th>Стоимость</th>
+    </tr>
+
+    {: paymentSum = 0}
+
+    {if: paymentServiceRefList}
+        {: serviceAmount = len(paymentServiceRefList)}
+        {for: index, paymentServiceRef in enumerate(paymentServiceRefList, 1)}
+          {: servicePayed = forceInt(paymentServiceRef.value(u'servicePayed'))}
+          {: paymentSum += servicePayed}
+          <tr class="payment-line">
+            <td>{index}</td>
+            <td>{forceString(paymentServiceRef.value('serviceName'))}</td>
+            <td>{forceString(paymentServiceRef.value('financeType'))}</td>
+            <td>{forceString(paymentServiceRef.value(u'serviceAmount'))}</td>
+            <td>{forceString(paymentServiceRef.value(u'servicePrice'))}</td>
+            <td>{servicePayed}</td>
+          </tr>
+        {end:}
+    {end:}
+
+    <tr>
+      <td align="right" colspan="5" class="un-bordered"><b>ИТОГО:</b></td>
+      <td align="center">{paymentSum}</td>
+    </tr>
+  </table>
+
+</div>
+</body>
+</html>
