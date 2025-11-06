@@ -1,0 +1,790 @@
+<!-- изменил Пулин дата 27.08.2025 задача  -->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5698 Стат. талон и Мед. карта -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Талон пациента, получающего медицинскую помощь в амбулаторных условиях</title>
+<!-- @formatter:-off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from library.Utils import smartDict }
+{: from datetime import datetime }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+* {
+  box-sizing: border-box;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+body {
+    font-family: 'Times New Roman';
+    font-size: 8pt;
+}
+
+.small {
+  font-size: 8pt;
+}
+.xs {
+  font-size: 6pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.bold {
+  font-weight: 900;
+}
+.pl {
+  padding-left: 10px;
+}
+.red-line {
+  text-indent: 10px;
+}
+.card-section {
+  padding: 5px;
+  border: 1px solid #000000;
+}
+
+.card-line {
+  display: flex;
+  justify-content: space-between;
+  column-gap: 5px;
+}
+.card-line:not(:last-child) {
+  margin-bottom: 5px;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+address = client.regAddress
+
+def formatAddress(obj):
+  return forceString(obj).split(' ', -1)[0]
+
+cladrCode = forceString(client.regAddress.KLADRCode)[8:11]
+if cladrCode == '000':
+  inCity = True
+else:
+  inCity = False
+}
+
+<!--  NOTE занятость если не будет исползоваться - удалить! -->
+{:
+workStatus = 'прочие'
+workStatusCodeList = [u'1', u'2', u'с05', u'5', u'6', u'7']
+
+workStatusDic = smartDict()
+workStatusDic[u'1'] = u'прочие'
+workStatusDic[u'6'] = u'пенсионер(ка)'
+workStatusDic[u'5'] = u'не работает'
+workStatusDic[u'2'] = u'студент(ка)'
+workStatusDic[u'с05'] = u'работает'
+workStatusDic[u'7'] = u'проходит военную службу или приравненную к ней службу'
+
+for stat in client.socStatuses:
+    if stat.code in workStatusCodeList:
+      if stat.code == u'2':
+        age = forceInt(forceString(client.age).split(' ', 1)[0])
+        if age > 17:
+          workStatus = workStatusDic[stat.code]
+        else:
+          workStatus = workStatusDic[u'1']
+      else:
+        workStatus = workStatusDic[stat.code]
+}
+
+
+{:
+eventInfoRef = db.getRecordEx(stmt=u"""
+  select rbDR.name                                as event_result,
+         -- первичный, вторичный
+         e.isPrimary,
+         -- законченный случай лечения
+         e.isClosed,
+         ds.MKB,
+         -- 1-по заболеванию, 2-с профилактической целью
+         IF(ds.MKB between 'A00' and 'T98', 1, 2) as event_goal,
+         IF(v.scene_id in (2, 3), 2, v.scene_id)  as visit_place,
+         e.referral_id,
+         e.goal_id,
+         rbEG.code                                as visit_goal,
+         IF(a.id is null, 0, 1)                   as is_hospital,
+         e.`order`
+  from event e
+           join visit v on e.id = v.event_id
+           join rbEventGoal rbEG on e.goal_id = rbEG.id
+           left join action a on e.id = a.event_id and a.actionType_id = 134
+           join diagnostic dc on e.id = dc.event_id and e.deleted = 0 and dc.deleted = 0 and e.id = {event_id}
+           join rbdiagnosticresult rbDR on dc.result_id = rbDR.id
+           join diagnosis ds on dc.diagnosis_id = ds.id and ds.id = (select getEventDiagnosis({event_id}));
+""".format(event_id=event.id))
+}
+
+{:
+if eventInfoRef:
+  event_result = forceString(eventInfoRef.value(u'event_result'))
+  event_goal = forceString(eventInfoRef.value(u'event_goal'))
+  visit_place = forceString(eventInfoRef.value(u'visit_place'))
+  visit_goal = forceString(eventInfoRef.value(u'visit_goal'))
+  is_hospital = forceString(eventInfoRef.value(u'is_hospital'))
+  isClosed = forceString(eventInfoRef.value(u'isClosed'))
+  isPrimary = forceString(eventInfoRef.value(u'isPrimary'))
+else:
+  event_result = ''
+  event_goal = ''
+  visit_place = ''
+  visit_goal = ''
+  is_hospital = ''
+  isClosed = ''
+  isPrimary = ''
+
+
+}
+
+{:
+financeRef = db.getRecordEx(stmt=u"""
+  select rf.name
+  from Event e
+       join Visit v on e.id = v.event_id and v.deleted = 0
+       join rbFinance rf on v.finance_id = rf.id
+  where e.id = 166370;
+""".format(clientId=event.client.id))
+
+if financeRef:
+  finance = forceString(financeRef.value('name'))
+else:
+  finance = '-'
+}
+
+
+
+<!-- @formatter:-on -->
+</head>
+<body>
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%"></td>
+        <td width="98%"></td>
+        <td width="1%" class="small">
+          <div class="white-wrap">Приложение № 7</div>
+          <div class="white-wrap">к приказу Министерства здравоохранения <br>Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+<div align="center" class="h1">ТАЛОН ПАЦИЕНТА, ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ В АМБУЛАТОРНЫХ УСЛОВИЯХ, № {event.id}</div>
+<table width="100%" cellpadding="3" cellspacing="0" border="1">
+  <tr>
+    <td>
+      <div>
+        1. Дата открытия талона:
+        <b>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</b>
+      </div>
+
+      <div>
+        1.1. Номер медицинской карты пациента, получающего помощь в амбулаторных условиях <b>{client.id}</b>
+      </div>
+      <div>
+        1.2. Номер участка (при наличии) <!-- TODO -->
+      </div>
+
+      <div>
+        2. Код меры социальной поддержки <!-- TODO find_out-->
+        3. Установлена до
+      </div>
+
+      <div>
+        4. Полис обязательного медицинского страхования:
+        серия <b>{client.policy.serial}</b>
+        № <b>{client.policy.number}</b>
+        выдан <b>{client.compulsoryPolicy.insurer}</b>
+        дата выдачи <b>{client.policy.begDate}</b>
+      </div>
+
+      <div>5. Страховой номер индивидуального лицевого счета <b>{client.SNILS}</b></div>
+
+      <div class="card-line">
+        7. Фамилия <b>{client.lastName}</b>
+        8. Имя <b>{client.firstName}</b>
+        9. Отчество <b>{client.patrName}</b>
+        10. Пол: <span class="xs">муж. – 1, жен. – 2</span> <b>{1 if client.sex == u'М' else 2}</b>
+      </div>
+
+      <div class="card-line">
+        11. Дата рождения:
+        <b>«{client.birthDate.date.toString('dd')}» {forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)} г.</b>
+
+        10.1. Документ, удостоверяющий личность <b>{client.document.documentType}</b>
+        серия <b>{client.document.serial}</b>
+        № <b>{client.document.number}</b>
+        гражданство: <b>{client.citizenship}</b>
+      </div>
+
+      <div>
+        <div>
+          11. Регистрация по месту жительства:
+          {if: client.regAddress.district} район {client.regAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.parentCity} город {client.regAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.city}населенный пункт {forceString(client.regAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.street} улица {client.regAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.regAddress.number} дом {client.regAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.regAddress.flat} квартира {client.regAddress.flat}{end:}
+          тел. <b>{client.primaryPhones}</b>
+        </div>
+      </div>
+
+      <div>
+        <div>
+          11.1. Регистрация по месту пребывания:
+          {if: client.locAddress.district} район {client.locAddress.district} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.parentCity} город {client.locAddress.parentCity} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.city}населенный пункт {forceString(client.locAddress.city)[:-1]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.street} улица {client.locAddress.street} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+        </div>
+        <div>
+          {if: client.locAddress.number} дом {client.locAddress.number} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{end:}
+          {if: client.locAddress.flat} квартира {client.locAddress.flat}{end:}
+          тел. <b>{client.primaryPhones}</b>
+        </div>
+      </div>
+
+      <div class="card-line">
+        <div>12. Местность: <b>{'городская' if inCity else 'сельская'}</b></div>
+      </div>
+
+      <div class="card-line">
+        13. Занятость: <span class="xs">работает – 1, проходит военную службу или приравненную к ней службу – 2; пенсионер – 3, обучающийся – 4, не работает – 5, прочие – 6</span>
+        <!--TODO find_out -->
+      </div>
+
+      <div class="card-line">
+        14. Место работы, учебы <b>{client.work}</b>
+      </div>
+
+      <div>
+        15. Инвалидность: <span class="xs">установлена впервые – 1, повторно – 2</span> <!--TODO find_out -->
+        16. Группа инвалидности: <span class="xs">I – 1, II – 2, III – 3</span> <!--TODO find_out -->
+      </div>
+
+      <div class="card-line">
+        17. Оказываемая медицинская помощь:
+        <span class="xs">первичная доврачебная медико-санитарная помощь – 1, первичная врачебная медико-санитарная помощь – 2, первичная специализированная медико-санитарная помощь – 3, паллиативная медицинская помощь – 4</span>
+        <!--TODO find_out -->
+      </div>
+
+      <div>
+        18. Место обращения (посещения):
+        <span class="xs">поликлиника и (или) ее подразделения – 1, на дому – 2, центр здоровья – 3, мобильная медицинская бригада – 4, фельдшерско-акушерский пункт (включая передвижные) – 5, фельдшерский пункт (включая передвижные) – 6, здравпункт – 7, иные медицинские организации – 8</span>
+        <b>{visit_place}</b>
+      </div>
+
+      <div>
+        <div>19. Посещение (цель):</div>
+        <div class="xs">
+          по заболеванию (коды A00 – T98) – 1, из них: в неотложной форме – 1.1, активное посещение – 1.2, диспансерное наблюдение – 1.3, дневной стационар – 1.4, консультативный прием – 1.5,
+        </div>
+        <div class="xs">
+          по направлению – 1.6
+        </div>
+        <div class="xs">
+          с профилактической и иными целями (коды Z00 – Z99) – 2: медицинский осмотр – 2.1, диспансеризация и профилактический медицинский осмотр – 2.2, комплексное обследование – 2.3,
+        </div>
+        <div class="xs">
+          паллиативная медицинская помощь – 2.4, патронаж – 2.5, другие обстоятельства – 2.6
+        </div>
+        <b>{visit_goal}</b>
+      </div>
+
+      <div>
+        20. Обращение (цель): <span class="xs">по заболеванию (коды A00 – T98) – 1, с профилактической целью (коды Z00 – Z99) – 2</span>
+        <b>{event_goal}</b>
+      </div>
+      <div>
+        21. Обращение (законченный случай лечения): <span class="xs">да – 1, нет – 2</span>
+        <b>{isClosed}</b>
+      </div>
+
+      <div>
+        22. Обращение: <span class="xs">первичное – 1, повторное – 2</span> <b>{isPrimary}</b>
+      </div>
+
+      <div>23. Результат обращения:
+      <div>
+        23.1. Выздоровление – 1, без изменения – 2, улучшение – 3, ухудшение – 4, летальный исход – 5
+        <b>{event_result}</b>
+      </div>
+
+      <div>
+        23.2. Дано направление для оказания медицинской помощи: по экстренным показаниям – 1, на госпитализацию в дневной стационар – 2, на обследование – 3, на консультацию – 4, на санаторно-курортное лечение – 5, на медицинскую реабилитацию – 6, отказ от прохождения медицинских обследований при диспансеризации или медицинском осмотре – 7
+      </div>
+
+      <div>
+        24. Основной вид оплаты: обязательное медицинское страхование – 1, средства бюджета (всех уровней) – 2, платные медицинские услуги – 3, в том числе добровольное медицинское
+        страхование – 4, другое – 5
+      </div>
+
+{:
+visit_ref_list = db.getRecordList(stmt=u"""
+  select DATE_FORMAT(v.date, '%d.%m.%Y') as date_visit
+  from event e
+  join visit v on e.id = v.event_id and v.deleted = 0 and e.id = {event_id}
+""".format(event_id=event.id))
+}
+   <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>25. Даты посещений</td>
+      {if: visit_ref_list}
+          {for: visit_ref in visit_ref_list}
+            <td>{forceString(visit_ref.value(u'date_visit'))}</td>
+          {end:}
+      {end:}
+    </tr>
+   </table>
+
+    </td>
+  </tr>
+</table> <!-- END card-section -->
+
+<div style="page-break-after: always"></div>
+<!--  note обратная сторона -->
+
+<!--  note така как со степенями обоснования диагнозов беспорядок, пока сделал один запрос для двух таблиц-->
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  select MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN mkb.DiagID END)   as base_diag_id,
+         MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN mkb.DiagName END) as base_diag_name,
+         MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN rbCH.code END)    as diseases_character,
+         MAX(CASE WHEN ds.diagnosisType_id in (1, 2) THEN rbTT.code2 END)   as trauma_type,
+         MAX(IF(ds.diagnosisType_id in (1, 2), rbD.amb_talon_code, ''))     as dispanser_code,
+         MAX(IF(ds.diagnosisType_id = 3, mkb.DiagID, ''))                   as difficulty_diag_id,
+         MAX(IF(ds.diagnosisType_id = 3, mkb.DiagName, ''))                 as difficulty_diag_name
+  from event e
+         join diagnostic dc on e.id = dc.event_id and dc.deleted = 0 and e.id = {event_id}
+         join diagnosis ds on dc.diagnosis_id = ds.id and ds.deleted = 0
+         join rbdiseasecharacter rbCH on ds.character_id = rbCH.id
+         join rbdiagnosistype rbDT on ds.diagnosisType_id = rbDT.id
+         left join rbTraumaType rbTT on ds.traumaType_id = rbTT.id
+         left join rbDispanser rbD on ds.dispanser_id = rbD.id
+         join mkb on ds.MKB = mkb.DiagID;
+""".format(event_id=event.id))
+}
+
+{:
+if diagRef:
+  base_diag_id = forceString(diagRef.value(u'base_diag_id'))
+  base_diag_name = forceString(diagRef.value(u'base_diag_name'))
+  diseases_character = forceString(diagRef.value(u'diseases_character'))
+  trauma_type = forceString(diagRef.value(u'trauma_type'))
+  dispanser_code = forceString(diagRef.value(u'dispanser_code'))
+  difficulty_diag_id = forceString(diagRef.value(u'difficulty_diag_id'))
+  difficulty_diag_name = forceString(diagRef.value(u'difficulty_diag_name'))
+else:
+  base_diag_id = '______'
+  base_diag_name = ''
+  diseases_character = ''
+  trauma_type = ''
+  dispanser_code = ''
+  difficulty_diag_id = u'______'
+  difficulty_diag_name = ''
+}
+
+  {:NAME_LINE_LENGTH = 50}
+  <!-- note Диагноз предварительный-->
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td colspan="3">
+              26. Диагноз предварительный
+              <b>{base_diag_name}</b>
+            </td>
+            <td colspan="2">
+              код по МКБ&nbsp;<b>{base_diag_id}</b>&nbsp;
+            </td>
+          </tr>
+          <tr>
+            <td>
+              26.1. Осложнения основанного заболевания:
+              {if: difficulty_diag_name != ''}
+                  <b>{difficulty_diag_name}</b>
+              {else:}
+                {render_line(u'26.1. Осложнения основанного заболевания:', NAME_LINE_LENGTH)}
+              {end:}
+            </td>
+            <td width="1%" class="white-wrap">
+              код по МКБ
+              {if: difficulty_diag_id != ''}
+                  <b>{difficulty_diag_id}</b>
+              {else:}
+                {'_' * 6}
+              {end:}
+            </td>
+            <td width="1%" class="white-wrap">признак {'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">ДН {'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">снят с ДН {'_' * 6}&nbsp;</td>
+          </tr>
+          <tr>
+            <td>
+              26.2. Сопутствующие заболевания:
+              {render_line(u'26.2. Сопутствующие заболевания', NAME_LINE_LENGTH)}
+            </td>
+            <td width="1%" class="white-wrap">
+              код по МКБ&nbsp;{'_' * 6}&nbsp;
+            </td>
+            <td width="1%" class="white-wrap">признак&nbsp;{'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">ДН&nbsp;{'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">снят&nbsp;с ДН {'_' * 6}&nbsp;</td>
+          </tr>
+          <tr>
+            <td colspan="3">
+              27. Внешняя причина (при наличии травм и отравлений)
+            </td>
+            <td colspan="2" width="1%" class="white-wrap">
+              код по МКБ&nbsp;{'_' * 6}&nbsp;
+            </td>
+          </tr>
+          <tr>
+            <td colspan="5">
+              28. Дополнительные сведения о заболевании
+              {render_line(u'28. Дополнительные сведения о заболевании')}
+            </td>
+          </tr>
+          <tr>
+            <td>{render_line(' ')}&nbsp;</td>
+          </tr>
+        </table>
+
+        <div>
+          29. Заболевание основное (признак): острое – 1, впервые в жизни установленное хроническое – 2, ранее установленное хроническое – 3
+          <b>{diseases_character}</b>
+        </div>
+        <div>
+          30. Диспансерное наблюдение по основному заболеванию: состоит – 1, взят – 2, снят – 3, из них: выздоровление – 3.1, выбытие – 3.2, смерть – 3.3, прочие – 3.4.
+          <b>{dispanser_code}</b>
+        </div>
+        <div>
+          31. Травма: производственная – 1, транспортная – 2, в том числе: ДТП – 2.1, спортивная – 3, уличная – 4, сельскохозяйственная – 5, бытовая – 6, школьная – 7, прочая – 8
+          <b>{trauma_type}</b>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <!-- note Заключительный клинический диагноз -->
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td colspan="3">
+              32. Заключительный клинический диагноз: основное заболевание
+              <b>{base_diag_name}</b>
+            </td>
+            <td colspan="2">
+              код по МКБ&nbsp;<b>{base_diag_id}</b>&nbsp;
+            </td>
+          </tr>
+          <tr>
+            <td>
+              32.1. Осложнения основанного заболевания:
+              {if: difficulty_diag_name != ''}
+                  <b>{difficulty_diag_name}</b>
+              {else:}
+                {render_line(u'26.1. Осложнения основанного заболевания:', NAME_LINE_LENGTH)}
+              {end:}
+            </td>
+            <td width="1%" class="white-wrap">
+              код по МКБ
+              {if: difficulty_diag_id != ''}
+                  <b>{difficulty_diag_id}</b>
+              {else:}
+                {'_' * 6}
+              {end:}
+            </td>
+            <td width="1%" class="white-wrap">признак {'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">ДН {'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">снят с ДН {'_' * 6}&nbsp;</td>
+          </tr>
+          <tr>
+            <td>32.2. Сопутствующие заболевания: {render_line(u'26.2. Сопутствующие заболевания', NAME_LINE_LENGTH)}</td>
+            <td width="1%" class="white-wrap">
+              код по МКБ&nbsp;{'_' * 6}&nbsp;
+            </td>
+            <td width="1%" class="white-wrap">признак&nbsp;{'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">ДН&nbsp;{'_' * 6}&nbsp;</td>
+            <td width="1%" class="white-wrap">снят&nbsp;с ДН {'_' * 6}&nbsp;</td>
+          </tr>
+          <tr>
+            <td colspan="3">
+              33. Внешняя причина (при наличии травм и отравлений)
+              {render_line(u'33. Внешняя причина (при наличии травм и отравлений)', NAME_LINE_LENGTH)}
+            </td>
+            <td colspan="2">
+              код по МКБ&nbsp;{'_' * 6}&nbsp;
+            </td>
+          </tr>
+          <tr>
+            <td colspan="5">
+              34. Дополнительные сведения о заболевании
+              {render_line(u'28. Дополнительные сведения о заболевании')}
+            </td>
+          </tr>
+          <tr>
+            <td>{render_line(' ')}&nbsp;</td>
+          </tr>
+        </table>
+
+        <div>
+          35. Заболевание основное (признак): острое – 1, впервые в жизни установленное хроническое – 2, ранее установленное хроническое – 3
+          <b>{diseases_character}</b>
+        </div>
+        <div>
+          36. Диспансерное наблюдение по основному заболеванию: состоит – 1, взят – 2, снят – 3, из них: выздоровление – 3.1, выбытие – 3.2, смерть – 3.3, прочие – 3.4.
+          <b>{dispanser_code}</b>
+        </div>
+        <div>
+          37. Травма: производственная – 1, транспортная – 2, в том числе: ДТП – 2.1, спортивная – 3, уличная – 4, сельскохозяйственная – 5, бытовая – 6, школьная – 7, прочая – 8
+          <b>{trauma_type}</b>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>
+        <div>
+          38. Наименование операции: {'_' * 50} код* {'_' * 20}
+        </div>
+        <div>
+          39. Анестезия: общая – 1, местная – 2, комбинированная – 3
+        </div>
+        <div>
+          40. Операция проведена с использованием аппаратуры: лазерной – 1, криогенной – 2, эндоскопической – 3, рентгеновской – 4, иной – 5
+        </div>
+        <div>41. Врач: должность, специальность {'_' * 30} фамилия, имя, отчество (при наличии) {'_' * 30} код {'_' * 20}</div>
+
+        {: LINE_LENGTH = 80}
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td>
+              42. Иные медицинские вмешательства, в том числе с целью исследования:
+              {render_line(u'42. Иные медицинские вмешательства, в том числе с целью исследования:', LINE_LENGTH)}
+            </td>
+            <td width="1%" class="white-wrap">кол&nbsp;-&nbsp;во{'_' * 10}&nbsp;</td>
+            <td width="1%" class="white-wrap">код {'_' * 10}&nbsp;</td>
+          </tr>
+          <tr>
+            <td>
+              {render_line(u' ', LINE_LENGTH)}
+            </td>
+            <td width="1%" class="white-wrap">кол&nbsp;-&nbsp;во{'_' * 10}&nbsp;</td>
+            <td width="1%" class="white-wrap">код {'_' * 10}&nbsp;</td>
+          </tr>
+          <tr>
+            <td>
+              в том числе лабораторные, инструментальные и лучевые
+              {render_line(u'в том числе лабораторные, инструментальные и лучевые', LINE_LENGTH)}
+            </td>
+            <td width="1%" class="white-wrap">кол&nbsp;-&nbsp;во{'_' * 10}&nbsp;</td>
+            <td width="1%" class="white-wrap">код {'_' * 10}&nbsp;</td>
+          </tr>
+          <tr>
+            <td>
+              {render_line(u' ', LINE_LENGTH)}
+            </td>
+            <td width="1%" class="white-wrap">кол&nbsp;-&nbsp;во{'_' * 10}&nbsp;</td>
+            <td width="1%" class="white-wrap">код {'_' * 10}&nbsp;</td>
+          </tr>
+        </table>
+
+        <div>41. Врач: должность, специальность {'_' * 30} фамилия, имя, отчество (при наличии) {'_' * 30} код {'_' * 20}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div>44. Рецепты на лекарственные препараты, специализированные продукты лечебного питания, медицинские изделия:</div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <th rowspan="2">Дата</th>
+      <th colspan="2">Рецепт</th>
+      <th rowspan="2">
+        Наименование лекарственного препарата, <br> специализированных продуктов лечебного <br> питания, медицинских изделий
+      </th>
+      <th rowspan="2">Льгота (%)</th>
+      <th rowspan="2">Лек. форма</th>
+      <th rowspan="2">Доза</th>
+      <th rowspan="2">Кол-во</th>
+      <th rowspan="2">Код МКБ</th>
+    </tr>
+    <tr>
+      <th>серия</th>
+      <th>номер</th>
+    </tr>
+    {for: _ in range(3)}
+      <tr>
+        {for: _ in range(8)}
+          <td>&nbsp;</td>
+        {end:}
+      </tr>
+    {end:}
+  </table>
+
+{: eln_period_end = event.execDate.toString('yyyy-MM-dd') if event.execDate else datetime.strftime(datetime.now(), '%Y-%m-%d')}
+{: eln_period_start = event.setDate.toString('yyyy-MM-dd')}
+<!--  note запрос составлен коряво - нужно, чтобы подтягивал все записи при наличии продления ЭЛН -->
+{:
+eln_ref_list = db.getRecordList(stmt=u"""
+  select DATE_FORMAT(eln.lnDate, '%d.%m.%Y') as issue_date,
+         DATE_FORMAT(eln.endDate, '%d.%m.%Y') as end_date,
+         CASE eln.reason1_id
+             WHEN 5 THEN 2
+             WHEN 6 THEN 3
+             WHEN 8 THEN 4
+             ELSE 1
+         END     as reason,
+          eln.serv1_fio as care_fio,
+          eln.serv1_age as care_age
+  from tempinvalideln eln
+  where eln.deleted = 0
+    and DATE(eln.lnDate) between '{beg_date}' and '{end_date}'
+    and eln.client_id = {client_id}
+  order by eln.id;
+""".format(client_id=event.client.id, beg_date=eln_period_start, end_date=eln_period_end))
+}
+{:
+if eln_ref_list:
+  first_eln = eln_ref_list[0]
+  issue_date = forceString(first_eln.value(u'issue_date'))
+  reason = forceString(first_eln.value(u'reason'))
+  care_fio = forceString(first_eln.value(u'care_fio'))
+  care_age = forceString(first_eln.value(u'care_age'))
+  end_date = forceString(eln_ref_list[-1].value(u'end_date'))
+else:
+  reason = ''
+  issue_date = u'«____» ______ 20____г.'
+  end_date = u'«____» ______ 20____г.'
+
+}
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td>
+        <div>
+          <div align="justify">
+            45. Документ о временной нетрудоспособности: листок нетрудоспособности – 1, справка – 2. <b>1</b>
+            46. Повод выдачи: заболевание – 1, уход за больным членом семьи – 2,
+
+            {if: reason == u'2'}
+              (фамилия, имя, отчество (при наличии), пол, возраст
+              (<b>{care_fio}</b>,
+              <b>{care_age}</b>))
+            {end:}
+
+            в связи с карантином – 3,
+            санаторно-курортного лечения – 4
+            <b>{reason}</b>
+          </div>
+        </div>
+
+        <div>
+          47. Дата выдачи: <b>{issue_date}</b>
+        </div>
+        <div>
+          48. Даты продления:
+          {if: eln_ref_list and len(eln_ref_list) > 1}
+            {for: eln_ref in eln_ref_list[1:]}
+              <b>{forceString(eln_ref.value(u'issue_date'))}</b>
+            {end:}
+          {else:}
+            {for: _ in range(4)}
+              «____» ______ 20____г.
+            {end:}
+          {end:}
+        </div>
+
+        <div>
+          49. Дата закрытия документа о временной нетрудоспособности: <b>{end_date}</b>
+        </div>
+
+        <div>
+          50. Дата закрытия талона: <b>{event.execDate.toString('dd.MM.yyyy')}</b>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+<div>
+  51. Врач: должность, специальность <b>{event.execPerson.speciality}</b>
+  фамилия, имя, отчество (при наличии) <b>{event.execPerson.fullName}</b>,
+  подпись {'_' * 20}
+</div>
+
+</body>
+</html>

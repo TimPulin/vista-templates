@@ -1,0 +1,327 @@
+<!-- Медицинская справка о состоянии здоровья ребенка -->
+<!--Начальная дата разработки 07.07.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-5574 Медицинская справка о состоянии здоровья ребенка, направляемого  в организацию отдыха детей и их оздоровления -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинская справка о состоянии здоровья ребенка, направляемого в организацию отдыха детей и их оздоровления</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.xs {
+    font-size: 6pt;
+}
+
+.bold {
+  font-weight: 900;
+}
+
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 100):
+  return u'_' * (base_length - len(str))
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap xs">
+            Наименование и адрес медицинской организации <br>
+            (фамилия, имя, отчество (при наличии) индивидуального предпринимателя и адрес осуществления медицинской деятельности)
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div class="white-wrap xs">
+            Основной государственный регистрационный номер (Основной государственный регистрационный <br>
+            номер индивидуального предпринимателя)
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 079/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <br>
+
+  <div align="center" class="h1">
+    Медицинская справка о состоянии здоровья ребенка, направляемого <br>
+    в организацию отдыха детей и их оздоровления
+  </div>
+
+  <div>
+    Фамилия, имя, отчество (при наличии) ребенка <b>{event.client.fullName}</b>
+  </div>
+
+  <div>
+    Дата рождения:
+    <b>«{forceString(event.client.birthDate.toString('dd'))}» {forceString(month[event.client.birthDate.date.month()])} {forceString(event.client.birthDate.date.year())} г.</b>
+    Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if event.client.sex == u'М' else 2}</b>
+    Гражданство: <b>{event.client.citizenship}</b>
+  </div>
+
+<!-- note Регистрация по месту -->
+{:
+def check_city(city):
+  return (city and city.socr and (city.socr.strip() == "г." or city.socr.strip() == "г"))
+}
+
+{:
+def get_district(district):
+  if district:
+    dst = district.strip()
+    if dst.endswith('р-н'):
+      return dst[:-3]
+    elif dst.endswith('р-н.'):
+      return dst[:-4]
+  return None
+}
+
+<div>
+  Регистрация по месту жительства: субъект Российской Федерации <b>{event.client.regAddress.region.name}</b>
+</div>
+<div>
+  {: isToRenderAddrString = True}
+  <div>
+    {: dst = get_district(event.client.regAddress.district)}
+    {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+    {if: check_city(event.client.regAddress.parentCity)} город <b>{event.client.regAddress.parentCity.name}</b> {: isToRenderAddrString = False}{end:}
+    {if: event.client.regAddress.city}населенный пункт <b>{event.client.regAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+  </div>
+
+  <div>
+    {if: event.client.regAddress.street} улица <b>{event.client.regAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    {if: event.client.regAddress.number} дом <b>{event.client.regAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    {if: event.client.regAddress.flat} квартира <b>{event.client.regAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+  </div>
+
+  <!-- note на случай, если адрес введен в виде строки, а не с использованием КЛАДР -->
+  {if: isToRenderAddrString}
+      <b>{event.client.regAddress}</b>
+  {end:}
+</div>
+
+<div>
+  Регистрация по месту пребывания: субъект Российской Федерации <b>{event.client.locAddress.region}</b>
+</div>
+<div>
+  {: isToRenderAddrString = True}
+  <div>
+    {: dst = get_district(event.client.locAddress.district)}
+    {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+    {if: check_city(event.client.locAddress.parentCity)} город <b>{event.client.locAddress.parentCity.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False}{end:}
+    {if: event.client.locAddress.city}населенный пункт <b>{event.client.locAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+  </div>
+
+  <div>
+    {if: event.client.locAddress.street} улица <b>{event.client.locAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    {if: event.client.locAddress.number} дом <b>{event.client.locAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    {if: event.client.locAddress.flat} квартира <b>{event.client.locAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+  </div>
+  {if: isToRenderAddrString}
+      <b>{event.client.locAddress}</b>
+  {end:}
+</div>
+<!-- note END Регистрация по месту -->
+<!--note-->
+  <div>
+    Сведения об образовательной организации:
+    тип <b>{action[u'тип образовательной организации']}</b>
+    № <b>{action[u'№ школы']}</b>
+    класс <b>{action[u'класс']}</b>
+  </div>
+  <div>наименование <b>{action[u'наименование образовательной организации']}</b></div>
+
+  <div>
+    <div>
+      <!--note-->
+      Перенесенные заболевания, операции, травмы
+      <b>{action[u'Перенесенные заболевания, операции, травмы']}</b>
+    </div>
+  </div>
+
+  <!--note-->
+  <div>
+    Проведенные профилактические прививки и результаты обследований, в том числе в целях выявления туберкулеза
+    <b>{action[u'Проведенные профилактические прививки']}</b>
+  </div>
+<!--note-->
+  <div>
+    Состояние здоровья:
+    <b>{action[u'Состояние здоровья']}</b>
+  </div>
+
+{:
+def getDiagName(mkb_id):
+  ref = None
+  if mkb_id and mkb_id != '':
+    ref = db.getRecordEx(stmt=u"""
+      select mkb.DiagName as diag_name
+      from MKB mkb
+      where mkb.DiagID = '{mkb_id}'
+    """.format(mkb_id=mkb_id))
+  if ref:
+    return forceString(ref.value(u'diag_name'))
+  else:
+    return ''
+}
+  <!--note-->
+  <div>
+    Диагноз заболевания
+    <b>{getDiagName(action[u'Диагноз заболевания'])}</b>
+    код по МКБ
+    <b>{action[u'Диагноз заболевания']}</b>
+  </div>
+
+  <!--note-->
+  <div>
+    Аллергические заболевания (пищевая, лекарственная, бытовая аллергия), аллергические реакции:
+    {action[u'Аллергические заболевания, реакции']}
+  </div>
+
+<!--note-->
+  <div>
+    Назначенный лечащим врачом режим лечения (диета, прием лекарственных препаратов для медицинского применения и специализированных продуктов лечебного питания)
+    {action[u'Назначенный лечащим врачом режим лечения']}
+  </div>
+<!--note-->
+  <div>
+    Рост <b>{action[u'Рост (см)']}</b>
+    масса тела <b>{action[u'Масса тела (кг)']}</b>
+  </div>
+<!--note-->
+  <div>
+    Группа здоровья
+    <b>{action[u'Группа здоровья']}</b>
+  </div>
+<!--note-->
+  <div>
+    Медицинская группа для занятий физической культурой
+    <b>{action[u'Медицинская группа для занятий физической культурой']}</b>
+  </div>
+<!--note-->
+  <div>
+    Нуждаемость в условиях доступной среды:
+    <b>{action[u'Нуждаемость в условиях доступной среды']}</b>
+  </div>
+<!--note-->
+  <div>
+    Необходимость сопровождения ребенка законным представителем в период пребывания в организации отдыха детей и их оздоровления и (или) нуждающегося в индивидуальной помощи в связи с имеющимися физическими, психическими, интеллектуальными или сенсорными нарушениями
+    <b>{action[u'Необходимость сопровождения пациента']}</b>
+  </div>
+<!--note-->
+  <div>
+    Отсутствие контакта с больными инфекционными заболеваниями
+    <b>{action[u'Контакт с инфекционными больными']}</b>
+  </div>
+<!-- note -->
+  <div>
+    Осмотр на педикулез и чесотку
+    <b>{action[u'Осмотр на педикулез и чесотку']}</b>
+  </div>
+<!-- note -->
+  <div>
+    Обследование на гельминтозы (энтеробиоз, гименолепидоз)
+    <b>{action[u'Обследование на гельминтозы (энтеробиоз, гименолепидоз)']}</b>
+  </div>
+  <!-- note -->
+  <div>
+    Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления
+    <b>{action[u'Отсутствие медицинских противопоказаний для пребывания в организации отдыха детей и их оздоровления']}</b>
+  </div>
+
+  <br>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td valign="top">
+          <div class="white-wrap">Должность, специальность, фамилия, имя, отчество (при наличии) и подпись врача</div>
+        </td>
+        <td>
+          <div align="center">
+            {action.person.fullName}
+          </div>
+          <div align="center"><sup>(фамилия, имя, отчество (при наличии)</sup></div>
+        </td>
+        <td>
+          <div align="center">{'_' * 15}</div>
+          <div align="center"><sup>подпись</sup></div>
+        </td>
+      </tr>
+
+        <tr>
+          <td valign="top">
+            <div class="white-wrap">Фамилия, имя, отчество (при наличии) и подпись руководителя медицинской организации</div>
+          </td>
+          <td>
+            <div align="center">
+              {'_' * 40}
+            </div>
+            <div align="center"><sup>(фамилия, имя, отчество (при наличии)</sup></div>
+          </td>
+          <td>
+            <div align="center">{'_' * 15}</div>
+            <div align="center"><sup>подпись</sup></div>
+          </td>
+        </tr>
+
+</table>
+
+  <br>
+
+  <div>М.П. (при наличии)</div>
+  <div>«____» ______ 20____г.</div>
+
+</div>
+</body>
+</html>

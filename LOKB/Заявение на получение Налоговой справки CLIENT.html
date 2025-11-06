@@ -1,0 +1,191 @@
+<!--Начальная дата разработки 02.10.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Заявление</title>
+<!-- @formatter:off -->
+<style>
+@media print {
+  body {
+    margin-left: 30mm;
+    margin-right: 10mm;
+    margin-top: 0mm;
+    margin-bottom: 0mm;
+  }
+}
+.main {
+    font-family:'Avenir Next Cyr Medium';
+    font-size: 11pt;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+
+.header {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.card {
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 10px;
+}
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+<!-- @formatter:on -->
+
+
+</head>
+<body>
+
+<div class="main">
+  <div class="header">
+    <div>
+      Главному врачу ГБУЗ ЛОКБ<br>
+      Алексееву С.М.
+    </div>
+  </div>
+
+  <div align="center" class="h1">Заявление</div>
+
+    <div align="justify">
+        Прошу Вас предоставить мне справку об оплате медицинских услуг в 2024г / 2025г, оказанных в ГБУЗ ЛОКБ, для предоставления в ФНС РФ для получения социального налогового вычета
+    </div>
+
+    <div align="justify">
+        ФИО налогоплательщика <b>{client.fullName}</b>
+    </div>
+    <div align="justify">
+        Дата рождения налогоплательщика
+        <b>«{client.birthDate.date.toString('dd')}» {forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)} г.</b>
+    </div>
+    <div align="justify">
+        ИНН налогоплательщика <b>{INN}</b>
+    </div>
+    <div align="justify">
+        Паспорт налогоплательщика
+        <b>{client.document}</b>
+    </div>
+
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td>
+          <div>
+            Контактный номер телефона:
+          </div>
+        </td>
+        <td>
+          <div>
+            E-mail: <b>{client.email if client.email != '' else '_' * 15}</b>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+
+
+
+
+
+    <div align="justify">
+        * Если налогоплательщик является пациентом, то сведения о пациенте заполнять не нужно.
+    </div>
+
+    <br>
+
+    <div align="justify">
+        Налогоплательщик оплатил мед. услуги, оказанные: супругу/супруге, сыну/дочери, матери/отцу<br>
+    </div>
+    <div align="center"><sup>подчеркнуть нужное</sup></div>
+
+    <div align="justify">
+        <div class="line">
+          <span>ФИО пациента</span>
+          <div class="line__item"></div>
+        </div>
+    </div>
+    <div align="justify">
+        Дата рождения пациента «____» ______ 20____г.
+    </div>
+    <div align="justify">
+        <div class="line">
+          <span>ИНН пациента</span>
+          <div class="line__item"></div>
+        </div>
+
+    </div>
+    <div align="justify">
+        Паспорт пациента <!--TODO--> <!--TODO-->; «<!--TODO-->» <!--TODO--> <!--TODO-->г.
+    </div>
+  <br>
+    <div class="card">
+      <div align="center">
+          Заполненное и подписанное заявление Вы можете передать в ГБУЗ ЛОКБ – <br>
+          Отдел организации внебюджетной деятельности – кабинет №4 одним из способов:
+      </div>
+
+      <ul>
+        <li>Принести заявление в распечатанном виде</li>
+        <li>Отправить скан-копию или читаемое фото на e-mail: econ@47lokb.ru</li>
+      </ul>
+
+      <div class="red-line">
+          К заявлению необходимо приложить копии/сканы документов, подтверждающие оплату медицинских услуг (чеки).
+      </div>
+
+      <div>
+          Срок изготовления справки до 30 календарных дней.
+      </div>
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="3">
+      <tr>
+        <td width="70%" align="right">Дата заполнения</td>
+        <td>«____» ______ 20____г.</td>
+      </tr>
+      <tr>
+        <td align="right">Подпись налогоплательщика</td>
+        <td valign="bottom">
+          <div class="line">
+            <div class="line__item"></div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+</div>
+</body>
+</html>
