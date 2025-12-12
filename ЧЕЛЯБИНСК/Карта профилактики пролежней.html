@@ -1,3 +1,5 @@
+<!-- изменил Пулин дата 24.09.2025 задача  -->
+<!-- изменил Пулин дата 23.09.2025 задача  -->
 <!-- изменил Пулин дата 12.08.2025 задача  -->
 <!--Начальная дата разработки 23.07.2025 г.-->
 <!--Разработка: Пулин -->
@@ -5,7 +7,7 @@
 <!--Задача:  -->
 
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Карта профилактики пролежней</title>
@@ -100,20 +102,14 @@ if act_id_ref_list:
     act_id_list.append(forceInt(act_id_ref.value(u'act_id')))
 }
 
-{: safety_prop_keys = [u'Согласие пациентана', u'Оценка по шкале Нортон', u'Дата обучения пациента самоуходу', u'Дата консультации лечащеего врача с диает-сестрой', u'Локализация полежня 1:', u'Стадия пролежня 1:', u'Локализация полежня 2:', u'Стадия пролежня 2:', u'Локализация полежня 3:', u'Стадия пролежня 3:', u'Состояние коженных покровов:', u'Изменение положения/состояния в постели', u'Диета: введено в зонд, мл.', u'Диета: кол-во съеденной пищи, %', u'Диета:  кол-во выпитой жидкости, мл.']}
+
+{: hour_list = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]}
 {: day_acts = dict()}
+
 {for: act in event.actions}
   {if: act.id in act_id_list}
-    <!-- note когда починят пропы с типом reference, убрать начиная с этой строки -->
-    {: act_dict = dict()}
-    {for: prop_key in safety_prop_keys}
-      {: value = act[prop_key]}
-      {: act_dict.data.setdefault(prop_key, value)}
-    {end:}
-    <!-- note когда починят пропы с типом reference, убрать заканчивая этой строкой -->
     {: hour_key = forceInt(act.begDate.time.hour())}
-    <!-- note когда починят пропы с типом reference, вместо act_dict присваивать act -->
-    {: day_acts.data.setdefault(hour_key, act_dict)}
+    {: day_acts.data.setdefault(hour_key, act)}
   {end:}
 {end:}
 
@@ -121,12 +117,12 @@ if act_id_ref_list:
 def get_prop_value(obj, hour_key, prop_key):
   value = ''
   act = obj.data.get(hour_key, None)
-  if act:
-    value = act.data.get(prop_key, '')
+  if act and prop_key and prop_key in act:
+    value = act[prop_key].value
   return value
 }
 
-{: hour_list = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]}
+
 
 
 
@@ -149,6 +145,8 @@ keys = sorted(day_acts.data.keys(), key=lambda x: (x - 8) % 24)
 if len(keys) > 0:
   morning_key = keys[0]
 }
+
+
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td>
@@ -192,8 +190,6 @@ if len(keys) > 0:
   </section>
 
   <table width="100%" cellpadding="3" cellspacing="0" class="tbl-card">
-    {: hour_list = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]}
-
     <tr>
       <td class="td-title">Время суток</td>
       {for: hour in hour_list}
@@ -209,11 +205,18 @@ if len(keys) > 0:
       <td colspan="{len(hour_list) + 1}" class="td-title">Риск развития пролежней:</td>
     </tr>
     {: sub_title_name_list = [u'низкий', u'средний', u'высокий']}
+    {: current_prop_name = u'Риск развития:' }
     {for: name in sub_title_name_list}
       <tr>
         <td class="td-subtitle">{name}</td>
-        {for: _ in hour_list}
-          <td>&nbsp;</td>
+        {for: hour in hour_list}
+          <td align="center">
+            {if: name in get_prop_value(day_acts, hour, current_prop_name)}
+                &#10003;
+            {else:}
+              &nbsp;
+            {end:}
+          </td>
         {end:}
       </tr>
     {end:}
@@ -241,15 +244,15 @@ if len(keys) > 0:
     </tr>
 
     {: sub_title_name_list = [u'Присыпки (безтальковые)', u'Увлажняющий крем', u'Разогревающий крем']}
-    {: current_prop_name = u'Противопролежные мероприятия:'}
+    {: current_prop_name = u'Противопролежные мероприятия:' }
+
     {for: name in sub_title_name_list}
       <tr>
         <td class="td-subtitle">{name}</td>
         {for: hour in hour_list}
-          <td>
-
-            {if: get_prop_value(day_acts, hour, current_prop_name) == name}
-                +
+          <td align="center">
+            {if: name in get_prop_value(day_acts, hour, current_prop_name)}
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -273,9 +276,9 @@ if len(keys) > 0:
       <tr>
         <td class="td-subtitle">{name}</td>
         {for: hour in hour_list}
-          <td>
-            {if: get_prop_value(day_acts, hour, current_prop_name) == name}
-                +
+          <td align="center">
+            {if: name == get_prop_value(day_acts, hour, current_prop_name)}
+              &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -305,9 +308,9 @@ if len(keys) > 0:
       <tr>
         <td class="td-subtitle">{name}</td>
         {for: hour in hour_list}
-          <td>
+          <td align="center">
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -326,9 +329,9 @@ if len(keys) > 0:
       <tr>
         <td class="td-subtitle">{name}</td>
         {for: hour in hour_list}
-          <td>
+          <td align="center">
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}

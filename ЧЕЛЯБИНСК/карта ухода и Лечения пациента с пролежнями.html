@@ -1,3 +1,7 @@
+<!-- изменил Пулин дата 06.10.2025 задача  -->
+<!-- изменил Пулин дата 30.09.2025 задача  -->
+<!-- изменил Пулин дата 29.09.2025 задача  -->
+<!-- изменил Пулин дата 23.09.2025 задача  -->
 <!-- изменил Пулин дата 12.08.2025 задача  -->
 <!-- изменил Пулин дата 24.07.2025 задача  -->
 <!--Начальная дата разработки 14.07.2025 г.-->
@@ -5,7 +9,7 @@
 <!--Контекст печати:  -->
 <!--Задача:  -->
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -70,6 +74,12 @@ write('''
     padding-left: 10px;
     font-weight: 400;
 }
+
+.text-ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  /*text-overflow: ellipsis;*/
+}
 .underline {
     text-decoration: underline;
 }
@@ -89,7 +99,7 @@ act_id_ref_list = db.getRecordList(stmt=u"""
   from Action a
   where a.event_id = {event_id}
     and a.actionType_id = 26640
-    and a.begDate between '{start_period}' and '{end_period}'
+    and a.begDate >= '{start_period}' and a.begDate <= '{end_period}'
 """.format(event_id=event.id, start_period=start_period, end_period=end_period))
 }
 
@@ -100,39 +110,46 @@ if act_id_ref_list:
     act_id_list.append(forceInt(act_id_ref.value(u'act_id')))
 }
 
-{: safety_prop_keys = [u'Согласие пациентана', u'Оценка по шкале Нортон', u'Дата обучения пациента самоуходу', u'Дата консультации лечащеего врача с диает-сестрой', u'Локализация полежня 1:', u'Стадия пролежня 1:', u'Локализация полежня 2:', u'Стадия пролежня 2:', u'Локализация полежня 3:', u'Стадия пролежня 3:', u'Состояние коженных покровов:', u'Изменение положения/состояния в постели', u'Диета: введено в зонд, мл.', u'Диета: кол-во съеденной пищи, %', u'Диета:  кол-во выпитой жидкости, мл.']}
+
 {: day_acts = dict()}
 {for: act in event.actions}
   {if: act.id in act_id_list}
-    <!-- note когда починят пропы с типом reference, убрать начиная с этой строки -->
-    {: act_dict = dict()}
-    {for: prop_key in safety_prop_keys}
-      {: value = act[prop_key]}
-      {: act_dict.data.setdefault(prop_key, value)}
-    {end:}
-    <!-- note когда починят пропы с типом reference, убрать заканчивая с этой строкой -->
     {: hour_key = forceInt(act.begDate.time.hour())}
-    <!-- note когда починят пропы с типом reference, вместо act_dict присваивать act -->
-    {: day_acts.data.setdefault(hour_key, act_dict)}
+    {: day_acts.data.setdefault(hour_key, act)}
   {end:}
 {end:}
+
 
 {:
 def get_prop_value(obj, hour_key, prop_key):
   value = ''
   act = obj.data.get(hour_key, None)
-  if act:
-    value = act.data.get(prop_key, '')
+  if act and prop_key and prop_key in act:
+    value = act[prop_key].value
   return value
-}  
-
+}
 
 
 <!-- @formatter:on -->
 </head>
 <body>
 
+<div>
+  start_period {start_period}
+  end_period {end_period}
+</div>
 
+<div>
+  act_id_list
+  {act_id_list}
+</div>
+{for: act in event.actions}
+  {if: act.id in act_id_list}
+    {: hour_key = forceInt(act.begDate.time.hour())}
+    {: day_acts.data.setdefault(hour_key, act)}
+  <div>{hour_key}</div>
+  {end:}
+{end:}
 <div class="main">
   <div class="h1">
     Карта ухода и лечения пациента с пролежнями
@@ -207,7 +224,7 @@ def get_prop_value(obj, hour_key, prop_key):
     {end:}
 
     {: CELL_AMOUNT = 12}
-    {: COLSPAN = 2}
+    {: COLSPAN = 4}
     {: colspan_set = set()}
     {: prop_name_list = [u'Локализация полежня 1:', u'Локализация полежня 2:', u'Локализация полежня 3:']}
     <tr>
@@ -217,7 +234,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {: value = get_prop_value(day_acts, 8, name)}
         {if: value != ''}
           {: current_list.append(1)}
-           <td colspan="{COLSPAN}">{value}</td>
+           <td colspan="{COLSPAN}" class="text-ellipsis">{value}</td>
         {end:}
       {end:}
       {for: _ in range(CELL_AMOUNT - len(current_list) * COLSPAN)}
@@ -302,7 +319,7 @@ def get_prop_value(obj, hour_key, prop_key):
           <td>
 
             {if: get_prop_value(day_acts, hour, current_prop_name) == name}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -328,7 +345,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {for: hour in hour_list}
           <td>
             {if: get_prop_value(day_acts, hour, current_prop_name) == name}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -349,7 +366,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {for: hour in hour_list}
           <td>
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -361,14 +378,14 @@ def get_prop_value(obj, hour_key, prop_key):
 
 
     {: sub_title_name_list = [u'Затылок', u'Плечи', u'Локти', u'Крестец', u'Пятки', u'Область тазобедренного сустава', u'Колено', u'Лодыжки', u'Лопатки', u'Подушечьки пальцев']}
-    {: current_prop_name = u'Мероприятия для:'}
+    {: current_prop_name = u'Противопролежные мероприятия для:'}
     {for: name in sub_title_name_list}
       <tr>
         <td class="td-subtitle">{name}</td>
         {for: hour in hour_list}
           <td>
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -402,7 +419,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {for: hour in hour_list}
           <td>
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -423,7 +440,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {for: hour in hour_list}
           <td>
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}
@@ -461,7 +478,7 @@ def get_prop_value(obj, hour_key, prop_key):
         {for: hour in hour_list}
           <td>
             {if: name in get_prop_value(day_acts, hour, current_prop_name)}
-                +
+                &#10003;
             {else:}
               &nbsp;
             {end:}

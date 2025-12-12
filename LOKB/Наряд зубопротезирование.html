@@ -1,0 +1,410 @@
+<!-- изменил Пулин дата 10.12.2025 задача  -->
+<!--Начальная дата разработки 02.12.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: IMP-1804 Шаблон для платных услуг ЛОКБ_"Наряд" для стоматологов (ДМС/Платный) -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Наряд зубопротезирование</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+body {
+   margin-left: 10mm;
+   margin-right: 10mm;
+   margin-top: 5mm;
+   margin-bottom: 5mm;
+}
+
+.main {
+    font-family:'Avenir Next Cyr Medium';
+    font-size: 10pt;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+
+.top {
+    display: flex;
+    gap: 2rem;
+}
+.p {
+    margin-bottom: 1rem;
+}
+.top__left {
+    flex-grow: 1;
+}
+.top__right {
+    width: 150px
+}
+.top__right table {
+    font-size: 8pt;
+}
+
+.tbl-custom {
+    font-size: 10pt;
+}
+
+.tbl--bordered {
+    border-collapse: collapse;
+}
+.tbl--bordered td,
+.tbl--bordered th {
+    border: 1px solid #000;
+}
+.tbl--bordered .no-border {
+    border: none;
+}
+
+.block-width {
+    width: 415px
+}
+
+.tbl-sign td {
+    padding-bottom: 5px;
+}
+.mb--5 {
+    margin-bottom: 5px;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}
+</style>
+''')}
+
+{:
+clientNumberRef = db.getRecordEx(stmt="""
+  SELECT c.ambCardNumber AS cNumber FROM Client c WHERE id = {clientId};
+""".format(clientId=event.client.id))
+
+if clientNumberRef:
+  clientNumber = forceString(clientNumberRef.value(u'cNumber'))
+else:
+  clientNumber = u''
+}
+
+{:
+service_ref_list = db.getRecordList(stmt=u"""
+  SELECT at.code                                             AS 'code',
+         at.name                                             AS 'name',
+         COUNT(at.code)                                      AS 'amount',
+         ct.price                                            AS 'price',
+         SUM(ct.price)                                       AS 'sum',
+         CONCAT_WS(' ', p.lastName, p.firstName, p.patrName) AS 'doctor',
+         SUM(ct.price * COUNT(at.code)) over ()              as total
+  FROM s13.Action a
+           JOIN s13.Event e ON a.event_id = e.id AND e.deleted = 0
+           JOIN s13.Person p ON e.execPerson_id = p.id
+           JOIN s13.ActionType at ON a.actionType_id = at.id
+      -- ищем услуги по сертификату в поле "Оказанные услуги по сертификату"
+           JOIN s13.Action a2 ON a.parent_id = a2.id AND a2.deleted = 0
+           JOIN s13.ActionType at2 ON a2.actionType_id = at2.id AND at2.code = 'certificateService'
+           JOIN s13.Contract_Tariff ct ON at.nomenclativeService_id = ct.service_id AND ct.master_id = e.contract_id
+  WHERE e.id = {event_id}
+    AND ((e.execDate >= ct.begDate AND ct.endDate IS NULL) OR (e.execDate >= ct.begDate AND e.execDate <= ct.endDate))
+    AND a.deleted = 0
+  GROUP BY at.code, at.name;
+""".format(event_id=event.id))
+}
+
+{:
+if event.execDate:
+  eventDate = event.execDate
+else:
+  eventDate = event.setDate
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<main class="main">
+
+   <div style="font-size: 8pt;">
+      {:record = db.getRecordEx(stmt=
+            """SELECT
+                TO_BASE64(api.value) as image
+            FROM
+                ActionProperty_Image api
+            WHERE
+                api.id = 2748481;""")}
+      <table align = "center" width="100%" border="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black" cellpadding="0" cellspacing="0">
+         <tr>
+            <td width="50%">
+            <img src="data:image/png;base64, {if: record}{forceString(record.value('image'))}{end:}"  width = "265" height = "94"/>
+            </td>
+            <td width="50%" valign = "middle" align = "left">
+               <table width = "90%" border="0" cellpadding="0" cellspacing="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black">
+                  <tr>
+                     <td align = "left" colspan="3">
+                         188663, Ленинградская область, Всеволожский район,<br> г.п. Кузьмоловский, ул. Заозерная, д. 2
+                     <br><br></td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left"  style="white-space: nowrap; padding-right: 0em; padding-left: 0em; margin-left: 0em; margin-right: 0em;" nowrap>ИНН 4700001254&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 655-89-27</td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left" style="white-space: nowrap; margin-left: 0em; margin-right: 0em; padding-right: 0em; padding-left: 0em;" nowrap>lokb@47lokb.ru&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 670-18-88</td>
+                  </tr>
+               </table>
+            </td>
+         </tr>
+         <tr>
+            <td colspan = "2" valign = "top" align = "right">
+               <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAVCAIAAABHbRCDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAALkSURBVEhL3ZXPTxNBFMd3Z3f7awu23bb8LD9U0EZJwAOQcGqiIcajMaIX/gX9N/SiN9A/QYwSlERijIkeSINeMLSNYBNKf2+hP3fpzuysA7N6QCjLgYufTHZnX2be9703b3dZwzCYcwaY9/PEqgY28ML6wpMvT3O1nGmyjFUNBSrxUgIJKC7HTZNlrGqU1TJCSEd6tppjzniCVjVktcRwDNHI1DIa1kyrNVppKJqCDZ3OSw2ZEzgDGzWtVlJK1GiREzW2Sltz3+Zf/3hDm/vAL2ZYhmUBm6lm6BqLHK+hQvV9Ynkf7G8UNyrNisEYRUXGmh50BUg2mWqWLtOQpaIdr/Fp63Md1FETYQbvVNJN2NxT9jiOG+0ahSpMH+aR3EvOfZ9/l1imW1pgaiCM/o7N0uZabg2pyG+XbE57urojKzJEULS5h/xDAi/ISmFX3V3Z/NhgGmvpaKqSok4IUIdkECf0So08vT37+pxOSFnqqC56xEnvhNflfftzMVVOeRwe3sn7XJLX6Q24/NlabjG2lK1nOJ7j7cLq9mpoJERe0qWNpV+VJIQQsACzWADC46lHxKepEWgL0gmhG3T7nL6pgamKWjaaRg7m7UU7cRdwSjzgO9s6C1oxVd8mK8OecKwYi8nxYqNIso8pCRJ9b3uI+uFZs0itvokk2RfRl4X9gqFjjuenL05PhMajO9EPyRWWZTvtHbM3Zl+tLyTVZJAP5ht5EvvMtfvD/mFz/x9O7F0CiTrk7SMZkIbFCPtFiRi723ugRk5Hv3n5lsAJk/2TUIG5Zh44wETX+L8ChFYahL72Xh3q5JBIcSXXgUZve8+DkZmH12cGvP3kcdAz0OfpFy+4fKwUuRQ53HSUUzRCnhAwAOBAm8Mt2kRqDAfDwwEzXlK0O1duj7lH743ctXE2ajzCKRqko/yi3+awSU5JAGaDHKHD3REZjNAsj+UUDdKFY11jPOauBsMkaNN6Rv6Pfy3D/AYyAlKpYFHkOgAAAABJRU5ErkJggg==" />
+            </td>
+         </tr>
+      </table>
+   </div>
+
+  <div align="center" class="h1">
+    <div>Зубопротезирование</div>
+    <div>НАРЯД №
+    {if: u'Номер наряда' in action and action[u'Номер наряда'].value}
+      <b>{action[u'Номер наряда']}</b>
+    {else:}
+      {'_' * 15}
+    {end:}
+
+    </div>
+    <sup>Действителен при наличии кассового чека</sup>
+  </div>
+
+
+  <section class="top">
+
+    <div class="top__left">
+      <table width="100%" cellpadding="5" cellspacing="0">
+        <tr>
+          <td width="1%" class="white-wrap">№ амб. карты:&nbsp;</td>
+          <td><b>{clientNumber}</b></td>
+        </tr>
+        <tr>
+          <td class="white-wrap">ФИО:&nbsp;</td>
+          <td><b>{client.fullName}</b></td>
+        </tr>
+        <tr>
+          <td class="white-wrap">Адрес:&nbsp;</td>
+          <td><b>{client.regAddress}</b></td>
+        </tr>
+        <tr>
+          <td class="white-wrap">Телефон:&nbsp;</td>
+          <td><b>{client.phones}</b></td>
+        </tr>
+      </table>
+
+
+      {: top_row = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]}
+      {: bottom_row = [48, 47, 46, 45, 44, 43, 42, 41, 31, 31, 33, 34, 35, 36, 37, 38]}
+      {: row_list = [top_row, bottom_row]}
+      <table cellpadding="4" cellspacing="0" border="1" class="tbl-custom block-width">
+        {for: row in row_list}
+          <tr>
+            {for: item in row}
+              <td align="center">{item}</td>
+            {end:}
+          </tr>
+        {end:}
+
+      </table>
+
+
+      <table width="100%" cellpadding="5" cellspacing="0" border="1" class="tbl-custom block-width">
+        <tr>
+          <td align="center" width="1%" class="white-wrap">Платеж</td>
+          <td align="center" width="1%" class="white-wrap">Сумма</td>
+          <td align="center" width="1%" class="white-wrap">Дата</td>
+          <td align="center">Номер талона</td>
+        </tr>
+        <tr>
+          <td align="center" class="white-wrap">Оплата услуг</td>
+          <td align="center" class="white-wrap">
+            {if: service_ref_list}
+                {forceString(service_ref_list[0].value(u'total'))}
+            {end:}
+          </td>
+          <td align="center" class="white-wrap">
+            {eventDate.toString(u'dd.MM.yyyy')}
+          </td>
+          <td></td>
+        </tr>
+        <tr>
+          <td class="white-wrap"><b>К оплате</b></td>
+          <td align="center" class="white-wrap">
+            {if: service_ref_list}
+                <b>{forceString(service_ref_list[0].value(u'total'))}</b>
+            {end:}
+          </td>
+          <td align="center" class="white-wrap">
+            {eventDate.toString(u'dd.MM.yyyy')}
+          </td>
+          <td></td>
+        </tr>
+      </table>
+    </div> <!-- note END top__left-->
+
+    <div class="top__right">
+      <table width="100%" cellpadding="3" cellspacing="0" border="1">
+        <tr>
+          <td>Назначение сроков выпол- <br> нения работ</td>
+        </tr>
+        <tr>
+          <td>Прикус</td>
+        </tr>
+        <tr>
+          <td>Примерка</td>
+        </tr>
+        <tr>
+          <td>Перепримерка</td>
+        </tr>
+        <tr>
+          <td>Закончить заказ</td>
+        </tr>
+        <tr>
+          <td>Особые отметки</td>
+        </tr>
+        <tr>
+          <td>Коронки</td>
+        </tr>
+        <tr>
+          <td>Литые</td>
+        </tr>
+        <tr>
+         <td>Закончить заказ</td>
+        </tr>
+        <tr>
+          <td>Особые отметки</td>
+        </tr>
+      </table>
+    </div> <!-- note END top__right-->
+
+  </section>
+
+  <br><br>
+
+
+  <section>
+    <table width="100%" cellpadding="3" cellspacing="0" class="tbl-custom tbl--bordered">
+      <tr>
+        <th width="1%" class="white-wrap">№&nbsp;</th>
+        <th width="1%" class="white-wrap">Код <br>прайса&nbsp;</th>
+        <th width="47%">Услуга, шифр</th>
+        <th width="1%" class="white-wrap">Кол-во&nbsp;</th>
+        <th width="1%" class="white-wrap">Цена&nbsp;</th>
+        <th width="1%" class="white-wrap">Стоим.,&nbsp; <br> руб.&nbsp;</th>
+        <th width="48%">Врач/<br>мед.сестра</th>
+
+      </tr>
+      {if: service_ref_list}
+        {for: index, ref in enumerate(service_ref_list, 1)}
+          <tr>
+            <td align="center">{index}</td>
+            <td>{forceString(ref.value(u'code'))}</td>
+            <td>{forceString(ref.value(u'name'))}</td>
+            <td>{forceString(ref.value(u'amount'))}</td>
+            <td class="white-wrap">{forceString(ref.value(u'price'))}</td>
+            <td class="white-wrap">{forceString(ref.value(u'sum'))}</td>
+            <td>{forceString(ref.value(u'doctor'))}</td>
+          </tr>
+        {end:}
+      {end:}
+      <tr>
+        <td colspan="4" align="right" class="no-border">Итого:</td>
+        <td colspan="3" align="right">
+          {if: service_ref_list}
+              {forceString(service_ref_list[0].value(u'total'))}
+          {end:}
+        </td>
+      </tr>
+    </table>
+  </section>
+
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0" class="tbl-custom tbl-sign">
+    <tr>
+      <td>
+        <div class="line">
+          <span>Врач протезист</span>
+          <div class="line__item">&nbsp;</div>
+        </div>
+      </td>
+      <td>
+        <div class="line">
+          <span>Фамилия техника</span>
+          <div class="line__item">&nbsp;</div>
+        </div>
+      </td>
+      <td>
+        <div class="line">
+          <span>Наряд выписал</span>
+          <div class="line__item">&nbsp;</div>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3">
+        <div class="mb--5">
+          С правилами оказания платных услуг ОЗНАКОМЛЕН.
+        </div>
+        <div>
+          С ценами СОГЛАСЕН.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>{eventDate.toString(u'dd.MM.yyyy')}</td>
+      <td colspan="2">Подпись пациента {'_' * 20}</td>
+    </tr>
+  </table>
+
+
+</main>
+</body>
+</html>

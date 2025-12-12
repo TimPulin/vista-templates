@@ -1,0 +1,140 @@
+<!-- изменил Пулин дата 29.09.2025 задача DEV_TEMP-5920 Создать справку с возможностью выбора полей -->
+<!--Начальная дата разработки 25.09.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: spravka_5920 -->
+<!--Задача: DEV_TEMP-5920 Создать справку с возможностью выбора полей -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+.xs {
+  font-size: 10pt;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="1%" valign="top">
+      <div class="white-wrap xs">Санкт-Петербургское государственное</div>
+      <div class="white-wrap xs">бюджетное учреждение здравоохранения</div>
+      <div class="white-wrap xs">"Кожно&nbsp;-&nbsp;венерологический диспансер №2"&nbsp;</div>
+      <div class="white-wrap xs">
+        ОГРН {currentOrganisation.OGRN}
+      </div>
+      <div class="white-wrap xs">
+        196084, Санкт-Петербург, <br>
+        пр. Московский, д. 95, к. 3
+      </div>
+    </td>
+  </tr>
+</table>
+  <div align="center" class="h1">Справка</div>
+  
+  <div>
+    Ф.И.О.: <b>{event.client.fullName}</b>
+  </div>
+  <div>
+    Возраст: <b>{event.client.age}</b>
+  </div>
+
+  <div>
+    На учете <b>{action[u'Состояние на учете']}</b>
+  </div>
+
+  <div>
+    Диагноз:
+    {: current_value = action[u'Диагноз'].value}
+    {if: current_value == u'следовые серологические реакции (сифилис). Код МКБ Z86.1'}
+      {: year = action[u'Год установления следовой серологической реакции'].value}
+      {: new_value = current_value.replace(u'сифилис', u'сифилис' + u' ' + year)}
+      <b>{new_value}</b>
+    {else:}
+      <b>{current_value}</b>
+    {end:}
+  </div>
+
+  <div>
+    <b>{action[u'Эпидемиологическая угроза']}</b>
+  </div>
+
+  {if: action[u'Комментарии'].value}
+      <div>
+        {action[u'Комментарии'].value}
+      </div>
+  {end:}
+
+  <div>
+    «{forceString(action.endDate.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.
+    осмотрен(а) дерматовенерологом.
+  </div>
+
+  <div>Венерических и заразных заболевания не обнаружено.</div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        М/р
+      </td>
+      <td>
+        ИФА ig M
+      </td>
+      <td>
+        ИФА ig G
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>РПГА</td>
+      <td></td>
+    </tr>
+  </table>
+
+  <div>
+    Врач: <b>{action.person.shortName}</b>
+  </div>
+  <div>
+    Дата:
+    <b>«{forceString(action.endDate.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.</b>
+  </div>
+</div>
+</body>
+</html>

@@ -1,63 +1,309 @@
-<!--Начальная дата разработки 28.08.2025 г.-->
-<!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!-- изменил Пулин дата 16.08.2024 задача DEV_TEMP-4287 СЭМД Протокол консультации ред.5 При подписи HTML во вкладке не понятный код -->
+<!-- Изменил: Кузнецов Андрей Романович. Дата: 09.08.2023. DEV_TEMP-2676 Отредактировать шаблоны печати "Осмотр врача-психиатра (+ Направление) _на_20_02_2018" и "Первичный осмотр(амбулатория)" -->
 
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="UTF-8">
-  <title>Document</title>
-<!-- @formatter:off -->
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
-
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
-
-{:
-write('''
-<style>
-.h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 14pt;
-    font-weight: 900;
-}
-.main {
-    font-family: 'Times New Roman';
-    font-size: 12pt;
-}
-.small {
-  font-size: 8pt;
-}
-.bold {
-  font-weight: 900;
-}
-.red-line {
-  text-indent: 10px;
-}
-.white-wrap {
-  white-space: nowrap;
-}
-</style>
-''')}
-<!-- @formatter:on -->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>На приеме у врача-психиатра</title>
 </head>
 <body>
 
-<div class="main">
-  <div align="center" class="h1"></div>
+{: setPageSize('A5')}
+{: setOrientation('L')}
+
+{: setLeftMargin(5)}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(5)}
+
+<table STYLE="font-family: Times New Roman; font-size: 10pt; border=0; width:100%; cellpadding:0; cellspacing:0">
+
+	<tr>
+		<td width="10%"></td>
+		<td width="89%">
+			<table border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="right">
+						<b>{action.endDate.date.toString("dd.MM.yyyy")}</b>
+					</td>
+				</tr>
+				<tr>
+					<td align="center">
+						<span style="font-size: 10pt; font-weight: bold;">
+						На приеме у врача-психиатра
+						{for: prop in action}
+				      {if: (prop.value) and (prop.name == u'Осмотр')} &nbsp;{prop.value}
+							{end:}
+						{end:}
+						</span>
+					</td>
+				</tr>
+
+				<tr>
+					<td>
+						<b>{event.client.fullName}, {event.client.birthDate} ({event.client.age})</b>
+						<br />
+						Проживающ{if: event.client.sexCode == 1}ий{else:}ая{end:} по адресу:
+
+						{if: event.client.locAddress}
+								{: address = event.client.locAddress}
+						{else:}
+							{if: event.client.regAddress}
+								{: address = event.client.regAddress}
+							{else:}
+								{: address = u''}
+							{end:}
+						{end:}
+
+						{address}	<br>
+<b> Группа инвалидности:</b>
+
+{if: event.client.disabilities}
+{event.client.disabilities[len(event.client.disabilities)-1].groupNumber} {else:} не имеет {end:}
+
+					</td>
+						{for: diag in event.diagnosises}
+							{if: diag.MKB}
+										<tr>
+											<td>
+												<b>Диагноз МКБ:</b> {diag.MKB} {diag.MKB.descr}
+											</td>
+										</tr>
+							{end:}
+							{if: diag.MKBEx}
+										<tr>
+											<td>
+												<b>Дополнительный диагноз МКБ: </b>{diag.MKBEx} {diag.MKBEx.descr}
+											</td>
+										</tr>
+							{end:}
+						{end:}
+					<BR/>
+					{if: event.order == 1}<b>Порядок обращения:</b> плановый{end:}
+					{if: event.order == 2}<b>Порядок обращения:</b> экстренный{end:}
+					{if: event.order == 3}<b>Порядок обращения:</b> самотёком{end:}
+					{if: event.order == 4}<b>Порядок обращения:</b> принудительный{end:}
+					{if: event.order == 5}<b>Порядок обращения:</b> неотложный{end:}
+
+					{if:len(event.client.monitorings)}
+						{for: s in event.client.monitorings}
+							{if: s.kind == u"К" and not s.endDate}<BR/><b>Тип диспансерного наблюдения: </b>К {if: s.frequence}{s.frequence}{end:} c {s.setDate}{end:}
+							{if: s.kind == u"Д" and not s.endDate}<BR/><b>Тип диспансерного наблюдения: </b>Д {if: s.frequence}{s.frequence}{end:} c {s.setDate}{end:}
+							{if: s.kind == u"АПЛ" and not s.endDate}<BR/><b>Тип диспансерного наблюдения: </b>АПЛ {if: s.frequence}{s.frequence}{end:} c {s.setDate}{end:}
+							{if: s.kind == u"АДН" and not s.endDate}<BR/><b>Тип диспансерного наблюдения: </b>АДН {if: s.frequence}{s.frequence}{end:} c {s.setDate}{end:}
+							{if: s.kind == u"КР" and not s.endDate}<BR/><b>Тип диспансерного наблюдения: </b>КР {if: s.frequence}{s.frequence}{end:} c {s.setDate}{end:}
+						{end:}
+					{end:}
+					{if: event.relegateOrg}<BR/> <b>Направлен из: </b>{event.relegateOrg}{end:}
+					<table>
+						{for: prop in action}
+							{if: (prop.value) and (prop.name != u'Осмотр') and (prop.name != u'Направление на ФЛГ') and (prop.name != u'Направление на клинический анализ крови') and (prop.name != u'Направление на общий анализ мочи') and (prop.name.find('СЭМД') == -1)}
+							<TR>
+								<TD>
+									<b>{prop.name} </b>
+									{prop.value if prop.value else '' :n}
+								</TD>
+							</TR>
+							{end:}
+						{end:}
+					</table>
+					<table>
+						{for: prop in action}
+								{if: prop.name == u'Направление на ФЛГ' and prop.value == u'да'}
+									{:Nap = u'ФЛГ'}
+								{end:}
+								{if:  prop.name == u'Направление на клинический анализ крови' and prop.value == u'да'}
+									{:Nap = u'Клинический анализ крови'}
+								{end:}
+								{if:  prop.name == u'Направление на общий анализ мочи' and prop.value == u'да'}
+									{:Nap = u'Общий анализ мочи'}
+								{end:}
+								{if: Nap}
+
+							<tr>
+								<td>
+									Выписано направление на:  <b>{Nap}</b>
+								</td>
+							</tr>
+								{:Nap = u''}
+								{end:}
+						{end:}
+					</table>
+					{:i=1}
+						{for: act in event.actions}
+							{if: act.class_ == 2}
+								{if: i==1 }
+								<br><b>Назначенные лекарства:</b><br>
+									{:i = 0}
+								{end:}
+								{:heal = act}
+								<b>{heal.name}</b><br>
+								{for: prop in heal}
+									{if: prop.value}
+										<u>{prop.name}</u>:&nbsp;{prop.value if prop.value else '' :n}
+									{end:}
+								{end:}
+								<br>
+							{end:}
+						{end:}
+
+					<br>
+					Врач: {action.person}&nbsp;_______________________________&nbsp;
+				</tr>
+			</table>
+		</td>
+	</tr>
+
+</table>
+{for: prop in action}
+{if:  prop.name == u'Направление на ФЛГ' and prop.value == u'да'}
+{:Napr = u'НАПРАВЛЕНИЕ НА ФЛГ'}
+{end:}
+{if:  prop.name == u'Направление на клинический анализ крови' and prop.value == u'да'}
+{:Napr = u'НАПРАВЛЕНИЕ НА КЛИНИЧЕСКИЙ АНАЛИЗ КРОВИ'}
+{end:}
+{if:  prop.name == u'Направление на общий анализ мочи' and prop.value == u'да'}
+{:Napr = u'НАПРАВЛЕНИЕ НА ОБЩИЙ АНАЛИЗ МОЧИ'}
+{end:}
+{if: Napr}
+<div style="page-break-after: always;"><span style="DISPLAY:none">&nbsp;</span></div>
+<br>
+		<table BORDER="0" WIDTH="100%" cellpadding="0" cellspacing="0">
+			<tr>
+				<td width="10%"></td>
+				<td width="89%">
+
+					<TABLE BORDER="0" WIDTH="100%" cellpadding="0" cellspacing="0" style="font-size: 9pt;">
+						<tr>
+							<td align="center">
+								Министерство здравоохранения
+								<br>
+								и социального развития Российской
+								<br>
+								Федерации
+								<br>
+								{currentOrganisation.shortName}
+								<br>
+								СПб, Татарский пер., д. 16.
+								<br>
+							</td>
+							<td align="center">
+								Медицинская документация
+								<br>
+								Форма № 057/у-04__________
+								<br>
+								Утв. приказом
+								<br>
+								Минздравсоцразвития России
+								<br>
+								от 22.11.04 г.№ 255
+								<br>
+							</td>
+						</tr>
+					</table>
+
+					<table BORDER="0" WIDTH="100%" cellpadding="0" cellspacing="0" style="font-size: 10pt;">
+						<tr>
+							<td width="20%">Код ОГРН </td>
+							<td>______________________________</td>
+						</tr>
+					</table>
+
+					<table BORDER="0" WIDTH="100%" cellpadding="0" cellspacing="0" style="font-size: 10pt;">
+						<tr>
+							<td align="center">
+							<br>
+								<B>{Napr}</B>
+							<br>
+							</td>
+						</tr>
+						<tr>
+							<td><b>1. Номер страхового полиса ОМС:</b> {event.client.policy.number}</td>
+						</tr>
+						<tr>
+							<td>
+								<b>2. Код льготы:</b>
+								{for: s in event.client.socStatuses}{if: s.classes==u"Льгота"}{if: s.code==u"903"}
+
+								{s.code}&nbsp;{s.name}
+
+								{end:}{if: s.code==u"081"}
+
+								{s.code}&nbsp;{s.name}
+
+								{end:}{if: s.code==u"082"}
+
+								{s.code}&nbsp;{s.name}
+
+								{end:}{if: s.code==u"083"}
+
+								{s.code}&nbsp;{s.name}
+
+								{end:}{end:}{end:}
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<b>3. Фамилия, имя, отчество:</b> {event.client.fullName}
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<b>4. Дата рождения:</b> {event.client.birthDate}
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<b>5. Адрес постоянного места жительства:</b> {event.client.locAddress}
+							</td>
+						</tr>
+						{if: event.client.locAddress!=event.client.regAddress}
+						<tr>
+							<td>
+								<b>&nbsp;&nbsp;&nbsp; Адрес регистрации:</b> {event.client.regAddress}
+							</td>
+						</tr>
+						{end:}
+						<tr>
+							<td>
+								<b>6. Место работы, должность:</b> {event.client.work.shortName}, {event.client.work.post}
+							</td>
+						</tr>
 
 
-</div>
+					</table>
+
+					<table  BORDER="0" WIDTH="100%" cellpadding="0" cellspacing="0" style="font-size: 10pt;">
+						<tr>
+							<td width="50%" align="left">
+								{action.setPerson.shortName}
+								<br>
+								<font size=-1>
+								&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size: 8pt;"><b>Ф.И.О.</b></span>
+								</font>
+							</td>
+							<td align="right">
+								______________________
+								<br>
+								<font size=-1>
+								подпись &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+								</font>
+								<BR>
+							</td>
+						</tr>
+					</table>
+
+					М.П.
+					<div align=center>
+					{action.endDate.date.toString("dd.MM.yyyy")}
+					</div>
+
+				</td>
+			</tr>
+		</table>
+{:Napr = u''}
+{end:}
+{end:}
 </body>
 </html>

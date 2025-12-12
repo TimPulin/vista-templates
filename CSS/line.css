@@ -1,0 +1,10 @@
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}

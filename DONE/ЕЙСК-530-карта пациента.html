@@ -1,0 +1,687 @@
+<!-- изменил Пулин дата 27.11.2025 задача DEV_TEMP-6090 Сделать Медицинскую карту стационарного больного по приказу 530 -->
+<!-- изменил Пулин дата 25.06.2025 задача DEV_TEMP-5551 В шаблоне «идентификатор записи» должен отображаться после "№" -->
+<!-- Изменил Каравайчик А.Д. дата 05.02.2025 задача DEV_TEMP-5012 В печатной форме "Мед. карта (титульный дневного стационара)", неправильно печатается количество дней нахождения в медицинской организации -->
+<!--
+note
+  шаблоны-близнецы
+  select * from rbPrintTemplate where id in (254, 442, 1236);
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>МЕДИЦИНСКАЯ КАРТА ПАЦИЕНТА 530</title>
+<!-- @formatter:-off -->
+
+{:
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+import json
+}
+
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+  .h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 12pt;
+      font-weight: 900;
+  }
+  body {
+    font-family: 'Courier New';
+    font-size: 10pt;
+  }
+
+  .white-wrap {
+    white-space: nowrap;
+  }
+  .unvisible {
+      font-size: 1px;
+  }
+
+  .small {
+      font-size: 8pt;
+  }
+
+  .line {
+  display: flex;
+  align-items: flex-end;
+  line-height: 10pt;
+  }
+  .line__item {
+      flex: 1 1 0;
+      align-content: baseline;
+      width: 100%;
+      border-bottom: 1px solid #000 ;
+      line-height: 10pt;
+  }
+
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+def title_empty_line_layout(title):
+  return('''
+  <div class="line">
+    <div style="margin-right: 4px">{title}&nbsp;</div>
+    <div class="line__item"></div>
+  </div>
+  '''.format(title=title))
+}
+
+
+
+{:
+posthumous = filter(lambda x: x.name.lower()==u'посмертный эпикриз', event.actions)
+posthumous = posthumous[0] if len(posthumous) > 0 else None
+}
+
+
+
+  
+{:vipiska = filter(lambda x: x.flatCode==u'leaved', event.actions)}
+{:vipiska = vipiska[0] if len(vipiska) > 0 else None}
+
+{:dvizh = filter(lambda x: x.flatCode==u'moving', event.actions)}
+{:dvizh = dvizh[0] if len(dvizh) > 0 else None}
+
+{:postuplenie = filter(lambda x: x.flatCode==u'received', event.actions)}
+{:postuplenie = postuplenie[0] if len(postuplenie) > 0 else None }
+
+{:list_naznach = filter(lambda x: x.name==u'ЛИСТ НАЗНАЧЕНИЙ И ИХ ВЫПОЛНЕНИЕ', event.actions)}
+{:list_naznach = list_naznach[0] if len(list_naznach) > 0 else None }
+
+{:operat = filter(lambda x: x.name==u'ПРОТОКОЛ ОПЕРАТИВНОГО ВМЕШ-ВА 530н', event.actions)}
+
+
+{:perv_osmotr = filter(lambda x: x.name=='Первичный осмотр врачом приемного отделения или леч врачом 530н', event.actions)}
+{:perv_osmotr = perv_osmotr[0] if len(perv_osmotr) > 0 else None }
+
+{:medCardList = filter(lambda x: x.flatCode==u'med_kart_stac', event.actions)}
+{:medCard = medCardList[0] if len(medCardList) > 0 else None }
+
+{:inv_lists = []}
+</head>
+
+<body>
+<TABLE BORDER=0 WIDTH="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td colspan="8">
+            <br/>
+            <br/>
+        </td>
+        <td colspan="2" align="left" style="font-size:7pt;">
+          Наименование и адрес медицинской организации <br/>
+          (фамилия, имя, отчество (при наличии) <br/>
+          индивидуального предпринимателя и адрес <br/>
+          осуществления медицинской деятельности)
+          ОГРН (ОГРНИП)<br/>
+          {currentOrganisation.fullName}<br/>
+          {currentOrganisation.OGRN}<br/>
+          ТЕСТ <br/>
+        </td>
+        <td align="right" colspan="2" style="font-size:7pt;">
+          Код формы по ОКУД _________<br/>
+          Медицинская документация<br/>
+          Учетная форма №003y<br/>
+          Утверждена приказом Министерства<br/>
+          здравоохранения Российской Федерации<br/>
+          от «5» августа 2022г. №530н<br/>
+        </td>
+    </tr>
+</TABLE>
+
+<p align="center" style="font-size:12pt;">
+    МЕДИЦИНСКАЯ КАРТА ПАЦИЕНТА,<br>
+    ПОЛУЧАЮЩЕГО МЕДИЦИНСКУЮ ПОМОЩЬ<br>
+  В СТАЦИОНАРНЫХ УСЛОВИЯХ, В УСЛОВИЯХ <u>ДНЕВНОГО СТАЦИОНАРА </u><br>
+	<font style="font-size:14pt;"><b>№ {event.id}</b></font>
+</p>
+<p style="margin-bottom: 0">
+<b><font style="font-size:12pt;">Ф.И.О.  пациента: </font></b><b><font style="font-size:12pt;"><u>{client.fullName}</u></font></b><br>
+<b><font style="font-size:12pt;">Дата рождения:</font></b> <b><font style="font-size:12pt;"><u>{client.birthDate} ({client.age})</u></font></b> <b><font style="font-size:12pt;">Пол:</font></b> <b><font style="font-size:12pt;"><u>{client.sex}</u></font></b>
+</p>
+<div style="margin-top: 0">
+Поступил в стационар<br>
+  <font style="font-size:12pt;">Дата и время поступления: <b>{if: postuplenie is not None} {forceString(postuplenie.begDate)} {end:} </b></font>
+
+<font style="font-size:12pt;">Поступил <b>{if: postuplenie is not None} {if: postuplenie[u'Доставлен'].value} {postuplenie[u'Доставлен'].value} {end:} {end:}  </b>после (начала заболевания, получения травмы, отравления)<br>
+<div>
+  <font style="font-size:12pt;">Направлен в стационар (дневной стационар): <b></b></font>
+  {if: postuplenie is not None}
+    <b>{postuplenie[u'Кем доставлен']}</b>
+  {end:}
+</div>
+
+
+<div>
+  Наименование медицинской организации (фамилия, имя, отчество (при наличии)
+  индивидуального предпринимателя, осуществляющего медицинскую деятельность),
+  направившей пациента:
+  {if: postuplenie is not None}
+    <b>{postuplenie[u'Кем направлен']}</b>
+  {end:}
+</div>
+
+
+<div>
+  Номер и дата направления:
+  {if: postuplenie is not None}
+    <b>{postuplenie[u'№ направления']}</b>
+    от <b>{postuplenie[u'Дата направления']}</b>
+  {end:}
+</div>
+
+<div>
+  Поступил в стационар для оказания медицинской помощи в текущем году: по поводу основного заболевания,
+  указанного в диагнозе при поступлении: <b>первично, повторно </b>
+</div>
+
+
+<div>
+  Форма оказания медицинской помощи:
+  {if: postuplenie is not None}
+    <b>{postuplenie[u'Госпитализирован']}</b>
+  {end:}
+</div>
+
+{: ref = db.getRecordEx(stmt="""
+  select hp.name as name, hp.code as code
+  from Event e
+           inner join Action a on e.id = a.event_id
+           inner join ActionProperty ap on a.id = ap.action_id
+           inner join ActionProperty_HospitalBed aph on ap.id = aph.id
+           inner join vHospitalBed hp on aph.value = hp.id
+  where e.id={eId} and e.deleted=0 and a.deleted=0 and ap.deleted=0
+""".format(eId=event.id)) }
+
+<div>
+  Наименование отделения:
+  {if: postuplenie is not None}
+    <b>{postuplenie[u'Направлен в отделение']}</b>
+  {end:}
+
+  профиль коек {'_' * 20}
+  палата N {'_' * 20}
+</div>
+
+
+
+<div>
+  Переведен в отделение:
+  {if: dvizh is not None}
+      {if: dvizh[u'Отделение пребывания'].value}
+        <b>{dvizh[u'Отделение пребывания'].value}</b>
+      {else:}
+        {'_' * 20}
+      {end:}
+
+      профиль коек
+      {if: dvizh[u'профиль койки'].value}
+         <b>{dvizh[u'профиль койки'].value}</b>
+      {else:}
+        {'_' * 20}
+      {end:}
+  {else:}
+      профиль коек {'_' * 20}
+  {end:}
+  палата N {'_' * 20}
+</div>
+
+
+<div>
+  Дата и время перевода:
+  {if: dvizh is not None}
+    <b>«{forceString(dvizh.begDate.toString('dd'))}» {forceString(month[dvizh.begDate.date.month()])} {forceString(dvizh.begDate.date.year())} г.</b>
+    <!-- todo отображение времени -->
+    время: ____час._____мин.
+  {else:}
+    «____» ______ 20____г.
+    время: ____час._____мин.
+  {end:}
+</div>
+
+<div>
+  Выписан:
+  {if: vipiska is not None}
+    <b>«{forceString(vipiska.begDate.toString('dd'))}» {forceString(month[vipiska.begDate.date.month()])} {forceString(vipiska.begDate.date.year())} г.</b>
+    <!-- todo отображение времени -->
+    время: ____час._____мин.
+  {else:}
+    «____» ______ 20____г.
+    время: ____час._____мин.
+  {end:}
+</div>
+
+
+<div>
+  Количество дней нахождения в медицинской организации:
+  {if: vipiska and vipiska[u'Продолжительность госпитализации'].value}
+      {vipiska[u'Продолжительность госпитализации']}
+  {else:}
+    {'_' * 20}
+  {end:}
+</div>
+
+<div>
+  Диагноз при направлении:
+  {if: postuplenie is not None and postuplenie[u'Диагноз направителя'].value}
+    <b>{postuplenie[u'Диагноз направителя'].value}</b>
+  {else:}
+    {'_'*20}
+  {end:}
+</div>
+
+<div>
+  <div>Предварительный диагноз (диагноз при поступлении)</div>
+  <div>
+    Дата и время установления диагноза при поступлении:
+    {if: postuplenie is not None}
+      <b>«{forceString(postuplenie.begDate.toString('dd'))}» {forceString(month[postuplenie.begDate.date.month()])} {forceString(postuplenie.begDate.date.year())} г.</b>
+      <!-- todo отображение времени -->
+      время: ____час._____мин.
+    {else:}
+      «____» ______ 20____г.
+      время: ____час._____мин.
+    {end:}
+  </div>
+</div>
+
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td class="unvisible"></td>
+    <td class="unvisible" width="1%"></td>
+    <td class="unvisible" width="1%"></td>
+  </tr>
+  {: diag_type_name_list = [u'Основное заболевание', u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+  {for: diag_type_name in diag_type_name_list}
+    <tr>
+      <td class="white-wrap">
+        {diag_type_name}&nbsp;
+        {render_line(diag_type_name, 60)}
+      </td>
+      <td class="white-wrap">код по МКБ&nbsp;</td>
+      <td class="white-wrap">{'_' * 12}&nbsp;</td>
+    </tr>
+  {end:}
+  <tr>
+    <td colspan="3">
+      Дополнительные сведения о заболевании:
+      {render_line(u'Дополнительные сведения о заболевании:')}
+    </td>
+  </tr>
+</table>
+
+<div>
+  В анамнезе: туберкулез________ ВИЧ-инфекция_____ вирусные гепатиты_______ сифилис______ COVID-19_____
+</div>
+
+
+<div>
+  Осмотр на педикулез, чесотку: да - 1, нет - 2, результаты осмотра: {'_' * 20}
+</div>
+
+
+<div>
+  <div>
+    Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции:
+  </div>
+   <div>
+     {render_line(u'')}
+   </div>
+</div>
+
+
+<div>
+  <div>Трансфузии (переливания) донорской крови и (или) её компонентов (год, осложнения, реакции):</div>
+   <div>
+     {render_line(u'')}
+   </div>
+</div>
+
+
+<div>
+  Группа крови
+  {if: client.bloodTypeName}
+    <b>{client.bloodTypeName}</b>
+      {else:}__________
+    {end:}
+    резус-принадлежность
+    <b>{if: client.bloodTypeRhesus}{client.bloodTypeRhesus}{else:}__________{end:} </b>
+    антиген К1 системы Kell __________
+</div>
+
+<div>
+  иные сведения групповой принадлежности крови (при наличии)
+  {render_line(u'иные сведения групповой принадлежности крови (при наличии)')}
+</div>
+
+
+
+
+<!-- note Диагнозы -->
+{:
+diag_ref = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+              CONCAT(
+                  '[',
+                  GROUP_CONCAT(
+                      IF(dc.diagnosisType_id = 3 AND mkb.DiagID IS NOT NULL,
+                         JSON_OBJECT('DiagID', mkb.DiagID, 'DiagName', mkb.DiagName),
+                         NULL)
+                      SEPARATOR ','
+                  ),
+                  ']'
+              ),
+              '[]'
+          ),
+          '[]'
+      ) AS diffDiags,
+      COALESCE(
+          NULLIF(
+              CONCAT(
+                  '[',
+                  GROUP_CONCAT(
+                      IF(dc.diagnosisType_id in (5, 38) AND mkb.DiagID IS NOT NULL,
+                         JSON_OBJECT('DiagID', mkb.DiagID, 'DiagName', mkb.DiagName),
+                         NULL)
+                      SEPARATOR ','
+                  ),
+                  ']'
+              ),
+              '[]'
+          ),
+          '[]'
+      ) AS relatedDiags
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0 and dc.diagnosisRationale_id = 2
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  where e.id = {event_id};
+""".format(event_id=event.id))
+}
+
+{:
+if diag_ref:
+    mainId = forceString(diag_ref.value('mainId'))
+    mainName = forceString(diag_ref.value('mainName'))
+    diffDiags = json.loads(forceString(diag_ref.value('diffDiags')))
+    relatedDiags = json.loads(forceString(diag_ref.value('relatedDiags')))
+else:
+  mainId = ''
+  mainName = ''
+  diffDiags = []
+  relatedDiags = []
+}
+
+{:
+def default_diag_line_layout(diag_type):
+  mkb_line = u'_' * 12
+  return('''
+    <tr>
+      <td>
+        <div class="line">
+          <span>{diag_type}</span>
+          <div class="line__item"></div>
+        </div>
+      </td>
+      <td class="white-wrap">код по МКБ&nbsp;</td>
+      <td class="white-wrap">{mkb_line}</td>
+    </tr>
+  '''.format(diag_type=diag_type, mkb_line=mkb_line))
+
+}
+
+<div>
+  Диагноз клинический, установленный в
+  {if: forceString(event.eventType).lower().find('дневной')!=-1}стационаре, <b>дневном стационаре</b>{else:}<b>стационаре</b>, дневном стационаре{end:}:
+</div>
+
+<div>
+  Дата и время установления клинического диагноза:
+  {if: event.setDate}
+      <b>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</b>
+  {else:}
+    «____» ______ 20____г.
+  {end:}
+</div>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td class="unvisible"></td>
+    <td class="unvisible" width="1%"></td>
+    <td class="unvisible" width="1%"></td>
+  </tr>
+  <tr>
+    <td>
+      Основное заболевание
+      <b>{mainName}</b>
+    </td>
+    <td valign="top"><div class="white-wrap">код по МКБ&nbsp;</div></td>
+    <td valign="top"><div class="white-wrap"><b>{mainId}</b>&nbsp;</div></td>
+  </tr>
+
+  {if: len(diffDiags) > 0}
+    {for: index, item in enumerate(diffDiags)}
+      <tr>
+        <td>
+          {if: index == 0}
+              Осложнения основного заболевания
+          {end:}
+          <b>{item.data[u'DiagName']}</b>
+        </td>
+        <td valign="top"><div class="white-wrap">код по МКБ&nbsp;</div></td>
+        <td valign="top"><div class="white-wrap"><b>{item.data[u'DiagID']}</b>&nbsp;</div></td>
+      </tr>
+    {end:}
+  {else:}
+    {: write(default_diag_line_layout(u'Осложнения основного заболевания'))}
+  {end:}
+
+  {: write(default_diag_line_layout(u'Внешняя причина при травмах, отравлениях'))}
+
+
+  {if: len(relatedDiags) > 0}
+    {for: index, item in enumerate(relatedDiags)}
+      <tr>
+        <td>
+          {if: index == 0}
+              Сопутствующие заболевания
+          {end:}
+          <b>{item.data[u'DiagName']}</b>
+        </td>
+        <td valign="top"><div class="white-wrap">код по МКБ&nbsp;</div></td>
+        <td valign="top"><div class="white-wrap"><b>{item.data[u'DiagID']}</b>&nbsp;</div></td>
+      </tr>
+    {end:}
+  {else:}
+    {: write(default_diag_line_layout(u'Сопутствующие заболевания'))}
+  {end:}
+  <tr>
+    <td colspan="3">
+      <div class="line">
+        <span>Дополнительные сведения о заболевании:</span>
+        &nbsp;<div class="line__item"></div>
+      </div>
+      <div class="line">
+        &nbsp;<div class="line__item"></div>
+      </div>
+      <div class="line">
+        &nbsp;<div class="line__item"></div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+
+
+<div>
+  <div><b>Проведенные оперативные вмешательства (операции):</b></div>
+  <table border="1" cellpadding="3" cellspacing="0" width="100%">
+         <tr>
+      <td width="10%" align="center" class="small" valign="top">Дата проведения</td>
+      <td width="50%" align="center" class="small" valign="top">Наименование оперативного вмешательства (операции), код согласно номенклатуре медицинских услуг</td>
+      <td width="25%" align="center" class="small" valign="top">Вид анестезиологического пособия</td>
+      <td width="25%" align="center" class="small" valign="top">Кровопотеря во время оперативного вмешательства (операции), мл.</td>
+    </tr>
+
+        {if: operat is not None and len(operat)>=1}
+    {for: oper in operat}
+        <tr>
+          <td align="center">{if: oper.begDate.date}{oper.begDate.date}{end:}</td>
+          <td align="center">{if: oper[u'Наименование оперативного вмешательства'].value}{oper[u'Наименование оперативного вмешательства'].value}{end:}</td>
+          <td align="center">{if: oper[u'Вид анестезиологического пособия'].value}{oper[u'Вид анестезиологического пособия'].value}{end:}</td>
+          <td align="center">{if: oper[u'Кровопотеря во время оперативного вмешательства'].value}{oper[u'Кровопотеря во время оперативного вмешательства'].value}{end:}</td>
+        </tr>
+     {end:}
+      {else:}
+      {for: i in range(5)}
+        <tr>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+        </tr>
+      {end:}
+      {end:}
+  </table>
+</div>
+
+
+
+<div>
+  Результат госпитализации:
+  {if: vipiska and vipiska[u'Исход госпитализации'].value}
+      <b>{vipiska[u'Исход госпитализации']}</b>
+  {else:}
+    {: write(title_empty_line_layout(u'Результат госпитализации:'))}
+  {end:}
+</div>
+
+
+{:
+if posthumous:
+  ref = None
+  if posthumous.id:
+    ref = db.getRecordEx(stmt=u"""
+      select os.name as orgstructure_name
+      from Event e
+               join Action a on e.id = a.event_id
+               join OrgStructure os on e.orgStructure_id = os.id
+      where a.id = {action_id}
+    """.format(action_id=action_id))
+  if ref:
+    posthumous_org = forceString(ref.value(orgstructure_name))
+  else:
+    posthumous_org = u''
+}
+
+<div>
+  {if: posthumous}
+    Умер в
+    {if: posthumous_org != u''}
+        <b>{posthumous_org}</b>
+    {end:}
+    отделении:
+    <b>«{forceString(posthumous.begDate.toString('dd'))}» {forceString(month[posthumous.begDate.date.month()])} {forceString(posthumous.begDate.date.year())} г.</b>
+  {else:}
+    <div>Умер в____________________________отделении: "____"_______________20___г.</div>
+  {end:}
+</div>
+
+<div>
+  Умерла беременная: 1 - до 22 недель беременности, 2 - после 22 недель беременности.
+</div>
+
+
+<div>
+  <div>
+    Оформлен листок нетрудоспособности: N ______от "_____"___________20____г.
+  </div>
+  <div>
+    (дубликат листка нетрудоспособности N ______от "_____"__________20____г.)
+  </div>
+  <div>освобождение от работы с "____"_________20___г. по "____"_________20___г.</div>
+  <div>продление листка нетрудоспособности:</div>
+
+  {for: _ in range(2)}
+    <div>
+      N ______________________освобождение от работы с "____"__________20___г. по "____"__________20___г.
+    </div>
+  {end:}
+
+  <div>
+    явка в другую медицинскую организацию (другое структурное   подразделение медицинской организации) "____"__________20___г.
+  </div>
+  <div>
+    Оформлен листок   нетрудоспособности   по уходу за больным членом   семьи(фамилия, имя, отчество (при наличии):
+  </div>
+  {: write(title_empty_line_layout(u''))}
+  {: write(title_empty_line_layout(u''))}
+</div>
+
+
+<div>
+  Выдано направление на медико-социальную экспертизу (МСЭ): "____"__________20___г.
+</div>
+<div>
+  Сведения о лице, которому может быть передана информация о состоянии здоровья пациента: фамилия, имя, отчество (при наличии), номер контактного телефона
+</div>
+{: write(title_empty_line_layout(u''))}
+{: write(title_empty_line_layout(u''))}
+<div>
+
+  {if: client.notes}
+    Дополнительные сведения о пациенте: <b>{client.notes}</b>
+  {else:}
+    {: write(title_empty_line_layout(u'Дополнительные сведения о пациенте'))}
+    {: write(title_empty_line_layout(u''))}
+    {: write(title_empty_line_layout(u''))}
+  {end:}
+</div>
+
+
+
+<div>
+  Фамилия, имя, отчество (при наличии) и должность лечащего врача, специальность
+  <b>{event.execPerson.fullName}</b>
+  <b>{event.execPerson.post}</b>
+  <b>{event.execPerson.speciality}</b>
+</div>
+
+<div>
+  Фамилия, имя, отчество (при наличии) заведующим отделением
+  <b>{event.execPerson.orgStructure.chief or "_"*20}</b>
+  подпись {'_' * 15}
+</div>
+
+
+
+</body>

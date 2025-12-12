@@ -85,18 +85,18 @@
     </div>
 
     <div align="justify">
-        ФИО налогоплательщика <b>{client.fullName}</b>
+        ФИО налогоплательщика <b>{{context.client_fullName}}</b>
     </div>
     <div align="justify">
         Дата рождения налогоплательщика
-        <b>«{client.birthDate.date.toString('dd')}» {forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)} г.</b>
+        {{context.client_birthDate}}
     </div>
     <div align="justify">
-        ИНН налогоплательщика <b>{INN}</b>
+        ИНН налогоплательщика <b>{{context.client_INN}}</b>
     </div>
     <div align="justify">
         Паспорт налогоплательщика
-        <b>{client.document}</b>
+        <b>{{context.client_document}}</b>
     </div>
 
 
@@ -105,11 +105,12 @@
         <td>
           <div>
             Контактный номер телефона:
+            <b>{{context.client_phone}}</b>
           </div>
         </td>
         <td>
           <div>
-            E-mail: <b>{client.email if client.email != '' else '_' * 15}</b>
+            E-mail: <b>{{context.client_email}}</b>
           </div>
         </td>
       </tr>

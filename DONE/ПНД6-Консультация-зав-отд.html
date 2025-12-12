@@ -1,0 +1,121 @@
+<!-- изменил Пулин дата 09.10.2025 задача  -->
+<!--Начальная дата разработки 02.10.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: RConsult -->
+<!--Задача: DEV_TEMP-5935 Сделать шаблон печати для типа действия Консультация заведующего отделением -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Консультация</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Arial';
+    font-size: 12pt;
+}
+
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">
+    {if: action}
+        {action.name}
+    {end:}
+  </div>
+
+  <br>
+  <div>
+    Ф.И.О. <b>{client.fullName}</b>
+  </div>
+  <div>
+    Дата рождения <b>{client.birthDate}</b> ({client.age})
+  </div>
+  <br>
+
+  {if: action and action.name == u'Консультация заведующего отделением'}
+    {: prop_names = [u'Причина обращения', u'Психический статус:', u'Проведенное обследование, лечение и медицинская реабилитация', u'Диагноз основного заболевания', u'Сопутствующие заболевания', u'Рекомендации', u'Заключение', u'Листок нетрудоспособности']}
+    {for: item in prop_names}
+      {: prop = action[item]}
+      {if: prop.value}
+        <div>
+          <b>{prop.name}</b>
+          {prop.value}
+        </div>
+      {end:}
+    {end:}
+  <br>
+
+  <p>
+    Дата: {action.begDate.toString(u'dd.MM.yyyy')}
+  </p>
+
+  <p>{action[u'Зав. диспансерным отделением']}</p>
+
+  <p>{action[u'Врач']}</p>
+
+  {else:}
+    <br>
+    <br>
+    <table  cellpadding="0" cellspacing="0" align="center">
+      <tr>
+        <td>
+          <h2>
+            Шаблон печати предназначен для Типа Действия "Консультация заведующего отделением".
+          </h2>
+          <p>
+            Если необходимо распечатывать результаты других Типов Действий, пожалуйста, обратитесь в техническую поддержку с заявкой на создание шаблона
+          </p>
+        </td>
+      </tr>
+    </table>
+    <br>
+    <br>
+  {end:}
+
+
+  <table style="margin-top:20px">
+    <tr>
+      <td style="padding-right:20px"></td>
+      <td width="1%" align="center">
+        <div>{'_' * 15}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+      <td style="padding-right:20px"></td>
+      <td style="white-space:nowrap" align="center">
+        <div>{action.person.fullName}</div>
+        <div><sup>(Ф.И.О. медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+</body>
+</html>

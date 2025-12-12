@@ -1,0 +1,310 @@
+<!--Начальная дата разработки 26.09.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: token -->
+<!--Задача: DEV_TEMP-5932 В Шаблоны печати добавить "Анкета - скрининг для 2летки психиатр"DEV_TEMP-5932 В Шаблоны печати добавить "Анкета - скрининг для 2летки психиатр"DEV_TEMP-5932 В Шаблоны печати добавить "Анкета - скрининг для 2летки психиатр"DEV_TEMP-5932 В Шаблоны печати добавить "Анкета - скрининг для 2летки психиатр"DEV_TEMP-5932 В Шаблоны печати добавить "Анкета - скрининг для 2летки психиатр" -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.page-break {
+    page-break-after: always;
+}
+.red-line {
+    text-indent: 10px;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Скрининговая анкета для родителей по выявлению риска возникновения нарушений психического развития у детей раннего возраста (сокращенная версия - 24 вопроса)</div>
+</div>
+
+    <table width="100%" cellpadding="2" cellspacing="0" >
+      <tr>
+        <td colspan="1">Ф.И.О. родителя</td>
+        <td colspan="3">____________________________________________________________________________________________</td>
+      </tr>
+      <tr>
+        <td colspan="1">Ф.И.О. ребенка</td>
+        <td colspan="3">____________________________________________________________________________________________</td>
+      </tr>
+      <tr>
+        <td>Возраст ребенка</td>
+        <td>______________________________________________</td>
+        <td>Дата заполнения</td>
+        <td>______________________________________________</td>
+      </tr>
+
+    </table>
+<br>
+  <div>Инструкция. «Если Вы наблюдали (или не наблюдали) у своего ребенка нижеописанное поведение, выберите соответствующий ответ: «да», «нет», «затрудняюсь ответить».</div>
+<br>
+    <table width="100%" cellpadding="2" cellspacing="0" border="1">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Вопрос</th>
+          <th>Да</th>
+          <th>Нет</th>
+          <th>
+            <img width="46" height="112" alt="" src="data:image/jpeg;base64,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">
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Ребенок фиксирует взгляд на предметах (игрушках) или лице взрослого при привлечении внимания словом или прикосновением со второго месяца жизни</td>
+          <td>&nbsp;</td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>2</td>
+          <td>Ребенок улыбается матери сам или при привлечении внимания улыбкой, лаской, прикосновением на первых месяцах жизни</td>
+          <td>&nbsp;</td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>3</td>
+          <td>Ребенок сопротивляется грудному вскармливанию, может отказываться от еды, долго удерживать пищу во рту</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>4</td>
+          <td>Ребенок тянулся на руки матери, или другим близким, радовался пребыванию на руках</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>5</td>
+          <td>Ребенок НЕ требовал к себе внимание матери в период бодрствования (мог лежать один в кроватке, не реагировать на уход матери, занимая себя предметами, игрушками, собственными пальцами и т.д. или пассивно лежал, не реагируя на окружение)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>6</td>
+          <td>Ребенок проявлял различные эмоции (радость, удивление, недовольство и т.д.), начиная с возраста 5-6 месяцев</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>7</td>
+          <td>Ребенок вовлекался во взаимодействие со взрослым, устанавливая тактильный, слуховой, зрительный или игровой контакт</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>8</td>
+          <td>
+            <div>Соответствие показателям моторного развития ребенка нормативным срокам:</div>
+            удерживает голову – с 2 мес., <br>
+            переворачивается – с 4 мес., <br>
+            сидит – с 6 мес., <br>
+            ползает – с 8 мес., <br>
+            ходит с поддержкой – с 10-11 мес., <br>
+            ходит без поддержки – с 12-14 мес.
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>9</td>
+          <td>Соответствие показателям речевого развития ребенка нормативным срокам:
+            агуканье – с 1 мес., <br>
+            гуление – с 2-3 мес., <br>
+            лепет (ба-ба-ба, ма-ма-ма, па-па-па, та-та-та) и слова-метки – с
+            6-8 мес., <br>
+            первые слова («мама», «баба», «папа», слова-метки и другие, адресованные к конкретному лицу) – к 1 году.
+          </td>
+          <td></td>
+          <td></td>
+          <td valign="bottom">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+<div class="page-break"></div>
+
+<table width="100%" cellpadding="2" cellspacing="0" border="1">
+  <tbody>
+
+
+        <tr >
+          <td colspan="5" align="center"><div class="h1">Второй год жизни</div></td>
+        </tr>
+        <!--  -->
+        <tr>
+          <td>10</td>
+          <td>Ребенок использует указательный жест</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>11</td>
+          <td>Ребенок умеет пить из чашки</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>12</td>
+          <td>Ребенок понимает простые инструкции («подойди ко мне», «дай мне»)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>13</td>
+          <td>Ребенок повторяет «как эхо» отдельные слова или фразы из высказываний взрослых</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>14</td>
+          <td>Ребенок чрезмерно чувствителен к внешним раздражителям (шум от бытовых приборов, фейерверков, звуки животных; повышенный тон взрослых и др.)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>15</td>
+          <td>Ребенок хорошо переносит санитарно-гигиенические процедуры (стрижка ногтей, волос, купание и др.), откликается на ласку</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>16</td>
+          <td>Как ребенок реагирует на новый предмет, игрушку: рассматривает, облизывает, обнюхивает, не проявляет интерес? (нужное подчеркнуть)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>17</td>
+          <td>Ребенок играет предметами обихода (крышки, банки, кастрюли), как игрушками, предпочитает ниточки, шнурки, пакетики, палочки и др.</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>18</td>
+          <td>Ребенок постоянно выстраивает предметы (игрушки) в ряды (горизонтальные / вертикальные), однообразно возит, катает предметы (игрушки)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>19</td>
+          <td>Ребенок двух лет жизни сторонится других детей на игровой площадке, предпочитает играть один</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>20</td>
+          <td>У ребенка второго года жизни возникают нарушения сна: трудности засыпания, плач во сне, ночные бодрствования, частые пробуждения, дневная сонливость</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>21</td>
+          <td>Ребенок умеет задавать простые вопросы к концу второго года жизни</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>22</td>
+          <td>Ребенок собирает пирамидку, матрешку с учетом величины, формы и цвета к концу второго года жизни</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>23</td>
+          <td>Ребенок совершает повторяющиеся или необычные движения: ходит «на цыпочках», кружится вокруг себя, играет пальцами перед лицом, перебирает пальцами, потряхивает кистями рук, отмечается проходящие косоглазие, кривошея (имеющееся подчеркнуть)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+        <tr>
+          <td>24</td>
+          <td>Ребенок заменяет общение и совместную игру использованием гаджетов (мобильный телефон, планшет и т.п.)</td>
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+        </tr>
+
+      </tbody>
+    </table>
+
+
+
+
+</body>
+</html>

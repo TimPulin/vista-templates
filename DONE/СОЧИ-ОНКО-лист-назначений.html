@@ -1,0 +1,260 @@
+<!-- изменил Пулин дата 28.11.2025 задача  -->
+<!-- изменил Пулин дата 15.08.2025 задача  -->
+<!--Начальная дата разработки 28.05.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: list_naz_new -->
+<!--Задача: DEV_TEMP-5457 Сделать лист назначений Сочи ОНКО 2 -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{setMargins(5)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime, timedelta }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+.page-break {
+  page-break-after: always;
+}
+.header-spacing {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+</style>
+''')}
+
+{:
+DATETIME_FORMAT = u'%Y.%m.%d'
+MIN_DATE_STR = u'1900.01.01'
+MIN_DATETIME = datetime.strptime(MIN_DATE_STR, DATETIME_FORMAT)
+}
+
+{for: act in event.actions}
+  {if: (act.name == u"Онколог") and (act.deleted==0)}  {:status = act} {end:}
+  {if: (act.name == u"Радиолог")  and (act.deleted==0)}  {:status = act} {end:}
+  {if: (act.name == u"Гематолог")  and (act.deleted==0)}  {:status = act} {end:}
+  {if: (act.name == u"Поступление") and (act.deleted==0)}  {:postupl = act} {end:}
+{end:}
+
+{:
+def convert_to_datetime(date_string):
+  if date_string > MIN_DATE_STR:
+    return datetime.strptime(date_string, DATETIME_FORMAT)
+  else:
+    raise ValueError(u'В ОДНОМ ИЗ ПОЛЕЙ ДЛЯ ВВОДА ДАТЫ ВВЕДЕНА НЕКОРРЕКТНАЯ ДАТА. ПРОВЕРЬТЕ ДАТЫ')
+}
+
+{:
+def get_purpose_dateline(start_date, end_date):
+  purpose_dateline = []
+  current_date = start_date
+  while current_date <= end_date:
+    purpose_dateline.append(current_date)
+    current_date = current_date + timedelta(days=1)
+
+  return purpose_dateline
+}
+
+{:
+Q_DATE_CONVERT_FORMAT = u'yyyy.MM.dd'
+date_list = []
+for item in action[u'Назначено']:
+  if item[u'Дата назначения'].value:
+    date_list.append(convert_to_datetime(item[u'Дата назначения'].value.toString(Q_DATE_CONVERT_FORMAT)))
+  if item[u'Дата отмены'].value:
+    date_list.append(convert_to_datetime(item[u'Дата отмены'].value.toString(Q_DATE_CONVERT_FORMAT)))
+
+for item in action[u'Назначено вне счетов']:
+  if item[u'Дата назначения'].value:
+    date_list.append(convert_to_datetime(item[u'Дата назначения'].value.toString(Q_DATE_CONVERT_FORMAT)))
+  if item[u'Дата отмены'].value:
+    date_list.append(convert_to_datetime(item[u'Дата отмены'].value.toString(Q_DATE_CONVERT_FORMAT)))
+
+if date_list:
+  start_date = min(date_list)
+  end_date = max(date_list)
+  purpose_dateline = get_purpose_dateline(start_date, end_date)
+else:
+  purpose_dateline = []
+}
+
+{:
+# Разделение на периоды по 12 дней
+periods = []
+if purpose_dateline:
+  total_days = len(purpose_dateline)
+  days_per_period = 12
+  num_periods = (total_days + days_per_period - 1) // days_per_period
+
+  for i in range(num_periods):
+    start_idx = i * days_per_period
+    end_idx = min((i + 1) * days_per_period, total_days)
+    periods.append(purpose_dateline[start_idx:end_idx])
+}
+
+<!-- @formatter:on -->
+</head>
+<body style="font-family: Arial; font-size: 8pt;">
+
+<div align="center" class="header-spacing"> <b>Лист назначений и их выполнений.</b></div>
+
+<div>Фамилия,  имя, отчество (при наличии) <b>{client.fullName}</b> ({client.birthDate} г.) № медицинской карты <b> {event.externalId}</b> № палаты _______________ </div>
+
+<div>Диагноз (основное заболевание):
+  {if: len(event.diagnosises) > 1}
+    {event.diagnosises[1].MKB}
+  {else:}
+    {event.diagnosises[0].MKB}
+  {end:}
+</div>
+
+<div>Аллергические реакции на лек. преп. и д.р.: {if: status}   {if: status[u"Аллергоанамнез"].value} {status[u"Аллергоанамнез"].value}   {end:} {end:} </div>
+
+{: global_index = 0}
+
+{for: period_idx, current_period in enumerate(periods)}
+  {if: period_idx > 0}
+    <div class="page-break"></div>
+
+    <div align="center" class="header-spacing"> <b>Лист назначений и их выполнений.</b></div>
+    <div>Фамилия,  имя, отчество (при наличии) <b>{client.fullName}</b> ({client.birthDate} г.) № медицинской карты <b> {event.externalId}</b> № палаты _______________ </div>
+    <div>Диагноз (основное заболевание):
+      {if: len(event.diagnosises) > 1}
+        {event.diagnosises[1].MKB}
+      {else:}
+        {event.diagnosises[0].MKB}
+      {end:}
+    </div>
+    <div>Аллергические реакции на лек. преп. и д.р.: {if: status}   {if: status[u"Аллергоанамнез"].value} {status[u"Аллергоанамнез"].value}   {end:} {end:} </div>
+  {end:}
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <th rowspan="2">
+        № <br>
+        п/п
+      </th>
+      <th rowspan="2">
+        Лекарственный препарат (наименование <br>
+        лекарственная форма, дозировка, способ введения <br>
+        (применения), лечебное питание, режим)
+      </th>
+      <th rowspan="2">
+        Дата <br>
+        назначения; <br>
+        подпись <br>
+        лечащего <br>
+        врача (врача- <br>
+        специалиста), <br>
+        сделавшего <br>
+        назначение
+      </th>
+      <th rowspan="2">
+        Дата
+        отмены;
+        подпись <br>
+        лечащего <br>
+        врача (врача- <br>
+        специалиста), <br>
+        отменившего <br>
+        назначение
+      </th>
+      <th colspan="{len(current_period) + 1}">
+        Отметки об исполнении назначения лекарственного препарата, лечебного питания, режима, (дата и время исполнения) подпись медицинского работника, ответственного за исполнение (время, дата, подпись)
+      </th>
+    </tr>
+    <tr>
+      {for: date in current_period}
+        <th width="1%">
+
+          <span class="white-wrap">{date.strftime('%d.%m')}&nbsp;</span>
+        </th>
+      {end:}
+      <th>Сведения о реакции <br> на применение (при наличии)</th>
+    </tr>
+
+    {: global_index = 0}
+    {for: purpose in action[u'Назначено']}
+      {: global_index += 1}
+      <tr>
+        <td align="center">{global_index}</td>
+        <td valign="top">{purpose[u'Действующее вещество']} {purpose[u'Добавочный препарат']}</td>
+        <td align="center" width="1%">
+          <div class="white-wrap">{purpose[u'Дата назначения']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+        <td align="center" width="1%">
+          <div class="white-wrap">{purpose[u'Дата отмены']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+        {for: date in current_period}
+          <td>&nbsp;</td>
+        {end:}
+        <td>&nbsp;</td>
+      </tr>
+    {end:}
+
+    {for: purpose in action[u'Назначено вне счетов']}
+      {: global_index += 1}
+      <tr>
+        <td align="center">{global_index}</td>
+        <td valign="top">{purpose[u'Добавочный препарат']}</td>
+        <td align="center" width="1%">
+          <div class="white-wrap">{purpose[u'Дата назначения']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+        <td align="center" width="1%">
+          <div class="white-wrap">{purpose[u'Дата отмены']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+        {for: date in current_period}
+          <td>&nbsp;</td>
+        {end:}
+        <td>&nbsp;</td>
+      </tr>
+    {end:}
+    <tr>
+      <td colspan="{len(current_period) + 5}">
+        Подпись медицинского работника, ответственного за контроль исполнения назначений {'_' * 15}
+      </td>
+    </tr>
+  </table>
+{end:}
+
+</body>
+</html>

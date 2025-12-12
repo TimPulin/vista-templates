@@ -1,0 +1,330 @@
+<!--Начальная дата разработки 20.05.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6221 Шаблоны печати для Регистратуры НЭВИКСа -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинская карта пациента</title>
+
+<style>
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.header {
+    font-size: 10pt;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+
+.counter {
+    counter-reset: point 0;
+}
+
+.counter__point {
+    counter-increment: point 1;
+    position: relative;
+    padding-left: 25px;
+}
+.counter__point:before {
+    content: counter(point)'.';
+    position: absolute;
+    top: 0;
+    left: 0;
+    text-align: right;
+}
+
+.tbl th {
+  font-size: 10pt;
+}
+
+.mL {
+    margin-left: 10px;
+}
+
+.pR {
+    padding-right: 10px;
+}
+
+.point-justify {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.flex {
+    display: flex;
+}
+
+.grow {
+    flex-grow: 2;
+}
+
+
+
+.small {
+  font-size: 8pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}
+</style>
+
+</head>
+<body>
+
+<div class="main counter">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap">
+            Наименование медицинской организации
+          </div>
+          <div>
+            ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ "НЕВИКС"
+          </div>
+          <div>
+            Адрес: 199178, город Санкт-Петербург, <br>
+            лн. 18-я В.О., д. 45 литер а, помещ. 6н
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top">
+          <div class="white-wrap">Код форму по ОКУД __________</div>
+          <div class="white-wrap">Код организации по ОКПО 02274322</div>
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 025/у</div>
+          <div class="white-wrap">Утверждена приказом Минздрава России</div>
+          <div class="white-wrap">от 15 декабря 2014 г. № 834н</div>
+        </td>
+
+      </tr>
+    </table>
+  </header>
+
+  <br>
+
+  <div align="center" class="h1">
+    Медицинская карта <br>
+    пациента, получающего медицинскую помощь <br>
+    в амбулаторных условиях
+  </div>
+
+  <br>
+
+  <div class="point-justify">
+    <span class="counter__point">Дата заполнения медицинской карты:</span>
+    <div>число _____</div>
+    <div>месяц _____</div>
+    <div>год _____</div>
+  </div>
+  <div class="line">
+    <span class="counter__point">Фамилия, имя, отчество</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="point-justify">
+    <div>
+      <span class="counter__point">Пол:</span>
+      <span class="small">муж. - 1, жен - 2</span>
+      <span>_____</span>
+    </div>
+
+    <div>
+      <span class="counter__point">Дата рождения:</span>
+      число _____
+    </div>
+    <div>месяц _____</div>
+    <div>год _____</div>
+  </div>
+  <div class="line">
+    <span>Гражданство</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="point-justify">
+    <div>Документ, удостоверяющий личность:</div>
+    <div>_________________</div>
+    <div>серия ___________</div>
+    <div>№ ___________</div>
+  </div>
+
+  <div class="point-justify">
+    <div>Номер телефона: _________________</div>
+    <div>Адрес электронной почты: _________________</div>
+  </div>
+
+  <div class="line">
+    <span>Регистрация по месту жительства: субъект Российской Федерации</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="line">
+    <span>район</span> <div class="line__item">&nbsp;</div>
+    <span>населенный пункт</span> <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="line">
+    <span>улица</span> <div class="line__item">&nbsp;</div>
+    <span>дом</span> <div class="line__item">&nbsp;</div>
+    <span>строение/корпус</span> <div class="line__item">&nbsp;</div>
+    <span>квартира</span> <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div>
+    Местность: городская - 1, сельская - 2 ___________
+  </div>
+
+
+  <div class="line">
+    <span>Регистрация по месту пребывания: субъект Российской Федерации</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="line">
+    <span>район</span> <div class="line__item">&nbsp;</div>
+    <span>населенный пункт</span> <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="line">
+    <span>улица</span> <div class="line__item">&nbsp;</div>
+    <span>дом</span> <div class="line__item">&nbsp;</div>
+    <span>строение/корпус</span> <div class="line__item">&nbsp;</div>
+    <span>квартира</span> <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div>
+    Местность: городская - 1, сельская - 2 ___________
+  </div>
+
+
+  <div class="line">
+    <span>Полис обязательного медицинского страхования:</span> <div class="line__item">&nbsp;</div>
+  </div>
+
+
+  <div class="point-justify">
+    <span>дата выдачи полиса обязательного медицинского страхования:</span>
+    <div>число _____</div>
+    <div>месяц _____</div>
+    <div>год _____</div>
+  </div>
+
+  <div>
+    данные о страховой медицинской организации, выбранной застрахованным лицом или
+  </div>
+  <div class="line">
+    <span>определенной застрахованному лицу</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div class="line">
+    <span>Страховой номер индивидуального лицевого счёта:</span>
+    <div class="line__item">&nbsp;</div>
+  </div>
+
+  <div>
+    Код меры социальной поддержки __________
+  </div>
+
+  <div>Сведения о лице, которому может быть передана информация о состоянии здоровья пациента:</div>
+
+  <div class="line">
+    <div class="line__item">&nbsp;</div>
+  </div>
+  <div align="center"><sup>фамилия, имя, отчество (при наличии), номер контактного телефона</sup></div>
+
+  <div class="line">
+    <div class="line__item">&nbsp;</div>
+  </div>
+  <div align="center"><sup>фамилия, имя, отчество (при наличии), номер контактного телефона</sup></div>
+
+  <div class="line">
+    <div class="line__item">&nbsp;</div>
+  </div>
+  <div align="center"><sup>фамилия, имя, отчество (при наличии), номер контактного телефона</sup></div>
+
+  <div>
+    Занятость:
+    <span class="small">работает - 1, проходит военную и приравненную к ней службу - 2; пенсионер - 3, обучающийся - 4, не работает - 5, прочее - 6</span>
+    __________
+  </div>
+
+  <div>
+    Признан нуждающимся в оказании паллиативной медицинской помощи:
+    <span class="small">
+      не признан- 1; признан - 2
+    </span>
+    __________
+  </div>
+
+
+  <div>
+    <span class="counter__point">Заболевания, по поводу которых осуществляется диспансерное наблюдение</span>
+  </div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl">
+    <tr>
+      <th valign="top" width="1%" class="white-wrap">дата начала <br> диспансерного <br> наблюдения</th>
+      <th valign="top" width="1%" class="white-wrap">дата <br> прекращения <br> диспансерного <br> наблюдения</th>
+      <th valign="top">Диагноз</th>
+      <th valign="top" width="1%" class="white-wrap">Код по <br> МКБ-10</th>
+      <th valign="top">Врач</th>
+    </tr>
+
+    <tr>
+      <td>&nbsp;</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>&nbsp;</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>&nbsp;</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+
+  </table>
+
+
+
+
+
+
+</div>
+</body>
+</html>

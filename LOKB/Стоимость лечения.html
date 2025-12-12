@@ -1,3 +1,5 @@
+<!-- изменил Пулин дата 04.09.2025 задача  -->
+<!-- изменил Пулин дата 25.08.2025 задача  -->
 <!--Начальная дата разработки 15.08.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати:  -->
@@ -18,6 +20,7 @@
 
 {: from library.Utils import forceString }
 {: from library.Utils import forceInt }
+
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
 
@@ -94,27 +97,72 @@ move_act = move_act_list[0] if len(move_act_list) > 0 else None
 
 {:
 paymentServiceRefList = db.getRecordList(stmt=u"""
-  SELECT at.name   as serviceName,
-         rbF.name  as financeType,
-         ai.amount as serviceAmount,
-         ai.sum    as servicePayedSum,
-         ai.price  as servicePrice
-  FROM Account_Item ai
-           JOIN Action a ON ai.action_id = a.id AND a.deleted = 0 and ai.deleted = 0
-           JOIN ActionType at
-                ON a.actionType_id = at.id AND at.deleted = 0 AND at.flatCode NOT IN ('prepayment', 'extrapayment')
-           join Contract_Tariff ct on ai.tariff_id = ct.id
-           join Contract c on ct.master_id = c.id
-           join rbFinance rbF on c.finance_id = rbF.id
-  WHERE ai.event_id = {eventId};
-""".format(eventId=event.id))
+  WITH Act AS
+           (SELECT e.setDate,
+                   e.execDate,
+                   a.id,
+                   a.actionType_id,
+                   at.id        AS at_id,
+                   at.code,
+                   at.name      as action_type_name,
+                   at.nomenclativeService_id,
+                   e.contract_id,
+                   e.finance_id
+            from Event e
+                     join Action a on e.id = a.event_id and a.deleted = 0
 
-if paymentServiceRefList:
-  firstRef = paymentServiceRefList[0]
-  settleDate = forceString(firstRef.value(u'settleDate'))
-else:
-  settleDate = u'___________'
+                     left join ActionProperty ap on a.id = ap.action_id and ap.type_id in (327037, 323745)
+                     left join ActionProperty_Action apvA on ap.id = apvA.id
+  -- из пропы "Оплаченные услуги"
+                     left join Action aConsult on apvA.value = aConsult.id
+
+  -- из пропы "Услуги"
+                     LEFT JOIN ActionProperty apService
+                               ON a.id = apService.action_id AND apService.deleted = 0 AND apService.type_id = 327082
+                     LEFT JOIN ActionProperty_Action apvAS ON apService.id = apvAS.id
+                     LEFT JOIN Action aConsult2 ON apvAS.value = aConsult2.id AND aConsult2.deleted = 0
+                     LEFT JOIN ActionType atConsult2 ON aConsult2.actionType_id = atConsult2.id AND atConsult2.deleted = 0
+                     LEFT JOIN ActionType atConsult2Parent
+                               ON atConsult2.group_id = atConsult2Parent.id AND atConsult2Parent.deleted = 0
+
+  -- из пропы "Рекомендации" типа действия Рекомендация
+                     left join ActionProperty_Reference apvR on ap.id = apvR.id
+  -- Платные назначения КДЛ
+                     left join ActionType atKDL
+                               on a.actionType_id = atKDL.id and
+                                  atKDL.group_id in (37230, 37334, 37422, 37493, 37621, 37787, 37844,
+                                                     37879,
+                                                     37891, 37900, 37948)
+  -- Сами услуги
+                     left join ActionType at
+                               on at.id in (apvR.value, aConsult.actionType_id, atKDL.id, atConsult2Parent.id)
+            WHERE e.id = {event_id}
+            HAVING at.id)
+  SELECT DISTINCT action_type_name as                                          serviceName,
+                  COALESCE(ct.price, ct1.price, ct2.price)                     servicePrice,
+                  COUNT(action_type_name) OVER (PARTITION BY action_type_name) serviceAmount,
+                  fin.name
+  FROM Act
+           LEFT JOIN s13.Contract_Tariff ct ON Act.nomenclativeService_id = ct.service_id AND ct.deleted = 0
+      AND (DATE(ct.endDate) >= DATE(Act.setDate)) AND at_id NOT IN (35861, 38990)
+      AND Act.contract_id = ct.master_id
+           LEFT JOIN s13.ActionProperty ap ON Act.id = ap.action_id AND ap.deleted = 0 AND ap.type_id IN (323745, 327037)
+           LEFT JOIN s13.ActionProperty_Reference apr ON ap.id = apr.id AND ap.type_id = 323745
+           LEFT JOIN s13.ActionType ser ON apr.value = ser.id AND ser.deleted = 0
+           LEFT JOIN s13.Contract_Tariff ct1 ON ser.nomenclativeService_id = ct1.service_id AND ct1.deleted = 0
+      AND (DATE(ct1.endDate) >= DATE(Act.setDate))
+      AND ct1.master_id = Act.contract_id
+           LEFT JOIN s13.ActionProperty_Action apa ON ap.id = apa.id AND ap.type_id = 327037
+           LEFT JOIN s13.Action val1 ON apa.value = val1.id AND val1.deleted = 0
+           LEFT JOIN s13.ActionType at ON val1.actionType_id = at.id
+           LEFT JOIN s13.Contract_Tariff ct2 ON at.nomenclativeService_id = ct2.service_id AND ct2.deleted = 0
+      AND (DATE(ct2.endDate) >= DATE(Act.setDate))
+      AND ct2.master_id = Act.contract_id
+           JOIN s13.rbFinance fin ON Act.finance_id = fin.id;
+
+""".format(event_id=event.id))
 }
+
 <!-- @formatter:on -->
 </head>
 <body>
@@ -171,19 +219,14 @@ else:
       <b>Дата рождения (возраст):</b> {event.client.birthDate}, {event.client.age}
     </div>
     <div>
-      <b>Период лечения</b>
+      <b>Дата консультации</b>
       {event.setDate.toString('dd.MM.yyyy')}
-      {event.execDate.toString('dd.MM.yyyy') if event.execDate else 'по настоящее время'}
     </div>
+
 
     <div>
       <b>Отделение</b>
-      {if: move_act}
-        {move_act[u'Отделение пребывания'].value}
-      {end:}
-    </div>
-    <div>
-      <b>ИБ</b> {event.externalId}
+      <b>{currentOrgStructure}</b>
     </div>
 
   </div>
@@ -202,30 +245,33 @@ else:
       <th>Стоимость</th>
     </tr>
 
-    {: paymentSum = 0}
+    {: paymentSum = float(0)}
 
     {if: paymentServiceRefList}
-        {: serviceAmount = len(paymentServiceRefList)}
         {for: index, paymentServiceRef in enumerate(paymentServiceRefList, 1)}
-          {: servicePayed = forceInt(paymentServiceRef.value(u'servicePayed'))}
-          {: paymentSum += servicePayed}
+          {: servicePrice = forceString(paymentServiceRef.value(u'servicePrice'))}
+          {: serviceAmount = forceString(paymentServiceRef.value(u'serviceAmount'))}
+          {: servicePayedSum = float(servicePrice) * float(serviceAmount)}
+          {: paymentSum += float(servicePayedSum)}
+
           <tr class="payment-line">
             <td>{index}</td>
             <td>{forceString(paymentServiceRef.value('serviceName'))}</td>
             <td>{forceString(paymentServiceRef.value('financeType'))}</td>
             <td>{forceString(paymentServiceRef.value(u'serviceAmount'))}</td>
             <td>{forceString(paymentServiceRef.value(u'servicePrice'))}</td>
-            <td>{servicePayed}</td>
+            <td>{servicePayedSum}</td>
           </tr>
         {end:}
     {end:}
 
     <tr>
       <td align="right" colspan="5" class="un-bordered"><b>ИТОГО:</b></td>
-      <td align="center">{paymentSum}</td>
+      <td align="center">{round(paymentSum, 2)}</td>
     </tr>
   </table>
 
 </div>
 </body>
 </html>
+

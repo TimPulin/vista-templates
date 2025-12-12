@@ -1,0 +1,109 @@
+<Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+    <Header/>
+    <Body>
+        <Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <Header>
+                <wsse:Security actor="http://eln.fss.ru/actor/fss/ca/1027739443236">
+                    <wsse:BinarySecurityToken EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary" ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" wsu:Id="http://eln.fss.ru/actor/fss/ca/1027739443236">MIIJETCCCL6gAwIBAgIRAN3B53lC6QIQAwyhHZ8wJp0wCgYIKoUDBwEBAwIwggFr
+                        MSAwHgYJKoZIhvcNAQkBFhF1Y19ma0Byb3NrYXpuYS5ydTEYMBYGA1UECAwPNzcg
+                        0JzQvtGB0LrQstCwMRUwEwYFKoUDZAQSCjc3MTA1Njg3NjAxGDAWBgUqhQNkARIN
+                        MTA0Nzc5NzAxOTgzMDFgMF4GA1UECQxX0JHQvtC70YzRiNC+0Lkg0JfQu9Cw0YLQ
+                        vtGD0YHRgtC40L3RgdC60LjQuSDQv9C10YDQtdGD0LvQvtC6LCDQtC4gNiwg0YHR
+                        gtGA0L7QtdC90LjQtSAxMRkwFwYDVQQHDBDQsy4g0JzQvtGB0LrQstCwMQswCQYD
+                        VQQGEwJSVTE4MDYGA1UECgwv0KTQtdC00LXRgNCw0LvRjNC90L7QtSDQutCw0LfQ
+                        vdCw0YfQtdC50YHRgtCy0L4xODA2BgNVBAMML9Ck0LXQtNC10YDQsNC70YzQvdC+
+                        0LUg0LrQsNC30L3QsNGH0LXQudGB0YLQstC+MB4XDTI1MDkyMjExMTcwMloXDTI2
+                        MTIxNjExMTcwMlowggHAMQswCQYDVQQGEwJSVTEZMBcGA1UECAwQ0LMuINCc0L7R
+                        gdC60LLQsDEhMB8GA1UECQwY0KjQsNCx0L7Qu9C+0LLQutCwLCDQtC40MRkwFwYD
+                        VQQHDBDQsy4g0JzQvtGB0LrQstCwMYGBMH8GA1UECgx40KTQntCd0JQg0J/QldCd
+                        0KHQmNCe0J3QndCe0JPQniDQmCDQodCe0KbQmNCQ0JvQrNCd0J7Qk9CeINCh0KLQ
+                        oNCQ0KXQntCS0JDQndCY0K8g0KDQntCh0KHQmNCZ0KHQmtCe0Jkg0KTQldCU0JXQ
+                        oNCQ0KbQmNCYMRgwFgYFKoUDZAESDTEwMjc3MDAyMjA2MjQxFTATBgUqhQNkBBIK
+                        NzcwNjAxNjExODEfMB0GCSqGSIb3DQEJARYQb2tkaXJAc2ZyLmdvdi5ydTGBgTB/
+                        BgNVBAMMeNCk0J7QndCUINCf0JXQndCh0JjQntCd0J3QntCT0J4g0Jgg0KHQntCm
+                        0JjQkNCb0KzQndCe0JPQniDQodCi0KDQkNCl0J7QktCQ0J3QmNCvINCg0J7QodCh
+                        0JjQmdCh0JrQntCZINCk0JXQlNCV0KDQkNCm0JjQmDBmMB8GCCqFAwcBAQEBMBMG
+                        ByqFAwICJAAGCCqFAwcBAQICA0MABEBgacUdg0ILKjfzVV4+/u58g3pMXT2mX6dg
+                        VhqfP2JtlONzRoE7zRc9UWAiGheoSIampSesW2TTcN+6kHiPK5hxo4IE2zCCBNcw
+                        KwYDVR0QBCQwIoAPMjAyNTA5MjIxNDQ2MDBagQ8yMDI2MTIxNjE0NDYwMFowDgYD
+                        VR0PAQH/BAQDAgP4MBMGA1UdJQQMMAoGCCsGAQUFBwMCMCcGA1UdIAQgMB4wCAYG
+                        KoUDZHEBMAgGBiqFA2RxAjAIBgYqhQNkcQMwDAYFKoUDZHIEAwIBADAtBgUqhQNk
+                        bwQkDCLQmtGA0LjQv9GC0L7Qn9GA0L4gQ1NQICg1LjAuMTMwMDApMIIBoQYFKoUD
+                        ZHAEggGWMIIBkgyBh9Cf0YDQvtCz0YDQsNC80LzQvdC+LdCw0L/Qv9Cw0YDQsNGC
+                        0L3Ri9C5INC60L7QvNC/0LvQtdC60YEgVmlQTmV0IFBLSSBTZXJ2aWNlICjQvdCw
+                        INCw0L/Qv9Cw0YDQsNGC0L3QvtC5INC/0LvQsNGC0YTQvtGA0LzQtSBIU00gMjAw
+                        MFEyKQxo0J/RgNC+0LPRgNCw0LzQvNC90L4t0LDQv9C/0LDRgNCw0YLQvdGL0Lkg
+                        0LrQvtC80L/Qu9C10LrRgSDCq9Cu0L3QuNGB0LXRgNGCLdCT0J7QodCiwrsuINCS
+                        0LXRgNGB0LjRjyA0LjAMTUPQtdGA0YLQuNGE0LjQutCw0YIg0YHQvtC+0YLQstC1
+                        0YLRgdGC0LLQuNGPIOKEltCh0KQvMTI0LTQzMjgg0L7RgiAyOS4wOC4yMDIyDE1D
+                        0LXRgNGC0LjRhNC40LrQsNGCINGB0L7QvtGC0LLQtdGC0YHRgtCy0LjRjyDihJbQ
+                        odCkLzEyOC00NjM5INC+0YIgMDQuMTAuMjAyMzBmBgNVHR8EXzBdMC6gLKAqhiho
+                        dHRwOi8vY3JsLnJvc2them5hLnJ1L2NybC91Y2ZrXzIwMjUuY3JsMCugKaAnhiVo
+                        dHRwOi8vY3JsLmZrLmxvY2FsL2NybC91Y2ZrXzIwMjUuY3JsMHcGCCsGAQUFBwEB
+                        BGswaTA0BggrBgEFBQcwAoYoaHR0cDovL2NybC5yb3NrYXpuYS5ydS9jcmwvdWNm
+                        a18yMDI1LmNydDAxBggrBgEFBQcwAoYlaHR0cDovL2NybC5may5sb2NhbC9jcmwv
+                        dWNma18yMDI1LmNydDAdBgNVHQ4EFgQUy3DcTJXmmmd8XlPGtqWnbciuNHwwggF2
+                        BgNVHSMEggFtMIIBaYAUvz+8cqZrQ2drA0DMxq/G+sDNPfyhggFDpIIBPzCCATsx
+                        ITAfBgkqhkiG9w0BCQEWEmRpdEBkaWdpdGFsLmdvdi5ydTELMAkGA1UEBhMCUlUx
+                        GDAWBgNVBAgMDzc3INCc0L7RgdC60LLQsDEZMBcGA1UEBwwQ0LMuINCc0L7RgdC6
+                        0LLQsDFTMFEGA1UECQxK0J/RgNC10YHQvdC10L3RgdC60LDRjyDQvdCw0LHQtdGA
+                        0LXQttC90LDRjywg0LTQvtC8IDEwLCDRgdGC0YDQvtC10L3QuNC1IDIxJjAkBgNV
+                        BAoMHdCc0LjQvdGG0LjRhNGA0Ysg0KDQvtGB0YHQuNC4MRgwFgYFKoUDZAESDTEw
+                        NDc3MDIwMjY3MDExFTATBgUqhQNkBBIKNzcxMDQ3NDM3NTEmMCQGA1UEAwwd0JzQ
+                        uNC90YbQuNGE0YDRiyDQoNC+0YHRgdC40LiCCicyIggAAAAAC1QwCgYIKoUDBwEB
+                        AwIDQQBkwiSd3T+FPlobqHxKVaNUcWfFT4ajEEsNh9nV4GAYoiQzv/Yzng6OJD0d
+                        OiWF7o63exAttqk/SeSeXme/6Evv
+                    </wsse:BinarySecurityToken>
+                    <ds:Signature>
+                        <ds:SignedInfo>
+                            <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                            <ds:SignatureMethod Algorithm="urn:ietf:params:xml:ns:cpxmlsec:algorithms:gostr34102012-gostr34112012-256"/>
+                            <ds:Reference URI="#OGRN_1027739443236">
+                                <ds:Transforms>
+                                    <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                                </ds:Transforms>
+                                <ds:DigestMethod Algorithm="urn:ietf:params:xml:ns:cpxmlsec:algorithms:gostr34112012-256"/>
+                                <ds:DigestValue>WqVb/rwL5UnPQVvNvqUp6E13zOVoN+sXF1y3hiEOcwg=</ds:DigestValue>
+                            </ds:Reference>
+                        </ds:SignedInfo>
+                        <ds:SignatureValue>mWeTOLJcL9lW8TJOq/8u5LVFa7cL+n3oKuOnyfyT0B3bpE5tjE8o5nZMiGXA+Q/awL62g6tdBtgf772y8CDieQ==</ds:SignatureValue>
+                        <ds:KeyInfo>
+                            <wsse:SecurityTokenReference>
+                                <wsse:Reference URI="#http://eln.fss.ru/actor/fss/ca/1027739443236"/>
+                            </wsse:SecurityTokenReference>
+                        </ds:KeyInfo>
+                    </ds:Signature>
+                </wsse:Security>
+                <X509Certificate xmlns="http://www.w3.org/2000/09/xmldsig#">
+                    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
+                </X509Certificate>
+            </Header>
+            <Body wsu:Id="OGRN_1027739443236">
+                <ns7:prParseFilelnlpuResponse xmlns:ns7="http://www.fss.ru/integration/types/eln/mo/v01" xmlns:ns10="http://www.fss.ru/integration/types/person/v01" xmlns:ns11="http://www.fss.ru/integration/types/dic/TreatmentTypes/v01" xmlns:ns12="http://www.fss.ru/integration/types/sedo/v01" xmlns:ns2="http://www.fss.ru/integration/types/eln/v01" xmlns:ns3="http://www.fss.ru/integration/types/eln/mse/v01" xmlns:ns4="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns5="http://www.fss.ru/integration/types/fault/v01" xmlns:ns6="http://www.fss.ru/integration/types/identityDocument/v01" xmlns:ns8="http://www.fss.ru/integration/types/common/v01" xmlns:ns9="http://www.fss.ru/integration/types/organization/v01">
+                    <requestId>2cd9d07d-4519-411e-904f-a44ebcf86183</requestId>
+                    <status>0</status>
+                    <mess>Найдены ошибки при выполнении форматно-логических проверок</mess>
+                    <info>
+                        <infoRowset>
+                            <infoRow>
+                                <rowNo>1</rowNo>
+                                <lnCode>910323997255</lnCode>
+                                <status>0</status>
+                                <errors>
+                                    <error>
+                                        <errCode>ELR_576</errCode>
+                                        <errMess>Поле "Выдан ЛН (продолжение) №" обязательно при выборе в поле "Иное" значения "31" или "37".</errMess>
+                                    </error>
+                                    <error>
+                                        <errCode>ERR_SIGN</errCode>
+                                        <errMess>Отсутствует подпись председателя ВК к 1 периоду ЭЛН</errMess>
+                                    </error>
+                                </errors>
+                            </infoRow>
+                        </infoRowset>
+                    </info>
+                </ns7:prParseFilelnlpuResponse>
+            </Body>
+        </Envelope>
+    </Body>
+</Envelope>

@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 23.09.2025 задача  -->
 <!-- изменил Пулин дата 15.08.2025 задача  -->
 <!--Начальная дата разработки 13.08.2025 г.-->
 <!--Разработка: Пулин -->
@@ -28,6 +29,10 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 }
+
+
+
+
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
@@ -277,7 +282,7 @@ paymentSum = sum if re.match(pattern, sum) else u'0'
 
 cheapServiceSum = paymentSum if serviceCode == 1 else u'0'
 expensiveServiceSum = paymentSum if serviceCode == 2 else u'0'
-}  
+}
 
 
 
@@ -326,7 +331,10 @@ else:
     payerFirstName = fioList[1].strip() if len(fioList) > 1 else ''
     payerPatrName = fioList[2].strip() if len(fioList) > 2 else ''
 
-    date_list = map(int, action[u'Дата рождения'].value.split(u'.'))
+    if action[u'Дата рождения'].value:
+      date_list = map(int, action[u'Дата рождения'].value.split(u'.'))
+    else:
+      date_list = []
     if len(date_list) == 3:
       day, month, year = date_list
       payerBirthDate = QDate(year, month, day)
@@ -335,13 +343,12 @@ else:
 
     payerDocumentCode =  ''
 
-    payerDocumentSerial = ''
-    payerDocumentNumber = ''
+    payerDocumentSerial = action[u'Серия документа']
+    payerDocumentNumber = action[u'Номер документа']
     payerDocumentSerialAndNumber = payerDocumentSerial + ' ' + payerDocumentNumber
-    payerDocumentDate = ''
+    payerDocumentDate = action[u'Дата выдачи документа'].value
 
 }
-
 
 
 
@@ -376,7 +383,7 @@ def render_cell_left_padding(text, amount):
 <!-- @formatter:on -->
 </head>
 <body class="body">
-<h2>{sum}</h2>
+
 <div class="main">
   <!-- note page 1-->
   <section class="page">
@@ -491,11 +498,11 @@ def render_cell_left_padding(text, amount):
 
 
         <div class="col-7 row-title">Дата выдачи</div>
-        {: write(render_cell_right_padding('', 2))}
+        {: write(render_cell_right_padding(payerDocumentDate.toString(u'dd'), 2))}
         <div class="dot">.</div>
-        {: write(render_cell_right_padding('', 2))}
+        {: write(render_cell_right_padding(payerDocumentDate.toString(u'MM'), 2))}
         <div class="dot">.</div>
-        {: write(render_cell_right_padding('', 4))}
+        {: write(render_cell_right_padding(payerDocumentDate.toString(u'yyyy'), 4))}
         <div class="col-23"></div>
 
 

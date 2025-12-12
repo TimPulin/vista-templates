@@ -1,9 +1,10 @@
+
 <!--Начальная дата разработки 11.09.2025 г.-->
 <!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!--Контекст печати: blood_packet -->
+<!--Задача: DEV_TEMP-5746 Сделать универсальный шаблон печати для СЭМДа Трансфузия -->
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -26,37 +27,1006 @@
 {:
 write('''
 <style>
-.h1 {
+  table thead td, table thead th {
     text-align: center;
-    margin-bottom: 20px;
-    font-size: 14pt;
-    font-weight: 900;
-}
-.main {
-    font-family: 'Times New Roman';
-    font-size: 12pt;
-}
-.small {
-  font-size: 8pt;
-}
-.bold {
-  font-weight: 900;
-}
-.red-line {
-  text-indent: 10px;
-}
-.white-wrap {
-  white-space: nowrap;
-}
+    font-weight: 800;
+    font-size: 8pt;
+  }
+  div {
+      font-size: 11pt;
+  }
+  .square {
+      width: 300px;
+      height: 300px;
+      border: 2px solid black;
+      position: relative;
+      float: right;
+  }
+  .highlight {
+      font-size: 22px;
+      font-weight: 900;
+  }
 </style>
 ''')}
+
+{:
+def getDoseAmount(act):
+  amount = 0
+  if act[u'Данные о пакете'].value:
+    for prop in act[u'Данные о пакете']:
+      amount += forceInt(prop[u'Количество'].value)
+
+  return amount
+}
+
+<!--
+переменные были
+os = ''
+os_code = ''
+-->
+{:
+org_ref = db.getRecordEx(stmt=u"""
+  select code as os,
+    infisCode as os_code
+    from orgstructure where id=GetlastMovingOrgst({evenId});
+""".format(evenId=event.id))
+
+if org_ref:
+  org_code = forceString(org_ref.value('os'))
+  org_infis_code = forceString(org_ref.value('os_code'))
+else:
+  org_code = ''
+  org_infis_code = ''
+}
+
+
+{:
+clientRef = db.getRecordEx(stmt=u"""
+    select
+        ambCardNumber
+    from
+        client
+    where id = {clientId};
+""".format(clientId=event.client.id))
+if clientRef:
+    ambCardNumber = forceString(clientRef.value('ambCardNumber'))
+else:
+    ambCardNumber = ''
+}
+
+{:
+clientBloodRef = db.getRecordEx(stmt=u"""
+SELECT
+    sbg.NAME AS bloodGroup,
+    sbr.NAME AS bloodRhesus
+FROM clientbloodinfo cbi
+LEFT JOIN sprav_blood_group sbg ON cbi.`group` = sbg.id
+LEFT JOIN sprav_blood_rh sbr ON cbi.rhesus = sbr.id
+WHERE cbi.client_id = {clientId}
+""".format(clientId=client.id))
+
+if clientBloodRef:
+  bloodGroup = forceString(clientBloodRef.value('bloodGroup'))
+  bloodRhesus = forceString(clientBloodRef.value('bloodRhesus'))
+else:
+  bloodGroup = '______'
+  bloodRhesus = '______'
+}
+
+{:
+clientFenotip = db.getRecordEx(stmt=u"""
+  SELECT sbp.NAME as phenotype
+  FROM clientbloodinfo cbi
+  LEFT JOIN sprav_blood_fenotip sbp ON cbi.phenotype = sbp.id
+  WHERE cbi.client_id =  {clientId}
+""".format(clientId=client.id))
+
+if clientFenotip:
+  phenotype = forceString(clientFenotip.value('phenotype'))
+else:
+  phenotype = '______'
+}
+<!--
+ "action_id":514333373,"template_id":"1909
+ -->
 <!-- @formatter:on -->
+
+{:
+trans_act_type_info_ref = db.getRecordEx(stmt=u"""
+  select a.actionType_id as trans_act_type_id,
+         a.id            as trans_act_id
+  from actionproperty_action apa
+           join actionproperty ap on apa.id = ap.id
+           join action a on ap.action_id = a.id
+  where apa.value = {action_id};
+""".format(action_id=action.id))
+
+if trans_act_type_info_ref:
+  trans_act_type_id = forceInt(trans_act_type_info_ref.value(u'trans_act_type_id'))
+  trans_act_id = forceInt(trans_act_type_info_ref.value(u'trans_act_id'))
+else:
+  trans_act_type_id = None
+  trans_act_id = None
+}
+
+{:
+trans_act = None
+if trans_act_id:
+  trans_act_list = filter(lambda x: x.id == trans_act_id, event.actions)
+  trans_act = trans_act_list[0] if len(trans_act_list) > 0 else None
+}
+
+{:
+zayav = None
+if trans_act:
+  if trans_act[u'Дата трансфузии'].value:
+    zayav = db.getRecordEx(stmt=u"""
+      select at.name,
+             o.name                                                                              org,
+             date_format(a.endDate, '%d.%m.%Y %H:%i')                                            begDate,
+             (select name from SPRAV_BLOOD_GROUP where id = get_apr_value(a.id, 'Группа крови')) gro,
+             (select name from SPRAV_BLOOD_RH where id = get_apr_value(a.id, 'Резус фактор'))    rh,
+             (select name from SPRAV_BLOOD_Fenotip where id = get_apr_value(a.id, 'Фенотип'))    fen
+      from action a
+               join person p on p.id = a.setPerson_id
+               join orgStructure o on o.id = p.orgStructure_id
+               join actiontype at on a.actionType_id = at.id and a.deleted = 0
+               join actionproperty ap on a.id = ap.action_id and ap.deleted = 0
+      where event_id = {e_id}
+        and date_format(a.directionDate, '%d.%m.%Y') = '{d_t}'
+        and at.name = 'Заявка в ОПК';
+    """.format(e_id=event.id, d_t=forceString(trans_act[u'Дата трансфузии'].value)))
+}
+<!--
+note
+AT_id: 419294682 - Протокол трансфузии свежезамороженной плазмы
+AT_id: 419294685 - Протокол трансфузии тромбоконцентрата
+AT_id: 419294686 - Протокол трансфузии эритроцитов
+AT_id: 419295205 - Протокол трансфузии криопреципитат
+-->
+
+{:
+PLAZMA = u'plazma'
+TROMB = u'trom'
+ERITROCIT = u'eritrocit'
+CRIO = u'crio'
+}
+{:
+current_type = None
+if trans_act_type_id:
+  if trans_act_type_id == 419294682:
+    current_type = PLAZMA
+  elif trans_act_type_id ==  419294685:
+    current_type = TROMB
+  elif trans_act_type_id ==  419294686:
+    current_type = ERITROCIT
+  elif trans_act_type_id ==  419295205:
+    current_type = CRIO
+}
+
 </head>
 <body>
 
 <div class="main">
-  <div align="center" class="h1"></div>
 
+
+
+  {if: trans_act and zayav and current_type and current_type == PLAZMA }
+    <section>
+
+      <div class="container">
+          <div  align="center"><b>Протокол трансфузии свежезамороженной плазмы</b></div>
+
+          <div class="section">
+              <div>
+                1. ФИО пациента:
+                <span class="highlight">{client.fullName}</span> № истории болезни: <span class="highlight">{event.externalId}</span>,
+                номер&nbsp;амбулаторной&nbsp;карты&nbsp;<span class="highlight">{ambCardNumber}</span>
+              </div>
+
+              <div>Отделение: <b>{forceString(zayav.value('org')) if zayav else event.execPerson.orgStructure.name}</b></div>
+              <div>2. Дата и время подачи заявки:
+                {: requestDate = '_________'}
+                {if: u'Дата и время подачи заявки' in trans_act}
+                  {if: trans_act[u'Дата и время подачи заявки'].value}
+                    {: requestDate = trans_act[u'Дата и время подачи заявки']}
+                  {else:}
+                    {: requestDate = forceString(zayav.value('begDate')) if zayav else '______'}
+                  {end:}
+                {else:}
+                  {: requestDate = forceString(zayav.value('begDate')) if zayav else '______'}
+                {end:}
+
+                <b>{requestDate}</b></div>
+
+              <div>3. Дата трансфузии: <b>{trans_act[u'Дата трансфузии']}</b> (время начала <b>{trans_act[u'время начала'].value or '_'*5}</b>, время окончания <b>{trans_act[u'время окончания'].value or '_'*5}</b>)</div>
+
+              <div>4. Данные медицинского обследования реципиента:</div>
+
+              <div>
+                Группа крови, резус-принадлежность:
+                <b>{bloodGroup} {bloodRhesus} {phenotype}</b>
+             </div>
+
+              <div>5. Показания к проведению трансфузии: <b>{trans_act[u'Показания к проведению трансфузии'].value or '_'*10}</b></div>
+
+              <div>
+                6. Анамнез реципиента:
+                трансфузии в анамнезе: <b>{trans_act[u'трансфузии в анамнезе'].value or '_'*15}</b><br>
+                в т.ч. по индивидуальному подбору: <b>{trans_act[u'в т.ч. по индивидуальному подбору'].value or '_'*15}</b>
+                <div>реакций и осложнений на трансфузии в анамнезе: <b>{trans_act[u'реакции и осложнения на трансфузии в анамнезе'].value or '_'*15}</b> </div>
+              </div>
+
+              <div class="square"><div style="font-size: 15pt; text-align: center"> Место для этикетки</div></div>
+
+              <div>Акушерский анамнез (кол-во беременностей): <b>{trans_act[u'Акушерский анамнез (кол-во беременностей)'].value}</b></div>
+              <div>Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.): {trans_act[u'Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.)'].value:n}</div>
+
+              <div>7. Данные о донорской крови или ее компонентах:</div>
+
+              <div>Макроскопическая оценка компонента крови: <b>{trans_act[u'Макроскопическая оценка компонента крови'].value or '_'*10}</b></div>
+
+              <div>Наименование компонента:</div>
+              <div><b>{trans_act[u'Наименование компонента'].value or '_'*10}</b></div>
+              {if: trans_act[u'Данные о пакете'].value}
+                {: packageData = trans_act[u'Данные о пакете'][0]}
+                <div>
+                  <div>
+                    № компонента <b>{packageData[u'№ компонента'] if packageData[u'№ компонента'].value else '_'*10}</b>
+                    Количество <b>{packageData[u'Количество'] if packageData[u'Количество'].value else '_'*10}</b> мл.
+                  </div>
+
+                  <div>
+                    Группа крови (ABO), Резус-принадлежность <b>{forceString(packageData[u'Группа крови (ABO), Резус-принадлежность'].value).split('Rh')[0] if packageData[u'Группа крови (ABO), Резус-принадлежность'].value else '_'*10}
+                  </div>
+
+                  <div>
+                    Дата заготовки <b>{trans_act[u'Данные о пакете'][0][u'Дата заготовки'].value}</b>
+                  </div>
+                  <div>
+                    Срок годности <b>{trans_act[u'Данные о пакете'][0][u'Срок годности'].value}</b>
+                  </div>
+                </div>
+              {else:}
+                <div>
+                  № компонента {'_' * 10}
+                  Количество {'_' * 10} мл.
+                </div>
+                <div>
+                  Группа крови (ABO), Резус-принадлежность донора {'_' * 10} <br>
+                  Дата заготовки: {'_' * 5} Срок годности {'_' * 5}
+                </div>
+              {end:}
+
+              <div>Наименование организации, осуществившей заготовку: <b>{trans_act[u'Наименование организации, осуществившей заготовку']}</b></div>
+
+              <div>8. Пробы на индивидуальную совместимость в отделении:</div>
+              <div>- Проведено контрольное определение группы крови, резус-принадлежности реципиента цоликлонами:<br>
+                  {if: trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value}
+                      {trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value:n}
+                  {else:}
+                      анти - А (серия {'_'*8}, годен до {'_'*8}), анти - В (серия {'_'*8}, годен до {'_'*8}), <br>
+                      анти - Д (серия {'_'*8}, годен до {'_'*8}) производитель {'_'*20}
+                  {end:}
+              </div>
+
+              <div>- Биологическая проба (переливание со скоростью 2 мл в минуту первые 15 минут трансфузии наблюдением за пациентом): <b>{trans_act[u'Биологическая проба (переливание со скоростью 2 мл в минуту первые 15 минут трансфузии наблюдением за пациентом)']}</b></div>
+              <div>9. Реакции и осложнения: <b>{trans_act[u'Реакции и осложнения'].value or '_'*15}</b>. Степень тяжести: <b>{trans_act[u'Степень тяжести осложнения'].value or '_'*15}</b></div>
+
+              <div>Основные симптомы: <b>{trans_act[u'Основные симптомы'].value or '_'*15}</b></div>
+
+              <div>10. Наблюдение за состоянием реципиента: <span></span></div>
+
+              <table width="100%" cellpadding="3" cellspacing="0" border="1" style="font-size: 10pt;">
+                  <tr>
+                    <td></td>
+                    <td>АД, мм рт. ст.</td>
+                    <td>Ps, уд./мин.</td>
+                    <td>T °C</td>
+                    <td>Диурез, цвет мочи</td>
+                  </tr>
+                  {:timePointNameList = [u'Перед переливанием', u'Через 1 час после переливания', u'Через 2 часа после переливания']}
+                  {for: timePointName in timePointNameList}
+                    {: innerAct = trans_act[timePointName]}
+                      <tr>
+                        <td>{timePointName}</td>
+                        <td>
+                          {innerAct[u'АД, мм рт. ст.'] if innerAct.value else ''}
+                        </td>
+                        <td>
+                          {innerAct[u'Ps, уд./мин.'] if innerAct.value else ''}
+                        </td>
+                        <td>
+                          {innerAct[u'T °C'] if innerAct.value else ''}
+                        </td>
+                        <td>
+                          {innerAct[u'Диурез, цвет мочи'] if innerAct.value else ''}
+                        </td>
+                      </tr>
+                  {end:}
+               </table>
+
+              <div style="margin-top: 5px">11. Врач, осуществивший трансфузию: <b>
+                {trans_act[u'Врач, осуществивший трансфузию'].value or '_'*15}
+               подпись {'_' * 20}</b></div>
+              <br>
+              <div align="center"><b>Оценка эффективности трансфузии СЗП:</b></div>
+              <div>
+                  Учитывая уменьшение/стабильность/нарастание признаков нарушения гемостаза (геморрагического синдрома, коагулопатии, продолжающегося кровотечения),<br>
+                а также лабораторные данные МНО <b>{trans_act[u'лабораторные данные МНО'].value or '_'*10}</b>, АЧТВ <b>{trans_act[u'АЧТВ'].value or '_'*10}</b> сек., фибриноген <b>{trans_act[u'фибриноген'].value or '_'*10}</b> г/л, ПТИ <b>{trans_act[u'ПТИ'].value or '_'*10}</b> %, от {trans_act[u'Дата лабораторных данных'].value or '_'*15}г.,
+              эффект трансфузии {if: trans_act[u'эффект трансфузии свежезамороженной плазмы'].value}<b>{trans_act[u'эффект трансфузии свежезамороженной плазмы'].value}</b> {else:} <b>достигнут/не достигнут</b> {end:}
+              Планируется {if: trans_act[u'Дальнейшее планировании коррекции гемостаза'].value}<b>{trans_act[u'Дальнейшее планировании коррекции гемостаза'].value }</b>{else:} <b>продолжение/прекращение</b> коррекции гемостаза {end:}</div>
+              <div>ФИО врача { '_'*15} подпись {'_' * 10}, дата ___._____.{forceString(currentDate).split('.')[-1]}г.</div>
+              <div>Врач-трансфузиолог Шиянова А.А. подпись {'_' * 10}</div>
+          </div>
+      </div>
+
+          <br>
+      <div style="page-break-after: always;"></div>
+
+      <div align="center"><b>Предтрансфузионный эпикриз</b></div>
+          <div>Учитывая:<br>
+          - клинические признаки: геморрагического синдрома ЕСТЬ/НЕТ; кровотечения _____ мл; ДВС-синдрома ЕСТЬ/НЕТ, коагулопатии ЕСТЬ/НЕТ, передозировки антикоагулянтов непрямого действия ЕСТЬ/НЕТ,<br>
+          другое {'_'*45}<br>
+              а также лабораторные данные: МНО <b>{trans_act[u'лабораторные данные МНО'].value or '_'*10}</b>, АЧТВ <b>{trans_act[u'АЧТВ'].value or '_'*10}</b> сек., фибриноген <b>{trans_act[u'фибриноген'].value or '_'*10}</b> г/л, ПТИ <b>{trans_act[u'ПТИ'].value or '_'*10}</b> %,
+              с целью коррекции гомеостаза показано переливание свежезамороженной плазмы {'_'*5} мл.<br>
+        Противопоказаний к трансфузии СЗП нет.<br>
+        Беседа с пациентом (законным представителем) о цели трансфузии СЗП проведена, согласие на гемотрансфузию
+        получено (Состояние пациента не позволяет ему выразить свою волю – оформлено консилиумом).</div>
+      <br>
+
+      <div style="margin-top: 20px">ФИО врача
+        <b>  {trans_act[u'Врач, осуществивший трансфузию'].value or '_'*15}</b>
+        подпись {'_' * 20}, дата ___._____.{forceString(currentDate).split('.')[-1]}г. </div>
+      <div style="margin-top: 20px">Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_' * 10}</div>
+    </section>
+  {end:} <!-- note PLAZMA -->
+
+  {if: trans_act and zayav and current_type and current_type == TROMB }
+    <section>
+
+        <div class="container">
+            <div align="center"><b>Протокол трансфузии тромбоконцентрата</b></div>
+
+            <div>
+                <div>
+                  1. ФИО пациента: <span class="highlight">{client.fullName}</span>
+                  № истории болезни: <span class="highlight">{event.externalId}</span>
+                  амбулаторная&nbsp;карта&nbsp;№&nbsp;<span class="highlight">{ambCardNumber}</span>
+                </div>
+
+                <div>Отделение: <b>{forceString(zayav.value('org')) if zayav else event.execPerson.orgStructure.name}</b></div>
+                <div>2. Дата и время подачи заявки: <b>
+                  {if: zayav}
+                    {forceString(zayav.value('begDate'))}
+                  {elif: trans_act[u'Дата и время подачи заявки'].value}
+                    {trans_act[u'Дата и время подачи заявки'].value}
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+                </b></div>
+
+                <div>3. Дата трансфузии:
+                  {if: trans_act[u'Дата трансфузии'].value}
+                    <b>{trans_act[u'Дата трансфузии'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+
+                  (время начала
+                  {if: trans_act[u'время начала'].value}
+                      <b>{trans_act[u'время начала'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:},
+
+                  время окончания
+                  {if: trans_act[u'время окончания'].value}
+                      <b>{trans_act[u'время окончания'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:})
+                </div>
+
+                <div>4. Данные медицинского обследования реципиента:</div>
+
+                <div>
+                  Группа крови, резус-принадлежность:
+                  <b>{bloodGroup} {bloodRhesus}</b> Антигены C,c,E,e,K: <b> {phenotype}</b><br>
+                  Аллоимунные антитела: не выявлены/выявлены (указать какие) {'_'*10}
+                </div>
+
+                <div>5. Показания к проведению трансфузии: <b>{trans_act[u'Показания к проведению трансфузии'].value or '_'*10}</b></div>
+
+                <div>
+                  6. Анамнез реципиента:
+                  трансфузии в анамнезе:
+                  { if: trans_act[u'трансфузии в анамнезе'].value}
+                  <b>{trans_act[u'трансфузии в анамнезе'].value or '_'*10}</b>
+                  {else:}
+                  <b>не были,</b>
+                  {end:}
+                  в т.ч. по индивидуальному подбору:
+                  { if: trans_act[u'в т.ч. по индивидуальному подбору'].value}
+                  <b>{trans_act[u'в т.ч. по индивидуальному подбору'].value}</b>
+                  {else:}
+                  <b>не были</b>
+                  {end:}
+
+                  <div>реакций и осложнений на трансфузии в анамнезе: <b>{trans_act[u'реакции и осложнения на трансфузии в анамнезе'].value or '_'*10}</b> </div>
+                </div>
+
+                {if: client.sex.lower() == u'ж'}
+                  <div>Акушерский анамнез (кол-во беременностей): <b>{trans_act[u'Акушерский анамнез (кол-во беременностей)'].value}</b></div>
+                  <div>
+                    Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.):
+                    {trans_act[u'Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.)'].value:n}
+                  </div>
+                {end:}
+
+                <div>7. Данные о донорской крови или ее компонентах:</div>
+
+                <div>Макроскопическая оценка компонента крови: <b>{trans_act[u'Макроскопическая оценка компонента крови'].value or '_'*10}</b></div>
+
+                <div>Наименование компонента:
+                  {if: trans_act[u'Наименование компонента'].value}<b>{trans_act[u'Наименование компонента'].value}</b> {else: } <i>концентрат тромбоцитов: аферезный/ лейкоредуцированный/ патогенноредуцированный/
+                    из единицы крови/ пулированный в добавочном растворе</i> {end:}
+                  количество
+                  {: doseAmountFromPackageData = getDoseAmount(trans_act)}
+                  {if: doseAmountFromPackageData > 0}
+                    <b>{doseAmountFromPackageData}</b>
+                  {elif: trans_act[u'Количество'].value}
+                    <b>{trans_act[u'Количество'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+                  доз
+                </div>
+
+                <div>Наименование организации, осуществившей заготовку: <b>{trans_act[u'Наименование организации, осуществившей заготовку'].value or '_'*10}</b></div>
+                        <table width="100%" cellpadding="2" cellspacing="0" border="1" >
+                            <thead>
+                              <tr>
+                                  <td >№ компонента</td>
+                                  <td>Группа крови (ABO), Резус-принадлежность</td>
+                                  <td>Количество</td>
+                                  <td>Дата заготовки</td>
+                                  <td>Срок годности</td>
+                                  <td>Результат биологической пробы</td>
+                              </tr>
+                              <tr>
+                                  <td><span>1</span></td>
+                                  <td><span>2</span></td>
+                                  <td><span>3</span></td>
+                                  <td><span>4</span></td>
+                                  <td><span>5</span></td>
+                                  <td><span>6</span></td>
+                              </tr>
+                            </thead>
+                            {if: trans_act[u'Данные о пакете'].value}
+                              {for: prop in trans_act[u'Данные о пакете']}
+                                <tr>
+                                  <td font-size="10px"><b>{prop[u'№ компонента'].value}</b></td>
+                                  <td font-size="10px">
+                                    {prop[u'Группа крови (ABO), Резус-принадлежность'].value}
+                                  </td>
+                                  <td font-size="10px">{prop[u'Количество'].value}</td>
+                                  <td font-size="10px">{prop[u'Дата заготовки'].value}</td>
+                                  <td font-size="10px">{prop[u'Срок годности'].value}</td>
+                                  <td font-size="10px">{prop[u'Результат биологической пробы'].value}</td>
+                                </tr>
+                              {end:}
+                            {else:}
+                              {for: _ in range(7)}
+                                <tr>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                </tr>
+                              {end:}
+                            {end:}
+                        </table>
+
+                <div>8. Пробы на индивидуальную совместимость в отделении:</div>
+                <div>- Проведено контрольное определение группы крови, резус-принадлежности реципиента цоликлонами:<br>
+                    {if: trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value}
+                        {trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value:n}
+                    {else:}
+                        анти - А (серия {'_'*8}, годен до {'_'*8}), анти - В (серия {'_'*8}, годен до {'_'*8}), <br>
+                        анти - Д (серия {'_'*8}, годен до {'_'*8}) производитель {'_'*20}
+                    {end:}
+                </div>
+
+                <div>- Биологическая проба (переливание со скоростью 2 мл в минуту первые 15 минут трансфузии наблюдением за пациентом): <b>{trans_act[u'Биологическая проба (переливание со скоростью 2 мл в минуту первые 15 минут трансфузии наблюдением за пациентом)'].value}</b></div>
+                <div>9. Реакции и осложнения: <b>{trans_act[u'Реакции и осложнения'].value}</b>.
+                  {if: trans_act[u'Степень тяжести осложнения'].value}
+                    Степень тяжести: <b>{trans_act[u'Степень тяжести осложнения'].value}</b></div>
+                  {end:}
+
+                <div>Основные симптомы: <b>{trans_act[u'Основные симптомы'].value}</b></div>
+
+                <div>10. Наблюдение за состоянием реципиента:</div>
+                <table width="100%" cellpadding="2" cellspacing="0" border="1" >
+                    <thead>
+                      <tr>
+                        <td></td>
+                        <td>АД, мм рт. ст.</td>
+                        <td>Ps, уд./мин.</td>
+                        <td>T °C</td>
+                        <td>Диурез, цвет мочи</td>
+                      </tr>
+                    </thead>
+                    {:timePointNameList = [u'Перед переливанием', u'Через 1 час после переливания', u'Через 2 часа после переливания']}
+                      {for: timePointName in timePointNameList}
+                          {if: trans_act[timePointName].value}
+                            <tr>
+                              <td>{timePointName}</td>
+                              <td>
+                                {trans_act[timePointName][u'АД, мм рт. ст.'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'Ps, уд./мин.'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'T °C'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'Диурез, цвет мочи'].value}
+                              </td>
+                            </tr>
+                          {else:}
+                            <tr>
+                              <td>{timePointName}</td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                          {end:}
+                      {end:}
+                 </table>
+                <div style="margin-top: 10px">11. Врач, осуществивший трансфузию:
+                  <b>{trans_act[u'Врач, осуществивший трансфузию'].value or '_'*10}</b>
+                     подпись {'_' * 20}</div>
+                <br>
+                <div style="text-align: center"><b>Оценка эффективности трансфузии тромбоцитов</b>:</div>
+                <div>
+                    Учитывая клинические данные: уменьшение/стабильность/нарастание кровоточивости, появления свежих геморрагий на коже и видимых слизистых, и лабораторные данные: количество тромбоцитов {trans_act[u'кол-во тромбоцитов'].value or '_'*10} x10<sup>9</sup>
+                    Кл/л от {trans_act[u'Дата лабораторных данных'].value or '_'*10} г,
+                    эффект трансфузии
+                    {if: trans_act[u'эффект трансфузии'].value}<b>{trans_act[u'эффект трансфузии'].value}</b> {else:} <b>достигнут/не достигнут</b> {end:}
+                    Планируется {if: trans_act[u'Дальнейшее планировании коррекции гемостаза'].value}<b>{trans_act[u'Дальнейшее планировании коррекции гемостаза'].value }</b>{else:} <b>продолжение/прекращение</b> трансфузий тромбоконцентрата {end:}<br>
+                    ФИО врача {'_'*20} подпись {'_'*10} дата ___.______.{forceString(currentDate).split('.')[-1]}г.<br>
+                    Врач-трансфузиолог Шиянова А.А. подпись {'_'*20}
+                </div>
+            </div>
+        </div>
+
+        <div style="page-break-after: always;"></div>
+        <div align="center"><b>Предтрансфузионный эпикриз</b></div>
+            <div>Учитывая клинические признаки: кровоточивости, появления свежих геморрагий на коже и видимых слизистых, ДВС-синдрома, а также лабораторные данные: количество тромбоцитов {'_'*4} x10<sup>9</sup> кл/л.,
+            с целью коррекции тромбоцитопении показано переливание концентрата тромбоцитов {'_'*4} доз.<br>
+            Противопоказаний к трансфузии тромбоцитов нет.<br>
+            Беседа с пациентом (законным представителем) о цели трансфузии тромбоцитов проведена, согласие на гемотрансфузию получено (Состояние пациента не позволяет ему выразить свою волю - согласие оформлено консилиумом).</div>
+        <div style="margin-top: 20px">ФИО врача <b>
+          <b>{trans_act[u'Врач, осуществивший трансфузию'].value or '_'*10}</b>
+        </b> подпись {'_' * 10}, дата ___._____.{forceString(currentDate).split('.')[-1]}г. </div>
+        <div style="margin-top: 20px">Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_' * 20}</div>
+
+    </section>
+  {end:} <!-- note TROMB -->
+
+  {if: trans_act and zayav and current_type and current_type == ERITROCIT }
+    <section>
+        <div class="container">
+            <div align="center"><b>Протокол трансфузии эритроцитосодержащих компонентов крови</b></div>
+
+            <div class="section">
+              <div>
+                1. ФИО реципиента:
+                <span class="highlight"><b>{client.fullName}</b></span> № истории болезни: <span class="highlight"><b>{event.externalId}</b></span> номер&nbsp;амбулаторной&nbsp;карты&nbsp;<span class="highlight">{ambCardNumber}</span> Отделение: <b>{org_code}</b>
+              </div>
+
+                <div>2. Дата и время подачи заявки: <b>{trans_act[u'Дата и время подачи заявки'].value or '_'*10}</b></div>
+
+                <div>3. Дата трансфузии: <b>{trans_act[u'Дата трансфузии']}</b> (время начала <b>{trans_act[u'время начала'].value or '__:__'}</b> , время окончания <b>{trans_act[u'время окончания'].value or '__:__'}</b>)</div>
+
+                <div>4. Данные медицинского обследования реципиента:</div>
+                <!-- NOTE client.bloodType если не подтягивается, значит нет-->
+                <div>
+                    Группа крови, резус-принадлежность:<br>
+                    <b>{bloodGroup} {bloodRhesus} </b>
+                    Антигены C, c, E, e, K: <b>{phenotype}</b>
+                </div>
+                <div>Аллоиммунные антитела: <b>{trans_act[u'Аллоиммунные антитела'].value or '_'*10}</b>
+                  {if: trans_act[u'Аллоиммунные антитела'].value == 'выявлено'}
+                  указать какие {'_' * 20} {end:}
+                </div>
+
+                <div>5. Показания к проведению трансфузии: <b>{trans_act[u'Показания к проведению трансфузии'].value or '_'*10}</b></div>
+                <!-- TODO -->
+                <div>
+                  6. Анамнез реципиента:
+                  трансфузии в анамнезе: <b>{trans_act[u'трансфузии в анамнезе'].value or '_'*10}</b>
+                  в т.ч. по индивидуальному подбору: <b>{trans_act[u'в т.ч. по индивидуальному подбору'].value or '_'*10}</b><br>
+                  реакции и осложнения на трансфузии в анамнезе: <b>{trans_act[u'реакции и осложнения на трансфузии в анамнезе'].value or '_'*10}</b>
+                </div>
+
+                <div>Акушерский анамнез (кол-во беременностей): <b>{trans_act[u'Акушерский анамнез (кол-во беременностей)']}</b></div>
+                <div>Особенности течения (самопроизвольные аборты, <br>гемолитическая болезнь новорожденного и др.):<br>
+                  <b>{trans_act[u'Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.)'].value:n}</b>
+                </div>
+
+                <div class="square"><div style="font-size: 15pt; text-align: center"> Место для этикетки</div></div>
+
+                <div>7. Данные о донорской крови или ее компонентах:</div>
+
+                <div>Макроскопическая оценка компонента крови: <b>{trans_act[u'Макроскопическая оценка компонента крови'].value or '_'*10}</b></div>
+
+                <div>Наименование компонента:</div>
+                <div>
+                  <b>{trans_act[u'Наименование компонента'].value or '_'*5}</b>
+                </div>
+                {if: trans_act[u'Данные о пакете'].value}
+                <div>
+                    № компонента <b>{trans_act[u'Данные о пакете'][0][u'№ компонента'].value}</b> Количество <b>{trans_act[u'Данные о пакете'][0][u'Количество'].value}</b> мл.<br>
+                    Группа крови (ABO), Резус-принадлежность <b>{forceString(trans_act[u'Данные о пакете'][0][u'Группа крови (ABO), Резус-принадлежность'].value).split('Rh')[0]} {u'положительная' if forceString(trans_act[u'Данные о пакете'][0][u'Группа крови (ABO), Резус-принадлежность'].value).split('Rh')[1] == '+' else u'отрицательная'}</b><br>
+                    Дата заготовки <b>{trans_act[u'Данные о пакете'][0][u'Дата заготовки'].value}</b><br>
+                    Срок годности <b>{trans_act[u'Данные о пакете'][0][u'Срок годности'].value}</b><br>
+                </div>
+                {else:}
+                <div>
+                  № компонента {'_' * 10} количество {'_' * 5}<br>
+                  Группа крови (ABO), Резус-принадлежность {'_' * 10}<br>
+                  Антигены эритроцитов: C,c,E,e,K {'_' * 5}<br>
+                  Дата заготовки {'_' * 5}<br>
+                  Срок годности {'_' * 5}
+                </div>
+                {end:}
+                <div>Наименование организации, осуществившей заготовку: <br><b>{trans_act[u'Наименование организации, осуществившей заготовку'].value or '_'*10}</b></div>
+
+                <!-- TODO -->
+                <div>8. Результаты индивидуального подбора:</div>
+                <div><b>{trans_act[u'Результаты индивидуального подбора'].value or '_'*20}</b> (результат вклеить в историю)</div>
+                <div>Дата: <b>{trans_act[u'Дата индивидуального подбора']}</b></div>
+                <div>Подбор выполнил: {trans_act[u'Подбор выполнил'].value or '_'*15}</div>
+
+                <div>9. Пробы на индивидуальную совместимость в отделении – проведены определения группы крови, резус-принадлежности <br>донора и реципиента цоликлонами:</div>
+                  {if: trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value}
+                      {trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value:n}
+                  {else:}
+                      анти - А (серия {'_'*8}, годен до {'_'*8}), анти - В (серия {'_'*8}, годен до {'_'*8}), <br>
+                      анти - Д (серия {'_'*8}, годен до {'_'*8}) производитель {'_'*20}
+                  {end:}
+                <div>
+                  - перед трансфузией проба на плоскости (температура окружающей среды +18+25°C):
+                  <b>{trans_act[u'непосредственно перед трансфузией проба на плоскости (температура окружающей среды +18±25°C)'].value or '_'*10}</b>.</div>
+                <div>
+                    - непрямой антиглобулиновый тест: <b>{trans_act[u'непрямой антиглобулиновый тест'].value or '_'*10}</b>
+                </div>
+                <div>
+                  - Биологическая проба (переливание со скоростью 2 мл в минуту первые 15 минут трансфузии наблюдением за пациентом):
+                  <b>{trans_act[u'Биологическая проба'].value or '_'*10}</b>
+                </div>
+
+                <div>10. Реакции и осложнения: <b>{trans_act[u'Реакции и осложнения'].value or '_'*10}</b>. Степень тяжести: <b>{trans_act[u'Степень тяжести осложнения'].value or '_'*10}</b></div>
+
+                <div>Основные симптомы: <b>{trans_act[u'Основные симптомы'].value  or '_'*35}</b></div>
+
+                <div>11. Наблюдение за состоянием реципиента:</div>
+                 <table width="100%" cellpadding="2" cellspacing="0" border="1" font-size="10px">
+                  <thead>
+                    <tr>
+                      <td></td>
+                      <td>АД, мм рт. ст.</td>
+                      <td>Ps, уд./мин.</td>
+                      <td>T °C</td>
+                      <td>Диурез, цвет мочи</td>
+                    </tr>
+                  </thead>
+                  {:timePointNameList = [u'Перед переливанием', u'Через 1 час после переливания', u'Через 2 часа после переливания']}
+                    {for: timePointName in timePointNameList}
+                        {if: trans_act[timePointName].value}
+                          <tr font-size="10px">
+                            <td>{timePointName}</td>
+                            <td>
+                              {trans_act[timePointName][u'АД, мм рт. ст.'].value}
+                            </td>
+                            <td>
+                              {trans_act[timePointName][u'Ps, уд./мин.'].value}
+                            </td>
+                            <td>
+                              {trans_act[timePointName][u'T °C'].value}
+                            </td>
+                            <td>
+                              {trans_act[timePointName][u'Диурез, цвет мочи'].value}
+                            </td>
+                          </tr>
+                        {else:}
+                          <tr font-size="10px">
+                            <td>{timePointName}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                          </tr>
+                        {end:}
+                    {end:}
+               </table>
+
+                <div style="margin-top: 5px">12. Врач, осуществивший трансфузию:<b> {trans_act[u'Врач, осуществивший трансфузию']}</b> подпись {'_' * 20}</div>
+                <div style="text-align: center"><b>Оценка эффективности трансфузии эритроцитов</b>:</div>
+
+                <div>
+                  Учитывая уменьшение/стабильность/нарастание признаков анемии, а также лабораторные данные от {trans_act[u'Дата лабораторных данных'].value or '_'*10} г.:
+                    Hb {trans_act[u'Hb'].value or '_'*10} г/л, Ht {trans_act[u'Ht'].value or '_'*10} %, кол-во эритроцитов {trans_act[u'кол-во эритроцитов'].value or '_'*10}*10<sup>12</sup>кл/л.,<br>
+                    эффект трансфузии
+                    {if: trans_act[u'эффект трансфузии'].value}<b>{trans_act[u'эффект трансфузии'].value}</b> {else:} <b>достигнут/не достигнут</b> {end:}
+                    Планируется {if: trans_act[u'Дальнейшее планировании коррекции анемии'].value}<b>{trans_act[u'Дальнейшее планировании коррекции анемии'].value }</b>{else:} <b>продолжение/прекращение</b> трансфузий {end:}
+                </div>
+                <div>ФИО врача {'_'*20} подпись {'_' * 10}, дата <b>{'_'*8}</b> 20___г.</div>
+                <div style="margin-top: 20px">Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_' * 10}</div>
+
+            </div>
+        </div>
+
+        <div style="page-break-after: always;"></div>
+
+        <div align="center"><b>Предтрансфузионный эпикриз</b></div>
+            <div>Учитывая:<br>
+            - клинические признаки анемии: бледность кожных покровов и слизистых ЕСТЬ/НЕТ, гипотензия ЕСТЬ/НЕТ, тахикардия ЕСТЬ/НЕТ, одышка ЕСТЬ/НЕТ, головокружения при нагрузке ЕСТЬ/НЕТ, апатичность ЕСТЬ/НЕТ, спутанность (отсутствие) сознания ЕСТЬ/НЕТ;<br>
+            другое {'_'*45}<br>
+            - сочетанные заболевания: ишемическая болезнь сердца ЕСТЬ/НЕТ, хроническое заболевание легких ЕСТЬ/НЕТ, заболевания почек ЕСТЬ/НЕТ, аутоимунные расстройства ЕСТЬ/НЕТ;<br>
+            другое {'_'*45}<br>
+            - кровопотерю {'_'*5} мл;<br>
+                а также лабораторные данные: Hb <b>{'_'*5}</b> г/л, Ht <b>{'_'*5}</b> %, кол-во эритроцитов <b>{'_'*5}</b> х10<sup>12</sup> кл/л,<br>
+          для поддержания кислородно – транспортной функции крови, показано переливание одногруппной
+          эритроцитсодержащей среды <b>{'_'*5}</b> мл.<br>
+          Беседа с пациентом (законным представителем) о цели трансфузии проведена, согласие на гемотрансфузию
+          получено (Состояние пациента не позволяет ему выразить свою волю – оформлено консилиумом).Противопоказаний к трансфузии эритроцитов нет.</div>
+        <br>
+
+        <div style="margin-top: 20px">ФИО врача <b>{trans_act[u'Врач, осуществивший трансфузию']}</b> подпись {'_' * 10}, дата ___._____.{forceString(currentDate).split('.')[-1]}г. </div>
+        <div style="margin-top: 20px">Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_' * 10}</div>
+    </section>
+  {end:} <!-- note ERITROCIT -->
+
+  {if: trans_act and zayav and current_type and current_type == CRIO }
+    <section>
+        <div class="container">
+            <div align="center"><b>Протокол трансфузии криопреципитат </b></div>
+
+            <div>
+                <div>
+                  1. ФИО пациента: <span class="highlight">{client.fullName}</span>
+                  № истории болезни: <span class="highlight">{event.externalId}</span>
+                  амбулаторная&nbsp;карта&nbsp;№&nbsp;<span class="highlight">{ambCardNumber}</span>
+                </div>
+
+                <div>Отделение: <b>{forceString(zayav.value('org')) if zayav else event.execPerson.orgStructure.name}</b> </div>
+                <div>2. Дата и время подачи заявки: <b>
+                  {if: zayav}
+                    {forceString(zayav.value('begDate'))}
+                  {elif: trans_act[u'Дата и время подачи заявки'].value}
+                    {trans_act[u'Дата и время подачи заявки'].value}
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+                </b></div>
+
+                <div>3. Дата трансфузии:
+                  {if: trans_act[u'Дата трансфузии'].value}
+                    <b>{trans_act[u'Дата трансфузии'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+
+                  (время начала
+                  {if: trans_act[u'время начала'].value}
+                      <b>{trans_act[u'время начала'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:},
+
+                  время окончания
+                  {if: trans_act[u'время окончания'].value}
+                      <b>{trans_act[u'время окончания'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:})
+                </div>
+
+                <div>4. Данные медицинского обследования реципиента:</div>
+                <div>
+                  Группа крови, резус-принадлежность:
+                  <b>{bloodGroup} {bloodRhesus}</b>
+                </div>
+
+                <div>Фенотип: {phenotype}</div>
+
+                <div>5. Показания к проведению трансфузии: <b>{trans_act[u'Показания к проведению трансфузии'].value or '_'*10}</b></div>
+
+                <div>
+                  6. Анамнез реципиента:
+                  трансфузии в анамнезе:
+                  { if: trans_act[u'трансфузии в анамнезе'].value}
+                  <b>{trans_act[u'трансфузии в анамнезе'].value or '_'*10}</b>
+                  {else:}
+                  <b>не были,</b>
+                  {end:}
+                  в т.ч. по индивидуальному подбору:
+                  { if: trans_act[u'в т.ч. по индивидуальному подбору'].value}
+                  <b>{trans_act[u'в т.ч. по индивидуальному подбору'].value}</b>
+                  {else:}
+                  <b>не были</b>
+                  {end:}
+
+                  <div>реакций и осложнений на трансфузии в анамнезе: <b>{trans_act[u'реакции и осложнения на трансфузии в анамнезе'].value or '_'*10}</b> </div>
+                </div>
+
+                {if: client.sex.lower() == u'ж'}
+                  <div>Акушерский анамнез (кол-во беременностей): <b>{trans_act[u'Акушерский анамнез (кол-во беременностей)'].value}</b></div>
+                  <div>
+                    Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.):
+                    {trans_act[u'Особенности течения (самопроизвольные аборты, гемолитическая болезнь новорожденного и др.)'].value:n}
+                  </div>
+                {end:}
+
+                <div>7. Данные о донорской крови или ее компонентах:</div>
+
+                <div>Макроскопическая оценка компонента крови: <b>{trans_act[u'Макроскопическая оценка компонента крови'].value or '_'*10}</b></div>
+
+                <div>Наименование компонента:</div>
+                <div>
+                    <b>{trans_act[u'Наименование компонента'].value or '_'*10}</b>
+                  количество
+                  {: doseAmountFromPackageData = getDoseAmount(trans_act)}
+                  {if: doseAmountFromPackageData > 0}
+                    <b>{doseAmountFromPackageData}</b>
+                  {elif: trans_act[u'Количество'].value}
+                    <b>{trans_act[u'Количество'].value}</b>
+                  {else:}
+                    {'_' * 10}
+                  {end:}
+                  доз
+                </div>
+
+                <div>Наименование организации, осуществившей заготовку: <b>{trans_act[u'Наименование организации, осуществившей заготовку'].value or '_'*10}</b></div>
+
+                        <table width="100%" cellpadding="2" cellspacing="0" border="1">
+                            <thead>
+                              <tr>
+                                  <td>№ компонента</td>
+                                  <td>Группа крови (ABO), Резус-принадлежность</td>
+                                  <td>Количество</td>
+                                  <td>Дата заготовки</td>
+                                  <td>Срок годности</td>
+                                  <td>Результат биологической пробы</td>
+                              </tr>
+                              <tr>
+                                  <td><span>1</span></td>
+                                  <td><span>2</span></td>
+                                  <td><span>3</span></td>
+                                  <td><span>4</span></td>
+                                  <td><span>5</span></td>
+                                  <td><span>6</span></td>
+                              </tr>
+                            </thead>
+                            {if: trans_act[u'Данные о пакете'].value}
+                              {for: prop in trans_act[u'Данные о пакете']}
+                                <tr>
+                                  <td><b>{prop[u'№ компонента'].value}</b></td>
+                                  <td>
+                                    {prop[u'Группа крови (ABO), Резус-принадлежность'].value}
+                                  </td>
+                                  <td>{prop[u'Количество'].value}</td>
+                                  <td>{prop[u'Дата заготовки'].value}</td>
+                                  <td>{prop[u'Срок годности'].value}</td>
+                                  <td>{prop[u'Результат биологической пробы'].value}</td>
+                                </tr>
+                              {end:}
+                            {else:}
+                              {for: _ in range(7)}
+                                <tr>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                  <td>&nbsp;</td>
+                                </tr>
+                              {end:}
+                            {end:}
+                        </table>
+
+                <div>8. Пробы на индивидуальную совместимость в отделении:</div>
+                <div>- Проведено контрольное определение группы крови, резус-принадлежности реципиента цоликлонами:<br>
+                    {if: trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value}
+                        {trans_act[u'Проведено контрольное определение группы крови, резус-принадлежность реципиента цоликлонами'].value:n}
+                    {else:}
+                        анти - А (серия {'_'*8}, годен до {'_'*8}), анти - В (серия {'_'*8}, годен до {'_'*8}), <br>
+                        анти - Д (серия {'_'*8}, годен до {'_'*8}) производитель {'_'*20}
+                    {end:}
+                </div>
+                <div>9. Реакции и осложнения: <b>{trans_act[u'Реакции и осложнения'].value}</b>.
+                  {if: trans_act[u'Степень тяжести осложнения'].value}
+                    Степень тяжести: <b>{trans_act[u'Степень тяжести осложнения'].value}</b></div>
+                  {end:}
+
+                <div>Основные симптомы: <b>{trans_act[u'Основные симптомы'].value}</b></div>
+
+                <div>10. Наблюдение за состоянием реципиента:</div>
+                <table width="100%" cellpadding="2" cellspacing="0" border="1">
+                    <thead>
+                      <tr>
+                        <td></td>
+                        <td>АД, мм рт. ст.</td>
+                        <td>Ps, уд./мин.</td>
+                        <td>T °C</td>
+                        <td>Диурез, цвет мочи</td>
+                      </tr>
+                    </thead>
+                    {:timePointNameList = [u'Перед переливанием', u'Через 1 час после переливания', u'Через 2 часа после переливания']}
+                      {for: timePointName in timePointNameList}
+                          {if: trans_act[timePointName].value}
+                            <tr>
+                              <td>{timePointName}</td>
+                              <td>
+                                {trans_act[timePointName][u'АД, мм рт. ст.'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'Ps, уд./мин.'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'T °C'].value}
+                              </td>
+                              <td>
+                                {trans_act[timePointName][u'Диурез, цвет мочи'].value}
+                              </td>
+                            </tr>
+                          {else:}
+                            <tr>
+                              <td>{timePointName}</td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                          {end:}
+                      {end:}
+                 </table>
+                <div style="margin-top: 10px">11. Врач, осуществивший трансфузию:
+                  <b>{trans_act[u'Врач, осуществивший трансфузию'].value}</b>
+                     подпись {'_' * 20}</div>
+                <br>
+                <div style="text-align: center"><b>Оценка эффективности трансфузии криопреципитата</b>:</div>
+                <div>
+                    Учитывая клинические данные: уменьшение/стабильность/нарастание кровоточивости, появления свежих геморрагий на коже и видимых слизистых, и лабораторные данные: количество фибриногена {trans_act[u'кол-во фибриногена'].value or '_'*5} г/л от {trans_act[u'Дата лабораторных данных'].value} г,
+                    необходимое целевое значение фибриногена у пациентов, нуждающихся в профилактике кровотечения _____,
+                    эффект трансфузии {if: trans_act[u'эффект трансфузии'].value}<b>{trans_act[u'эффект трансфузии'].value}</b> {else:} <b>достигнут/не достигнут</b> {end:}
+                    Планируется {if: trans_act[u'Дальнейшее планировании коррекции гемостаза'].value}<b>{trans_act[u'Дальнейшее планировании коррекции гемостаза'].value }</b>{else:} <b>продолжение/прекращение</b> коррекции гемостаза {end:}
+
+                    ФИО врача {'_'*10} подпись {'_'*10} дата ___.______.{forceString(currentDate).split('.')[-1]}г.<br>
+                    Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_'*20}
+                </div>
+            </div>
+        </div>
+
+        <div style="page-break-after: always;"></div>
+        <div align="center"><b>Предтрансфузионный эпикриз</b></div>
+            <div>Учитывая клинические признаки: кровоточивости/кровотечения, значительного хирургичекого вмешательства или инвазивной процедуры, необходимое целевое значение фибриногена у пациентов, нуждающихся в профилактике кровотечения _____, а так же лабораторные данные от {trans_act[u'Дата лабораторных данных'].value} г.: концентрация фибриногена {trans_act[u'кол-во фибриногена'].value or '_'*5} г/л<br>
+            с целью коррекции гипофибриногенемии показано переливание криопреципитата {'_'*4} единиц.<br>
+            Противопоказаний к трансфузии криопреципитата нет.<br>
+            Беседа с пациентом (законным представителем) о цели трансфузии криопреципитата проведена, согласие на гемотрансфузию получено (Состояние пациента не позволяет ему выразить свою волю - согласие оформлено консилиумом).</div>
+        <div style="margin-top: 20px">ФИО врача <b>
+          {trans_act[u'Врач, осуществивший трансфузию'].value}
+        </b> подпись {'_' * 10}, дата ___._____.{forceString(currentDate).split('.')[-1]}г. </div>
+        <div style="margin-top: 20px">Врач-трансфузиолог <b>Шиянова А.А.</b> подпись {'_' * 20}</div>
+    </section>
+  {end:} <!-- note CRIO -->
 
 </div>
 </body>

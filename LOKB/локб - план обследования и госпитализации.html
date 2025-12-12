@@ -1,3 +1,5 @@
+<!-- изменил Пулин дата 05.09.2025 задача dop -->
+<!-- изменил Пулин дата 05.09.2025 задача  -->
 <!--Начальная дата разработки 04.09.2025 г.-->
 <!--Разработка: Пулин -->
 <!--Контекст печати:  -->
@@ -7,7 +9,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>план обследования и госпитализации</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
 {: setOrientation('P')}
@@ -33,11 +35,26 @@ write('''
     font-weight: 900;
 }
 .main {
-    font-family: 'Times New Roman';
+    font-family: 'Avenir Next Cyr Medium';
     font-size: 12pt;
+}
+.highlight {
+    text-decoration: underline;
+    font-weight: 900;
+}
+.chapter-title {
+    font-weight: 900;
+    text-align: center;
+}
+.section-title {
+    font-weight: 900;
 }
 .small {
   font-size: 8pt;
+}
+.flex-container {
+    display: flex;
+    justify-content: space-between;
 }
 .bold {
   font-weight: 900;
@@ -48,14 +65,376 @@ write('''
 .white-wrap {
   white-space: nowrap;
 }
+
+@page {
+margin-left: 18mm !important;
+margin-right: 10mm !important;
+margin-top: 5mm !important;
+margin-bottom: 0mm !important;
+}
 </style>
 ''')}
+
+    <!--с-->
+    <!--{if: event.setDate}-->
+    <!--  «{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.-->
+    <!--{else:}-->
+    <!--  «____» ______ 20____г.-->
+    <!--{end:}-->
+
+    <!--по-->
+    <!--{if: event.execDate}-->
+    <!--  «{forceString(event.execDate.toString('dd'))}» {forceString(month[event.execDate.date.month()])} {forceString(event.execDate.date.year())} г.-->
+    <!--{else:}-->
+    <!--  'по настоящее время'-->
+    <!--{end:}  -->
 <!-- @formatter:on -->
+{:
+def highlight(active, current):
+  if active.lower() == current.lower():
+    return u'highlight'
+  else:
+    return u''
+}
 </head>
 <body>
 
 <div class="main">
-  <div align="center" class="h1"></div>
+
+   <div style="font-size: 8pt;">
+      {:record = db.getRecordEx(stmt=
+            """SELECT
+                TO_BASE64(api.value) as image
+            FROM
+                ActionProperty_Image api
+            WHERE
+                api.id = 2748481;""")}
+      <table align = "center" width="100%" border="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black" cellpadding="0" cellspacing="0">
+         <tr>
+            <td width="50%">
+            <img src="data:image/png;base64, {if: record}{forceString(record.value('image'))}{end:}"  width = "265" height = "94"/>
+            </td>
+            <td width="50%" valign = "middle" align = "left">
+               <table width = "90%" border="0" cellpadding="0" cellspacing="0" style="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black">
+                  <tr>
+                     <td align = "left" colspan="3">
+                         188663, Ленинградская область, Всеволожский район,<br> г.п. Кузьмоловский, ул. Заозерная, д. 2
+                     <br><br></td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left"  style="white-space: nowrap; padding-right: 0em; padding-left: 0em; margin-left: 0em; margin-right: 0em;" nowrap>ИНН 4700001254&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 655-89-27</td>
+                  </tr>
+                  <tr>
+                     <td width = "20%" align = "left" style="white-space: nowrap; margin-left: 0em; margin-right: 0em; padding-right: 0em; padding-left: 0em;" nowrap>lokb@47lokb.ru&nbsp;&nbsp;</td>
+                     <td width = "5%" align="center"><font color = "green">|</font></td>
+                     <td width = "40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 670-18-88</td>
+                  </tr>
+               </table>
+            </td>
+         </tr>
+         <tr>
+            <td colspan = "2" valign = "top" align = "right">
+               <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAVCAIAAABHbRCDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAALkSURBVEhL3ZXPTxNBFMd3Z3f7awu23bb8LD9U0EZJwAOQcGqiIcajMaIX/gX9N/SiN9A/QYwSlERijIkeSINeMLSNYBNKf2+hP3fpzuysA7N6QCjLgYufTHZnX2be9703b3dZwzCYcwaY9/PEqgY28ML6wpMvT3O1nGmyjFUNBSrxUgIJKC7HTZNlrGqU1TJCSEd6tppjzniCVjVktcRwDNHI1DIa1kyrNVppKJqCDZ3OSw2ZEzgDGzWtVlJK1GiREzW2Sltz3+Zf/3hDm/vAL2ZYhmUBm6lm6BqLHK+hQvV9Ynkf7G8UNyrNisEYRUXGmh50BUg2mWqWLtOQpaIdr/Fp63Md1FETYQbvVNJN2NxT9jiOG+0ahSpMH+aR3EvOfZ9/l1imW1pgaiCM/o7N0uZabg2pyG+XbE57urojKzJEULS5h/xDAi/ISmFX3V3Z/NhgGmvpaKqSok4IUIdkECf0So08vT37+pxOSFnqqC56xEnvhNflfftzMVVOeRwe3sn7XJLX6Q24/NlabjG2lK1nOJ7j7cLq9mpoJERe0qWNpV+VJIQQsACzWADC46lHxKepEWgL0gmhG3T7nL6pgamKWjaaRg7m7UU7cRdwSjzgO9s6C1oxVd8mK8OecKwYi8nxYqNIso8pCRJ9b3uI+uFZs0itvokk2RfRl4X9gqFjjuenL05PhMajO9EPyRWWZTvtHbM3Zl+tLyTVZJAP5ht5EvvMtfvD/mFz/x9O7F0CiTrk7SMZkIbFCPtFiRi723ugRk5Hv3n5lsAJk/2TUIG5Zh44wETX+L8ChFYahL72Xh3q5JBIcSXXgUZve8+DkZmH12cGvP3kcdAz0OfpFy+4fKwUuRQ53HSUUzRCnhAwAOBAm8Mt2kRqDAfDwwEzXlK0O1duj7lH743ctXE2ajzCKRqko/yi3+awSU5JAGaDHKHD3REZjNAsj+UUDdKFY11jPOauBsMkaNN6Rv6Pfy3D/AYyAlKpYFHkOgAAAABJRU5ErkJggg==" />
+            </td>
+         </tr>
+      </table>
+   </div>
+
+  <div align="center" class="h1">План обследования и госпитализации пациента</div>
+
+  <div>
+    <b>ФИО пациента:</b> {event.client.fullName}
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <b>Дата рождения:</b> {event.client.birthDate}
+      </td>
+      <td>
+
+      </td>
+    </tr>
+    <!-- 'ДМС','Юр.лицо','ПМУ' -->
+    <tr>
+      {: payment_type = action[u'Направлен'].value}
+      <td>
+        Направлен (безналичный расчет - <span class="{highlight(payment_type, u'ДМС')}">ДМС</span>,
+        <span class="{highlight(payment_type, u'Юр.лицо')}">юр.лицо</span>)
+        {if: payment_type in [u'ДМС', u'Юр.лицо']}
+            <b>{action[u'Наименование компании'].value}</b>
+        {end:}
+      </td>
+      <td>
+        <span class="{highlight(payment_type, u'ПМУ')}">за наличный расчет</span>
+      </td>
+    </tr>
+  </table>
+
+  <div>
+    Отделение
+    <b>{action[u'Отделение']}</b>
+  </div>
+  <div>
+    № палаты
+    <b>{action[u'№ палаты']}</b>
+  </div>
+  <div>
+    Дата госпитализации
+    <b>{action[u'Дата госпитализации']}</b>
+  </div>
+
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select mkb.DiagName as diag_name,
+         mkb.DiagID   as diag_id
+  from Diagnosis ds
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = getEventDiagnosis({event_id})
+""".format(event_id=event.id))
+}
+
+  <div>
+    Диагноз
+    {if: main_diag_ref}
+      <b>
+        {forceString(main_diag_ref.value(u'diag_name'))}
+        {forceString(main_diag_ref.value(u'diag_id'))}
+      </b>
+    {end:}
+  </div>
+
+  <table width="100%" cellpadding="2" cellspacing="0" border="1">
+    <colgroup>
+      <col width="32%">
+      <col width="1%">
+      <col width="33%">
+      <col width="1%">
+      <col width="32%">
+      <col width="1%">
+    </colgroup>
+
+    <tr>
+      <td valign="top" colspan="2">койко-день <b>{forceInt(action[u'Койко-дни (кол-во)'].value)}</b></td>
+      <td valign="top" colspan="2">
+        категория палаты <b>{action[u'Категория палаты']}</b>
+      </td>
+      <td valign="top" colspan="2">Диетическое питание (№ диеты, кол-во)</td>
+    </tr>
+    <tbody>
+
+    <!-- note пока скрыто в надежде, что когда-нибудь понадобится. если только третья мировая не наступит -->
+    {if: False}
+      <tr>
+        <td colspan="6" class="section-title">Лаборатория</td>
+      </tr>
+      <tr>
+        <td width="32%" align="center">Исследование&nbsp;</td>
+        <td width="1%" align="center">Количество&nbsp;</td>
+        <td width="33%" align="center">Исследование&nbsp;</td>
+        <td width="1%" align="center"> Количество&nbsp;</td>
+        <td width="32%" align="center">Исследование&nbsp;</td>
+        <td width="1%" align="center"> Количество&nbsp;</td>
+      </tr>
+    {end:}
+
+      {: AMOUNT_IN_ROW = 3}
+      {: props_name_list = [u'Лабораторные исследования', u'Инструментальные исследования', u'Консультации специалистов']}
+
+
+      {for: name in props_name_list}
+        <tr>
+          <td colspan="6" class="section-title">{name}</td>
+        </tr>
+        {: entity = action[name]}
+        {if: entity.value}
+          {: LENGTH = len(entity.value)}
+          {: items = entity.value}
+          {for: i in range(0, LENGTH, AMOUNT_IN_ROW) }
+            <tr>
+                {for: j in range(3) }
+                  {if: i+j < LENGTH }
+                  <td valign="top" colspan="2">{items[i+j]}</td>
+                  {end:}
+                  {if: (i+j == LENGTH - 1) and (LENGTH % AMOUNT_IN_ROW != 0)}
+                      {for: _ in range(AMOUNT_IN_ROW - LENGTH % AMOUNT_IN_ROW)}
+                        <td colspan="2"></td>
+                      {end:}
+                  {end:}
+                {end:}
+            </tr>
+          {end:}
+        {end:}
+      {end:}
+
+      {if: False}
+        <tr>
+          <td colspan="6" class="section-title">Дополнительные лабораторные исследования (бактериологические, иммунологические и др.)</td>
+        </tr>
+
+
+        <tr>
+          <td class="section-title">Рентгенология</td>
+          <td>Количество</td>
+          <td></td>
+          <td>Количество</td>
+          <td colspan="2"></td>
+        </tr>
+        {for: _ in range(5)}
+          <tr>
+            <td class="small">&nbsp;</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        {end:}
+
+        {: title_name_list = [u'КТ, МРТ', u'УЗИ', u'Функциональная диагностика', u'Эндоскопические исследования', u'Консультации специалистов']}
+        {for: name in title_name_list}
+          <tr>
+            <td colspan="6" class="section-title">{name}</td>
+          </tr>
+          {for: _ in range(3)}
+            <tr>
+              <td class="small">&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          {end:}
+        {end:}
+      {end:}
+
+
+      <tr>
+        <td colspan="6" class="chapter-title"> План лечения</td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          1. Медикаментозная терапия выставляется по фактическим расходам, по цене аптеки ГБУЗ ЛОКБ за сутки до выписки
+        </td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          2. Оперативное вмешательство
+        </td>
+      </tr>
+      <tr>
+        <td colspan="3">Наименование операции</td>
+        <td colspan="3">Степень сложности</td>
+      </tr>
+
+      {: entity = action[u'Операция']}
+      {if: entity.value}
+        {for: item in entity.value}
+          <tr>
+            <td colspan="3">{item}</td>
+            <td colspan="3"></td>
+          </tr>
+        {end:}
+      {end:}
+
+      <tr>
+        <td colspan="6" class="section-title">
+          3. Анестезиологическое пособие (степень сложности)
+        </td>
+      </tr>
+      {: entity = action[u'Анестезиологическое пособие']}
+      {if: entity.value}
+        {for: item in entity.value}
+          <tr>
+            <td colspan="6">{item}</td>
+          </tr>
+        {end:}
+      {end:}
+
+      <tr>
+        <td colspan="6" class="section-title">
+          <div class="flex-container">
+            <div>4. Реанимационное отделение №</div>
+            <div>Количество койко-дней <b>{forceInt(action[u'Реанимация кол-во дней'].value)}</b></div>
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          5. Манипуляции по степени сложности
+        </td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          6. ЛФК и Физиотерапия
+        </td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          7. Отделение переливания крови
+        </td>
+      </tr>
+
+      <tr>
+        <td colspan="6" class="section-title">
+          8. Расходные материалы
+        </td>
+      </tr>
+      <tr>
+        <td align="center" colspan="4">Наименование</td>
+        <td align="center" colspan="2">Цена</td>
+      </tr>
+      {: entity = action[u'Расходные материалы']}
+      {if: entity.value}
+        <tr>
+          <td colspan="4">{entity}</td>
+          <td colspan="2"></td>
+        </tr>
+      {end:}
+
+      <tr>
+        <td colspan="6" class="section-title">
+          9. Дополнительные услуги
+        </td>
+      </tr>
+      {if: action[u'Дополнительные услуги'].value}
+        <tr>
+          <td colspan="6">{action[u'Дополнительные услуги']}</td>
+        </tr>
+      {end:}
+    </tbody>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">
+        <div>ФИО врача: <b>{action.person.fullName}</b></div>
+        <div>
+          Пациент с планом обследования и лечения <br>
+          ознакомлен(а) и согласен(а)
+        </div>
+      </td>
+      <td>
+        <div>
+          ФИО администратора
+        </div>
+        <div>
+          Дата составления плана: <b>{action.begDate.toString(u'dd.MM.yyyy')}</b>
+        </div>
+        <div>
+          Предварительная сумма: <b>{action[u'Итоговая сумма']}</b>
+        </div>
+      </td>
+    </tr>
+  </table>
 
 
 </div>

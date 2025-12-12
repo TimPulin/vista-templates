@@ -1,0 +1,82 @@
+<!--Начальная дата разработки 28.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Договор</div>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="99%"></td>
+      <td width="1%">
+        <div class="white-wrap">Приложение №1 к договору №&nbsp;</div>
+        <div class="white-wrap">об оказании платных услуг&nbsp;</div>
+        <div class="white-wrap">от &nbsp;</div>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <th>Код услуги</th>
+      <th>Наименование медицинских услуг</th>
+      <th>Единица измерения</th>
+      <th>Цена (руб.)</th>
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

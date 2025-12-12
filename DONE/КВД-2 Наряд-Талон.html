@@ -1,0 +1,313 @@
+<!--Начальная дата разработки 14.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: Naryad-Talon -->
+<!--Задача: SUP-54114 Добавить Наряд и Талон для заполнения, печати и выгрузки в РЭМД -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Наряд-Талон</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(10)}
+{: setLeftMargin(10)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 11pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+  
+{:
+def render_line(str, base_length = 60):
+  return u'_' * (base_length - len(str))
+}
+
+  <!-- note main diag-->
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB       as diag_id,
+         mkb.DiagName as diag_name
+  from Diagnosis ds
+           left join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = (select getEventDiagnosis({event_id}))
+""".format(event_id=event.id))
+
+if main_diag_ref:
+  main_diag_id = forceString(main_diag_ref.value(u'diag_id'))
+  main_diag_name = forceString(main_diag_ref.value(u'diag_name'))
+else:
+  main_diag_id = u''
+  main_diag_name = u''
+}
+
+
+{:
+CURRENT_REF_TARGET = action[u'Цель направления'].value
+CLIENT_TARGET = u'На лечение и диспансерное наблюдение'
+SOURCE_TARGET = u'На обследовании источника заражения'
+FAMILY_TARGET = u'На обследовании семьи'
+}
+<!-- @formatter:on -->
+</head>
+<body>
+<h2>test</h2>
+{for: prop in action}
+  {if: prop.shortName == u'Тип направления'}
+      <div>{prop.value}</div>
+  {end:}
+{end:}
+<div class="main">
+  <table width="100%" cellpadding="0" cellspacing="0" border="1">
+    <tr>
+      <td width="50%">
+        <div align="center"><b>КВД-2 Московский пр. д. 95/3</b></div>
+        <div>&nbsp;</div>
+        <hr>
+        <div align="center"><b>НАРЯД</b></div>
+
+
+        <p>Куда <b>{action[u'Медицинская организация']}</b></p>
+        <p>ФИО <b>{client.fullName}</b></p>
+        <p>Возраст <b>{client.age}</b></p>
+        <p>Адрес <b>{client.regAddress}</b></p>
+
+
+        <!-- note 1. На лечение и диспансерное наблюдение-->
+        <div>
+          <p>1. На лечение и диспансерное наблюдение</p>
+          {: is_section_active = CURRENT_REF_TARGET == CLIENT_TARGET}
+
+          <p>
+            Диагноз
+            {if: is_section_active and main_diag_id != u''}
+              <b>{main_diag_id}</b>
+              <b>{main_diag_name}</b>
+            {else:}
+              {render_line(u'Диагноз')}
+            {end:}
+          </p>
+
+          <p>
+            Проделанное лечение
+            {if: is_section_active}
+                {action[u'Проделанное лечение']}
+            {else:}
+              {render_line(u'Проделанное лечение')}
+            {end:}
+          </p>
+
+          <p>
+            Специальн. исслед.
+            {if: is_section_active}
+                {action[u'Специальн. исслед.']}
+            {else:}
+              {render_line(u'Специальн. исслед.')}
+            {end:}
+          </p>
+
+          <p>
+            Источник заряжения выявлен
+            {if: is_section_active}
+                <b>{action[u'Источник заряжения выявлен']}</b>
+            {else:}
+              <span>да, нет</span>
+            {end:}
+          </p>
+
+          <p>
+            Семья б-го обследована
+            {if: is_section_active}
+                <b>{action[u'Семья б-го обследована']}</b>
+            {else:}
+              <span>да, нет</span>
+            {end:}
+          </p>
+
+          <p>
+            Результат обследования источника, семьи
+            {if: is_section_active}
+                {action[u'Результат обследования источника, семьи']}
+            {else:}
+              {render_line(u'Результат обследования источника, семьи')}
+            {end:}
+          </p>
+        </div>
+
+        <!-- note 2. На обследовании источника заражения-->
+        <div>
+          <div>
+            2. На обследовании источника заражения
+          </div>
+          {: is_section_active = CURRENT_REF_TARGET == SOURCE_TARGET}
+
+          <p>
+            <div>
+              Больного
+              {if: is_section_active and action[u'ФИО источника заражения'].value}
+                  {action[u'ФИО источника заражения']}
+              {else:}
+                {render_line(u'Больного')}
+              {end:}
+            </div>
+            <div align="center"><sup>(фамилия, имя, отчество)</sup></div>
+          </p>
+
+          <p>
+            <div>
+              Страдающего
+              {if: is_section_active and action[u'Диагноз источника заражения'].value}
+                  {action[u'Диагноз источника заражения']}
+              {else:}
+                {render_line(u'Страдающего')}
+              {end:}
+            </div>
+            <div align="center"><sup>(диагноз)</sup></div>
+          </p>
+        </div>
+
+        <!-- note 3. На обследовании семьи-->
+        <div>
+          <div>
+            3. На обследовании семьи
+          </div>
+          {: is_section_active = CURRENT_REF_TARGET == FAMILY_TARGET}
+
+          <p>
+            <div>
+              Больного
+              {if: is_section_active and action[u'ФИО источника заражения'].value}
+                  {action[u'ФИО источника заражения']}
+              {else:}
+                {render_line(u'Больного')}
+              {end:}
+            </div>
+            <div align="center"><sup>(фамилия, имя, отчество)</sup></div>
+          </p>
+
+          <p>
+            <div>
+              Страдающего
+              {if: is_section_active and action[u'Диагноз источника заражения'].value}
+                  {action[u'Диагноз источника заражения']}
+              {else:}
+                {render_line(u'Страдающего')}
+              {end:}
+            </div>
+            <div align="center"><sup>(диагноз)</sup></div>
+          </p>
+        </div>
+
+        <p>
+          {if: current_active and action[u'Примечание врача'].value}
+            <div>Примечание врача {action[u'Примечание врача']}</div>
+          {else:}
+            <div>Примечание врача {render_line(u'Примечание врача')}</div>
+            <div>{render_line(u'')}</div>
+          {end:}
+        </p>
+
+        <div>
+          «{forceString(action.endDate.toString('dd'))}» {forceString(month[action.endDate.date.month()])} {forceString(action.endDate.date.year())} г.
+          <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+          Врач <b>{action.person.shortName}</b>
+        </div>
+      </td>
+
+
+      <td width="50%">
+        <div align="center"><b>КВД-2 Московский пр. д. 95/3</b></div>
+        <div align="right"><b>подлежит возврату</b></div>
+        <hr>
+        <div align="center"><b>ТАЛОН</b></div>
+
+
+        <p>Куда <b>{action[u'Медицинская организация']}</b></p>
+        <p>ФИО <b>{client.fullName}</b></p>
+        <p>Адрес <b>{client.regAddress}</b></p>
+        <p>
+          Диагноз
+          <b>{main_diag_id}</b>
+          <b>{main_diag_name}</b>
+        </p>
+        <p>
+          Обследована, взят под наблюдение - да, нет
+        </p>
+        <p>
+          Принят на лечение - да, нет
+        </p>
+        <p>
+          Примечание
+          {render_line(u'Примечание')}
+        </p>
+        <p>{render_line(u'')}</p>
+
+        <p>
+          По данному адресу не проживает, выбыл
+        </p>
+        <p><sup>подчеркнуть нужное</sup></p>
+
+        <p>
+          Куда выбыл
+          {render_line(u'Куда выбыл')}
+        </p>
+
+        <p>
+          «____» ______ 20____г.
+          <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+          Врач
+          {render_line(u'', 20)}
+        </p>
+
+        <br>
+
+        <p>
+          Наименование и адрес учреждения, заполнившего талон
+        </p>
+        <p>{render_line(u'')}</p>
+        <p>{render_line(u'')}</p>
+
+      </td>
+    </tr>
+  </table>
+
+
+
+
+
+</div>
+</body>
+</html>

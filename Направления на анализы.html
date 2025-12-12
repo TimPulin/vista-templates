@@ -7,7 +7,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>Направления на исследования</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
 {: setOrientation('P')}
@@ -20,6 +20,7 @@
 {: from library.Utils import forceInt }
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
+{: from io import BytesIO}
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
@@ -36,26 +37,163 @@ write('''
     font-family: 'Times New Roman';
     font-size: 12pt;
 }
+.big {
+    font-size: 14pt;
+}
+.normal {
+    font-size: 12pt;
+}
 .small {
-  font-size: 8pt;
-}
-.bold {
-  font-weight: 900;
-}
-.red-line {
-  text-indent: 10px;
-}
-.white-wrap {
-  white-space: nowrap;
+    font-size: 10pt;
 }
 </style>
 ''')}
+
+
+
+{:
+instrumentalGroupIdList = [4500722, 4500723, 4500724, 4500725, 4500726, 4500727, 4500957, 4501150, 4501155, 4501156]
+def renderAmbCardNote(groupId):
+  if groupId in instrumentalGroupIdList:
+    write("""<p class="medium"><b>При себе иметь амбулаторную карту</b></p>""")
+
+def renderResearchType(groupId):
+  if groupId in instrumentalGroupIdList:
+    return 'инструментальные'
+  else:
+   return 'лабораторные'
+}
+
+
+{:
+lab_research_ref = db.getRecordEx(stmt=u"""
+  select GROUP_CONCAT(atC.id) ids
+  from ActionType atP
+  join ActionType atC on atP.id = atC.group_id and atP.deleted = 0 and atC.deleted = 0
+  where atP.id = 73873;
+
+""".format(clientId=event.client.id))
+if lab_research_ref:
+  lab_research_ids = forceString(lab_research_ref.value(u'ids')).split(u',')
+  lab_research_ids = map(int, lab_research_ids)
+else:
+  lab_research_ids = []
+}
+
+
+{:
+def makePostfix(act, prefix):
+  postfix = u''
+  if u'Проба на толерантность к глюкозе' in act.name:
+    postfix = forceString(act.id)
+  return postfix
+}
+
+{:
+def createIdForGrouping(act, postfix):
+  return forceString(act.takenTissueJournal.id) + postfix
+}
+
+{:
+class ReferralAnal:
+  def __init__(self, act, job_ticket, postfix):
+    self.Ticket_datetime = job_ticket.datetime.toString(u"dd.MM.yyyy, hh:mm")
+    self.Ticket_date = job_ticket.datetime.toString(u"dd.MM.yyyy")
+    self.Ticket_time = job_ticket.datetime.toString(u"hh:mm")
+    self.Ticket_number = job_ticket.idx+1
+    self.Ticket_id = job_ticket.id
+    self.Ticket_place_full = job_ticket.orgStructure
+    self.Ticket_place =  job_ticket.orgStructure.code
+    self.Job_type = job_ticket.jobType
+    self.takenTissueJournalId = 0
+
+    self.group_id = act.group.id
+
+    self.actList = []
+    self.job_ticket = job_ticket
+
+    self.idForGrouping = createIdForGrouping(act, postfix)
+
+  def addAct(self, act):
+    self.actList.append(act)
+
+
+def createNewReferralAnal(refList, act, prop, postfix):
+  newInstance = ReferralAnal(act, prop.value, postfix)
+  newInstance.takenTissueJournalId = act.takenTissueJournal.id
+  newInstance.addAct(act)
+  refList.append(newInstance)
+}
+
+<!--  note перебор actions в event -->
+{:
+MAIN_REF_LIST = []
+
+for act in event.actions:
+  if act.class_ == 1 and act.status != 2 and act.group.id in lab_research_ids:
+    for prop in act:
+      if prop.typeName == u'JobTicket' and prop.value:
+        postfix = makePostfix(act, u'')
+        idForGrouping = createIdForGrouping(act, postfix)
+
+        filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_REF_LIST)
+        filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+        if filteredRef:
+          filteredRef.addAct(act)
+        else:
+          createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
+
+}
 <!-- @formatter:on -->
 </head>
 <body>
 
 <div class="main">
-  <div align="center" class="h1"></div>
+
+  {for: ref in MAIN_REF_LIST}
+    {if: ref.takenTissueJournalId != 0 and ref.takenTissueJournalId != None}
+      <div style="page-break-inside: avoid;">
+            <TABLE BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" STYLE="font-family: Times New Roman; font-size: 9pt;">
+              <TR>
+                <TD align="left" COLSPAN=4 style="padding-top: 10px; padding-bottom: 10px">&nbsp;&nbsp; <FONT SIZE=+2><FONT FACE="Code 3 de 9" SIZE=+3>*{ ref.takenTissueJournalId }*</FONT></FONT> { ref.takenTissueJournalId  } </TD><!-- перед первым n[2] убрал префикс H из-за которого возникала ошибка -->
+              </TR>
+              <TR>
+                <TD align="center" COLSPAN=4><B>{currentOrganisation.shortName}</B></TD>
+              </TR>
+              <TR>
+                <TD align="center" COLSPAN=4><B>Направление на {renderResearchType(ref.group_id)} исследования (Работа: {ref.Job_type})</B></FONT></TD>
+              </TR>
+              <TR>
+                <TD align="left" COLSPAN=3 width=70%><p> ФИО: <B>{client.fullName}</B></FONT>
+                  <BR/>
+                  <BR/> Дата рожд. <B>{client.birthDate}</B></FONT>,&nbsp;Амб. карта <B>{client.id}</B> № истории <b>{event.externalId}</b>
+                  <BR/> Документ: <B>{client.document.serial} {client.document.number}</B></FONT>
+                  <BR/> Полис: <B>{client.policy}</B></FONT>
+                  <BR/> Регистрация: <B>{client.regAddress}</B>
+                  <BR/> Проживание: <B>{client.locAddress}</B></FONT>
+                  <BR/> СНИЛС: <B>{client.SNILS}</B></p></TD>
+                <td align="center" width="30%" valign="middle" >
+                  <table cellpadding="3" cellspacing="0" align="center"  >
+                    <tr>
+                      <td >
+                        Дата: <FONT SIZE=+2><b>{ref.Ticket_datetime}</b></FONT><br/>
+                        Номер: <FONT SIZE=+2><b>{ref.Ticket_number}</b></FONT><br/>
+                        Время: <FONT SIZE=+2><b>{ref.Ticket_time}</b></FONT><br/>
+                        Место: <FONT SIZE=-1><b>{ref.Ticket_place}</b></FONT>
+                      </td>
+                    </tr>
+                  </table>
+               </td>
+              </TR>
+            </TABLE>
+              {for: act in ref.actList}
+                <div class="big"><b>{act.name}</b></div>
+              {end:}
+            <div class="small">Направил: {event.execPerson}</div>
+            {:renderAmbCardNote(ref.group_id)}
+          </div>
+    {end:}
+  {end:}
 
 
 </div>

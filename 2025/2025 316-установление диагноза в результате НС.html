@@ -1,0 +1,263 @@
+<!-- 316 -->
+<!-- изменил Пулин дата 27.11.2025 задача  -->
+<!--Начальная дата разработки 26.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>
+    Медицинское заключение об установлении заключительного диагноза пострадавшего в результате несчастного случая на производстве
+  </title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 10pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Courier New';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+
+.white-wrap {
+  white-space: nowrap;
+}
+
+.underline-text {
+    display: inline-block;
+    margin-top: 0;
+    line-height: 9pt;
+    font-size: 9pt;
+    vertical-align: top;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}
+</style>
+''')}
+
+{if: action.endDate}
+    {: actionDate = action.endDate}
+{else:}
+    {: actionDate = action.begDate}
+{end:}
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">
+            Наименование и адрес медицинской организации
+          </div>
+          <div>
+            {currentOrganisation.title}
+          </div>
+          <div>
+            {currentOrganisation.address}
+          </div>
+          <div class="white-wrap">
+            Основной государственный регистрационный номер
+          </div>
+          <div>
+            {currentOrganisation.OGRN}
+          </div>
+        </td>
+        <td width="98%"></td>
+        <td width="1%" valign="top" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 316-1/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 11 апреля 2025 г. № 196н</div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+<div class="main">
+  <div align="center" class="h1">
+          Медицинское заключение <br>
+          об установлении заключительного диагноза пострадавшего <br>
+          в результате несчастного случая на производстве
+  </div>
+
+  <p>
+    <div>Выдано <b>{action[u'Наименование целевой организации']}</b></div>
+    <div align="center">
+      <sup class="underline-text">
+        (наименование организации (индивидуального предпринимателя), работодателя – физического
+        лица, не являющегося индивидуальным предпринимателем, по запросу
+        которой (которого) выдается медицинское заключение)
+      </sup>
+    </div>
+  </p>
+
+
+  <p>
+    <div>
+      {if: action[u'ФИО пострадавшего'].value}
+          <div><span>о том, что пострадавшему (пострадавшей)</span> <b>{action[u'ФИО пострадавшего']}</b></div>
+      {else:}
+        <div class="line"><span>о том, что пострадавшему (пострадавшей)</span> <div class="line__item"></div> </div>
+      {end:}
+        <div align="center"><sup class="underline-text">(фамилия, имя, отчество (при наличии)</sup></div>
+    </div>
+
+    <div>
+      {if: action[u'Данные пострадавшего'].value}
+        <div><b>{action[u'Данные пострадавшего']}</b></div>
+      {else:}
+          <div class="line">&nbsp;<div class="line__item"></div> </div>
+      {end:}
+
+      <div align="center">
+        <sup class="underline-text">
+          число, месяц и год рождения, занимаемая должность (профессия) пострадавшего) </sup>
+      </div>
+    </div>
+  </p>
+
+{:
+event_info_ref = db.getRecordEx(stmt=u"""
+select DATE_FORMAT(e.createDatetime, '%d.%m.%Y') as event_date,
+       DATE_FORMAT(e.createDatetime, '%H:%i')    as event_time,
+       os.name                                 as orgStructure_name
+from Event e
+         left join OrgStructure os on e.orgStructure_id = os.id
+  where e.id = {event_id};
+""".format(event_id=event.id))
+
+if event_info_ref:
+  event_date = forceString(event_info_ref.value(u'event_date'))
+  event_time = forceString(event_info_ref.value(u'event_time'))
+  orgStructure_name = forceString(event_info_ref.value(u'orgStructure_name'))
+else:
+  event_date = u"«____» ______ 20____г."
+  event_time = u'____:____'
+  orgStructure_name = u''
+}
+
+<p>
+  <div>
+    оказывалась медицинская помощь
+    <b>{action[u'Наименование организации, оказавшей мед.помощь']}</b>
+  </div>
+  <div align="center">
+    <span class="underline-text">
+      (наименование медицинской организации, ее структурного подразделения, куда поступил пострадавший)
+    </span>
+  </div>
+
+  <div>
+    в период с
+    <b>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</b>
+    по <b>«{forceString(actionDate.toString('dd'))}» {forceString(month[actionDate.date.month()])} {forceString(actionDate.date.year())} г.</b>
+  </div>
+</p>
+
+  <p>
+    <div>
+      по поводу
+      <b>{action[u'Повреждения здоровья, полученные в результате несчастного случая на производстве']}</b>
+    </div>
+    <div align="center">
+      <span class="underline-text">
+        (указать повреждения здоровья, полученные в результате несчастного случая на производстве, и коды диагнозов
+          по международной статистической классификации болезней
+              и проблем, связанных со здоровьем (далее - МКБ)
+      </span>
+    </div>
+  </p>
+  
+  <p>
+    <div>
+      Заключительный диагноз (код по МКБ) пострадавшего от несчастного случая на производстве
+      <b>{action[u'Заключительный  диагноз']}</b>
+    </div>
+    <div align="center"><sup class="underline-text">(с указанием характера и локализации)</sup></div>
+  </p>
+
+  <p>
+    <div>
+      По степени тяжести повреждения здоровья при несчастных случаях на производстве повреждение относится к категории
+      <b>{action[u'Степень тяжести повреждения здоровья']}</b>
+    </div>
+    <div align="center"><sup>(указать степень тяжести повреждения здоровья: тяжелая, легкая)</sup></div>
+  </p>
+
+  <p>
+    Дата выдачи медицинского заключения:
+    число <b>{forceString(actionDate.toString('dd'))}</b> месяц <b>{forceString(month[actionDate.date.month()])}</b>  год <b>{forceString(actionDate.date.year())} г.</b>
+  </p>
+
+
+  <table width="100%" cellpadding="0" cellspacing="2">
+    <tr>
+      <td width="1%">
+        <div class="white-wrap">
+          Руководитель медицинской&nbsp; <br> организации (уполномоченное&nbsp; <br> должностное лицо)&nbsp;
+        </div>
+      </td>
+      <td align="center" valign="bottom">
+        <div class="line"><div class="line__item"></div> </div>
+      </td>
+      <td width="1%" valign="bottom">
+        <div align="center" class="white-wrap"><b>{action.person.fullName}</b>&nbsp;</div>
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td valign="top">
+        <div align="center">
+          <span class="underline-text">(подпись, усиленная квалифицированная электронная подпись)</span>
+        </div>
+      </td>
+      <td valign="top">
+        <div align="center"><span class="underline-text">(фамилия, имя, отчество (при наличии)</span></div>
+      </td>
+    </tr>
+  </table>
+
+  <div>
+    М.П. медицинской организации <br>
+    (при наличии)
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+
+<html>
+<head>
+{: QDate = type(client.birthDate.date)}
+{: address = currentOrgStructure.address if currentOrgStructure else currentOrganisation.address} <!--адрес ЛПУ -->
+{: begDate = event.setDate}
+{: endDate = event.execDate}
+{: socLgots = [s for s in client.socStatuses if len([c for c in s.classes if c.code == '1']) ]} <!--льготы -->
+{: socLgotCodes = [s.code for s in socLgots]}
+{: socStatuses = [s for s in client.socStatuses if len([c for c in s.classes if c.code == '9']) ]} <!--соц. статусы -->
+{if: client.birthDate.date.month() < 9}
+	{: schoolDate = QDate(client.birthDate.date.year() + 7, 9, 1)}
+{else:}
+	{: schoolDate = QDate(client.birthDate.date.year() + 8, 9, 1)}
+{end:} <!--Дата, когда пациент пошёл в школу -->
+{: pens = ((client.sexCode == 1 and client.birthDate.date.addYears(60) <= QDate.currentDate()) or (client.sexCode == 2 and client.birthDate.date.addYears(55) <= QDate.currentDate()))} <!--Пациент - пенсионер -->
+{: oplata = event.visits[-1].finance.code if len(event.visits) else ''} <!--Вид оплаты - определяется по последнему визиту -->
+{: place = event.visits[-1].scene.code if len(event.visits) else ''} <!--Место обслуживания - определяется по последнему визиту -->
+{: purpose = event.visits[-1].type.code if len(event.visits) else ''} <!-- Цель ОМП - определяется по последнему визиту -->
+{: result = event.result.code} <!--Результат обращения -->
+{: main_diags = [d for d in event.diagnosises if d.type.code in ('1', '2')]} <!--Основные диагнозы -->
+{: zakl_diags = [d for d in event.diagnosises if d.type.code == '1']}  <!--Заключительный диагноз (он единственный либо его нет) -->
+{if: len(zakl_diags)}
+	{: main_diag = zakl_diags[0]}
+{else:}{if: len(main_diags)}
+	{:main_diag=main_diags[0]}
+{else:}
+	{:main_diag=None}
+{end:}{end:} <!--Основной диагноз - первый основной, если нет заключительного, и заключительный, если он есть -->
+{: dispancer = main_diag.dispanser.code if main_diag else '0'}
+{: trauma = main_diag.traumaType.code if main_diag else '0'}
+{: sop_diags = [d for d in event.diagnosises if d.type.code == '9']} <!--Сопутствующие диагнозы -->
+{if: len(sop_diags)}
+	{:sop_character=sop_diags[0].character}
+{else:}
+	{:sop_character=None}
+{end:} <!--Характер сопутствующего заболевания -->
+{: osl_diags = [d for d in event.diagnosises if d.type.code == '3']} <!--Осложнения -->
+{if: len(osl_diags)}
+	{:osl_character=osl_diags[0].character}
+{else:}
+	{:osl_character=None}
+{end:} <!--Характер осложнения -->
+{: early_diags = [d for d in event.diagnosises if d.type.code == '99']} <!--Изменённые диагнозы -->
+{: invalids = event.getTempInvalidList(types = [1])} <!-- Инвалидности-->
+{: limits = event.getTempInvalidList(types = [2])} <!-- Ограничения жизнедеятельности-->
+{: invalid_result = invalids[-1].periods[-1].result if len(invalids) else None} <!--Результат последнего периода инвалидности -->
+<meta name="qrichtext" content="1" />
+</head>
+<body style=" font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;">
+<table cellpadding=0 cellspacing=0 width=100%>
+<tr>
+<td>
+<table cellpadding=0 cellspacing=0 width=100%>
+<tr><td><u>{currentOrganisation.shortName}</u></td></tr>
+<tr><td align=center><i><font size=1>(наименование медицинского учреждения)</font></i></td></tr>
+<tr><td><u>{address[0:50]}</u></td></tr>
+<tr><td align=center><i><font size=1>(адрес)</font></i></td></tr>
+<tr><td><u>{address[50:100] if len(address) > 50 else ''}</u></td></tr>
+<tr><td>Код ОГРН {: string = currentOrganisation.OGRN}<u><font face="Courier">{ string + "_"*(13-len(string)) }</font></u></td></tr>
+</table>
+</td>
+
+<td align=center>Приложение №1<br>
+к Распоряжению Комитета по здравоохранению<br>
+Санкт-Петербурга №408-р от 04.08.2010<br>
+<br>
+ф. № 025-12/у-10-СПб</td>
+</tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td colspan=2 align=center><b>ТАЛОН АМБУЛАТОРНОГО ПАЦИЕНТА</b></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td colspan=2>
+<table cellpadding=0 cellspacing=0 width=100%>
+<tr><td>№ медицинской карты <u>{client.id}</u>   дата начала {: string = begDate.date.toString("dd.MM.yy")}<u><font face="Courier">{string + "_"*(8 - len(string)) }</font></u>   дата окончания {: string = endDate.date.toString("dd.MM.yy")}<u><font face="Courier">{string + "_"*(8 - len(string)) }</font></u></td></tr>
+<tr><td>Выполнен МЭС:  {: string = event.mes.code}<u><font face="Courier">{string + "_"*(6 - len(string)) }</font></u>  название <u>{ event.mes.name }</u></td></tr>
+<tr><td><b>1.</b> Код категории льготы: {: string = socLgots[0].code if len(socLgots) else ""}<u><font face="Courier">{string + "_"*(3 - len(string)) }</font></u>   <u>{ socLgots[0].name if len(socLgots) else ""}</u></td></tr>
+<tr><td><b>2.</b> Страховой полис ОМС: серия   {: string = client.policy.serial}<u><font face="Courier">{string + "_"*(20 - len(string)) }</font></u></td></tr>
+<tr><td>номер   {: string = client.policy.number}<u><font face="Courier">{string + "_"*(20 - len(string)) }</font></u>   дата выдачи {: string = client.policy.begDate.date.toString("dd.MM.yy")}<u><font face="Courier">{ string + "_"*(8-len(string)) }</font></u></td></tr>
+<tr><td>СМО: <u>{ client.policy.insurer.fullName }</u></td></tr>
+<tr><td><b>3.</b> СНИЛС {: string = client.SNILS}<u><font face="Courier">{string + "_"*(14 - len(string)) }</font></u></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>4.</b> Пациент: ФИО {client.fullName}</td></tr>
+<tr><td><b>5.</b> Пол:     {(u"не опред.", u"муж.", u"жен.")[client.sexCode]}   <b>6.</b> Дата рождения: {: string = client.birthDate.date.toString("dd.MM.yyyy")}<u><font face="Courier">{string + "_"*(10 - len(string)) }</font></u></td></tr>
+<tr><td><b>7.</b> Документ удв. л.:   название: {client.document.type} серия {client.document.serial} номер {client.document.number}</td></tr>
+<tr><td><b>8.</b> Адрес регистрации: {client.regAddress}</td></tr>
+<tr><td><b>9.</b> Адрес фактического проживания: {client.locAddress}</td></tr>
+<tr><td><b>10.</b> Социальный статус:
+{if: len(socStatuses)}
+{for: status in socStatuses}
+<u>{status.name}</u>,
+{end:}
+{else:}
+{if: unicode(client.work) != ''}<u>{end:}1 - работающие граждане:{if: unicode(client.work) != ''}</u>{end:} 1 - Работающие, служащие; 2 - Индивидуальные плательщики; 3 - Пенсионеры (работающие); 4 - Военнослужащий;
+{if: unicode(client.work) == ''}<u>{end:}2 - Неработающие граждане:{if: unicode(client.work) == ''}</u>{end:} 1 - неорганизованные дети; 2 - Организованные дети, учащиеся; 3 - Студенты; 4 - Неработающие; 5 - Безработные зарегистрированные; 6 - Домохозяйки; 7 - Члены семьи в/с; 8 - Пенсионеры; 9 - Пенсионеры в/с; 10 - Пенсионеры по инвалидности; 11 - БОМЖи.
+{end:}
+</td></tr>
+<tr><td><b>11.</b> Инвалидность:
+{if: len(invalids)}
+{invalids[0].doctype.name};
+{else:}
+{if: '081' in socLgotCodes}<u>I гр.</u>;{else:}{if: '082' in socLgotCodes}<u>II гр.</u>;{else:}{if: '083' in socLgotCodes}<u>III гр.</u>;{else:}{if: '084' in socLgotCodes or '09' in socLgotCodes}<u>ребёнок-инвалид</u>;{else:}<u>нет</u>;{end:}{end:}{end:}{end:}
+{end:}
+{if: len(limits)}
+{limits[0].doctype.name}
+{else:}
+<u>без ограничений к трудовой деятельности;</u>
+{end:}
+{if: invalid_result}
+<u>{invalid_result.name}</u>
+{else:}
+ установлена впервые в жизни;  инвалид с детства;  снята;
+{end:}
+</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>12.</b> Лечащий врач:  ПИН: {: string = event.execPerson.code}<u><font face="Courier">{string + "_"*(9 - len(string)) }</font></u> специальность: {event.execPerson.speciality}</td></tr>
+<tr><td>ФИО: {event.execPerson.fullName}</td></tr>
+<tr><td><b>13.</b> Вид оплаты: {if: oplata=='2'}<u>ОМС</u>{end:}
+{if: oplata=='1'}<u>бюджет</u>{end:}
+{if: oplata=='3' or oplata=='4'}<u>платные услуги</u>{end:}
+{if: oplata=='3'}<u>ДМС</u>{end:}
+{if: oplata=='4'}<u>собств. средства</u>{end:}
+{if: oplata=='5' or oplata==''}<u>другое</u>{end:}</td></tr>
+<tr><td><b>14.</b> Место обслуживания:
+{if: place=='1'}<u>амбулаторно</u>{end:}
+{if: place=='2'}<u>на дому</u>{end:}
+{if: place=='3'}<u>актив на дому</u>{end:}
+{if: place=='4'}<u>на выезде</u>{end:}</td></tr>
+<tr><td><b>15.</b> Цель ОМП:
+{if: purpose in (u'', u'Л', u'Лдоп')}<u>лечебно-диагностическая </u>{end:}
+{if: purpose in (u'К', u'Кдоп')}<u>консультационная </u>{end:}
+{if: purpose==u'ДН'}<u>диспансерное наблюдение </u>{end:}
+{if: purpose==u'П'}<u>профилактический осмотр </u>{end:}
+{if: purpose in (u'Д', u'ДД')}<u>доп. диспансеризация </u>{end:}
+{if: event.eventType.purpose.code =='3'}<u>патронаж </u>{end:}
+{if: event.eventType.purpose.code =='6'}<u>реабилитационная </u>{end:}
+</td></tr>
+<tr><td><b>16.</b> Результат ОМП:
+{if: result == '01'}<u>выздоровление</u>{end:}
+{if: result == '02'}<u>улучшение</u>{end:}
+{if: result == '03'}<u>динамическое наблюдение</u>{end:}
+{if: result == '04'}<u>направлен на госпитализацию</u>{end:}
+{if: result == '05'}<u>направлен в дневной стационар</u>{end:}
+{if: result == '06'}<u>направлен в стационар на дому</u>{end:}
+{if: result == '07'}<u>направлен на консультацию</u>{end:}
+{if: result == '08'}<u>направлен на консультацию в др. ЛПУ</u>{end:}
+{if: result == '09'}<u>справка для получения путевки</u>{end:}
+{if: result == '10'}<u>санаторно-курортная карта</u>{end:}
+{if: result == '99'}<u>летальный исход</u>{end:}
+{if: result not in('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '99')}<u>иное решение</u>{end:}
+</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>17.</b> Диагноз основной:</td></tr>
+<tr><td>код МКБ: {: string = main_diag.MKB.code if main_diag else ''}<u><font face="Courier">{ "_"*0 + string + "_"*(6-len(string)) }</font></u> Наименование: {main_diag.MKB.descr if main_diag else ''}</td></tr>
+<tr><td><b>18.</b> Характер заболевания:
+{if: main_diag}
+ <u>{main_diag.character.code + ' - ' + main_diag.character.name}</u>
+{else:}
+1 - острое; 2 - хроническое, впервые установленное; 3 - хроническое, диагностированное ранее; 4 - хроническое обостренное
+{end:}
+</td></tr>
+<tr><td><b>19.</b> Диспансерный учёт:
+{if: dispancer == '0'}<u>не требуется</u>{end:}
+{if: dispancer == '1'}<u>состоит</u>{end:}
+{if: dispancer == '2'}<u>взят</u>{end:}
+{if: dispancer == '6'}<u>взят повторно</u>{end:}
+{if: dispancer == '3'}<u>снят</u>{end:}
+{if: dispancer == '4'}<u>снят по выздоровлению</u>{end:}
+{if: dispancer == '5'}<u>снят в связи со смертью</u>{end:}
+{if: dispancer == '7'}<u>нуждается</u>{end:}
+</td></tr>
+<tr><td><b>20.</b> Травма:
+{if: trauma in ('01', '02', '03', '04', '05')}<u>производственная: </u>{end:}
+{if: trauma == '01'}<u>промышленная</u>{end:}
+{if: trauma == '02'}<u>строительная</u>{end:}
+{if: trauma == '03'}<u>дорожно-транспортная</u>{end:}
+{if: trauma == '04'}<u>сельскохозяйственная</u>{end:}
+{if: trauma == '05'}<u>прочие</u>{end:}
+{if: trauma in ()}<u>не производственная: </u>{end:}
+{if: trauma == '06'}<u>бытовая</u>{end:}
+{if: trauma == '07'}<u>уличная</u>{end:}
+{if: trauma == '08'}<u>дорожно-транспортная</u>{end:}
+{if: trauma == '09'}<u>школьная</u>{end:}
+{if: trauma == '10'}<u>спортивная</u>{end:}
+{if: trauma == '11'}<u>прочие</u>{end:}
+{if: trauma == '12'}<u>полученная в результате террористических действий</u>{end:}
+</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>21. Сопутствовавшая патология, повлиявшая на течение основного заболевания:</b></td></tr>
+<tr><td>код МКБ: {: string = sop_diags[0].MKB.code if len(sop_diags) else ''}<u><font face="Courier">{ "_"*0 + string + "_"*(5-len(string)) }</font></u> Наименование: {sop_diags[0].MKB.descr if len(sop_diags) else ''}</td></tr>
+<tr><td><b>22.</b> Характер заболевания
+{if: sop_character}
+ <u>{sop_character.code + ' - ' + sop_character.name}</u>
+{else:}
+1 - острое; 2 - хроническое, впервые установленное; 3 - хроническое, диагностированное ранее; 4 - хроническое обостренное
+{end:}
+</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>23. Осложнение основного заболевания:</b></td></tr>
+<tr><td>код МКБ: {: string = u""}<u><font face="Courier">{ "_"*0 + string + "_"*(5-len(string)) }</font></u> Наименование: {u"..."}</td></tr>
+<tr><td><b>24.</b> Характер заболевания: 1 - острое; 2 - хроническое, впервые установленное; 3 - хроническое, диагностированное ранее; 4 - хроническое обостренное</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>25. Ранее зарегистрированный диагноз:</b> (заполняется только при изменении диагноза)</td></tr>
+<tr><td>код МКБ: {: string = early_diags[0].MKB.code if len(early_diags) else ''}<u><font face="Courier">{ "_"*0 + string + "_"*(5-len(string)) }</font></u> Наименование: {early_diags[0].MKB.descr if len(early_diags) else ''}</td></tr>
+<tr><td>Дата регистрации изменяемого диагноза: {: string = main_diag.setDate if main_diag and len(early_diags) else ''}<u><font face="Courier">{ "_"*0 + string + "_"*(6-len(string)) }</font></u><br>
+Причина изменения: 1 - ошибочный; 2 - уточнение; 3 - трансформация диагноза.</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+</table>
+</td></tr>
+</table>
+
+<!--НОВАЯ СТРАНИЦА-->
+<p style="page-break-after: always"></p>
+
+<table cellpadding=0 cellspacing=0 width=100%>
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100%>
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td colspan=4><b>26. Перечень выполненных услуг</b></td></tr>
+<tr><td width=15%><b>Код услуги</b></td><td width=10%><b>Дата</b></td><td width=65%><b>Название услуги</b></td><td width=10%><b>Кол-во</b></td></tr>
+<tr><td colspan=4><b>26.1. Услуги лечащего врача</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "1"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.2. Лабораторные диагностические услуги</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "3"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.3. Инструментальные диагностические услуги</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "2"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.4. Консультативные услуги</b></td></tr>
+<tr><td>{u""}</td><td>{u""}</td><td>{u""}</td><td>{u""}</td></tr>
+<tr><td>{u""}</td><td>{u""}</td><td>{u""}</td><td>{u""}</td></tr>
+<tr><td colspan=4><b>26.5. Немедикаментозная терапия</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "4"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.6. Вспомогательные услуги</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "5"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.7. Оперативное лечение</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and  a.nomenclativeService.code[:3] == u"А16"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.8. Услуги по экспертизе</b></td></tr>
+{for: action in [a for a in event.actions if a.nomenclativeService and a.nomenclativeService.group.code == "6"]}
+<tr><td>{action.nomenclativeService.code}</td><td>{action.endDate.date.toString("dd.MM.yy")}</td><td>{action.nomenclativeService.name}</td><td>{action.amount}</td></tr>
+{end:}
+<tr><td colspan=4><b>26.9. Медикаментозная терапия</b></td></tr>
+<tr><td colspan=4>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr width=10%><td><b>Код ЛС</b></td><td width=50%><b>МНН</b></td><td width=20%><b>Суточная дозировка</b></td><td width=20%><b>Количество дней лечения</b></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>27. Документ временной нетрудоспособности:</b></td></tr>
+<tr><td>Номер: <u>{tempInvalid.serial + " " + tempInvalid.number}</u>   дата открытия: {: string = tempInvalid.begDate.date.toString("dd.MM.yy")
+}<u><font face="Courier">{ "_"*0 + string + "_"*(6-len(string)) }</font></u>   дата закрытия: {: string = tempInvalid.endDate.date.toString("dd.MM.yy")}<u><font face="Courier">{ "_"*0 + string + "_"*(6-len(string)) }</font></u></td></tr>
+<tr><td>Статус: {(u"открыт.", u"закрыт.", u"продлен.", u"передан.")[tempInvalid.closed] if tempInvalid.duration > 0 else ''}</td></tr>
+<tr><td><b>28.</b> Причина выдачи: {tempInvalid.reason}</td></tr>
+<tr><td><b>29.</b>  1 - пациент;  2 - супруг;  3 - родитель;  4 - ребенок;  5 - родственник;  6 - опекун.<br>
+Пол: {tempInvalid.sex}   возраст: {tempInvalid.age}</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>30. Сведения о выписанных рецептах по ОЛНС:</b></td></tr>
+{for: action in event.actions}
+<tr><td>дата: <u>{u""}</u> серия: <u>{u""}</u>  номер: <u>{u""}</u></td></tr>
+<tr><td>ЛС: <u>{u""}</u></td></tr>
+<tr><td>диагноз МКБ {: string = u""}<u><font face="Courier">{ "_"*0 + string + "_"*(5-len(string)) }</font></u> ФИО врача: {u""}</td></tr>
+{end:}
+</table>
+</td></tr>
+</table></td></tr>
+
+<tr style="font-size:1px"><td> <p style="margin-top:0"> </p></td></tr>
+
+<tr><td><table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td>
+<table cellpadding=0 cellspacing=0 width=100% border="1">
+<tr><td><b>31. Особенности выполнения МЭС:</b></td></tr>
+<tr><td>{event.mesSpecification}</td></tr>
+</table>
+</td></tr>
+</table></td></tr>
+</table>
+</td></tr>
+
+<tr><td>
+Дата закрытия талона: {: string = event.execDate.date.toString("dd.MM.yy")}<u><font face="Courier">{string + "_"*(6 - len(string)) }</font></u>   Подпись __________________________________________
+</td></tr>
+</table>
+</body>
+</html>

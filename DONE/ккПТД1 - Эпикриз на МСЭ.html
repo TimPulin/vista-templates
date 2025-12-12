@@ -1,0 +1,163 @@
+<!--Начальная дата разработки 21.10.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Э П И К Р И З  Н А  М С Э</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ЭПИКРИЗ НА МСЭ</div>
+
+  <div>
+    Дата
+    {if: action.endDate}
+        <b>{action.endDate.toString(u'dd.MM.yyyy')}</b>
+    {else:}
+        <b>{action.begDate.toString(u'dd.MM.yyyy')}</b>
+    {end:}
+  </div>
+
+  <div>
+    Состоит на учете с <b>{action[u'Состоит на учете  с']}</b>
+  </div>
+  
+
+  <div>
+    Диагноз: <b>{action[u'Диагноз код по МКБ']}</b> <b>{action[u'Диагноз Расшифровка']}</b>
+  </div> 
+
+
+
+  <div>
+    В течении <b>{event.setDate.toString(u'yyyy')}</b>г.
+    отмечалось <b>{action[u'Динамика процесса']}</b>
+  </div>
+
+  <div>
+    Режим лечения: <b>{action[u'Режим лечения']}</b>    
+  </div>
+
+  <div>
+    Интенсивная фаза с <b>{action[u'Интенсивная фаза С']}</b> по <b>{action[u'Интенсивная фаза По']}</b>
+  </div>
+
+  <div>
+    Фаза продолжения с <b>{action[u'Фаза продолжения С']}</b> по <b>{action[u'Фаза продолжения По']}</b>
+  </div>
+ 
+  <div>
+    Причины удлинения сроков лечения: {action[u'Причины удлинения сроков лечения']}
+  </div>
+
+  <div>
+    Контрольное обследование: {action[u'Контрольное обследование']}
+  </div>
+
+  <div>
+    Динамика течения болезни: {action[u'Динамика течения болезни']}
+  </div>
+
+  <div>
+    Диагноз на день представления на МСЭ:
+    <b>{action[u'Диагноз на день представления на МСЭ код по МКБ']}</b>
+    <b>{action[u'Диагноз на день представления на МСЭ Расшифровка']}</b>
+  </div>
+
+  <div>
+    Представляется на ВК с целью: <b>{action[u'Цель представления на ВК']}</b>
+  </div>
+
+  <div>
+    <b>{action[u'Освидетельствование']}</b>
+  </div>
+
+  <div>
+    Причина: <b>{action[u'Причина']}</b>
+  </div>
+
+  <br>
+
+  <div class="h1">
+    ПРОТОКОЛ ВК № <b>{action.id}</b> от <b>{action[u'Дата протокола']}</b>
+  </div>
+  
+  <div>
+    <b>{action[u'Цель']}</b>
+  </div>
+
+  <div>
+    <b>{action[u'Освидетельствование']}</b>
+  </div>
+
+  <div>
+    Причина: <b>{action[u'Причина']}</b>
+  </div>
+
+  <div>
+    Председатель ВК: <b>{action[u'Председатель ВК']}</b>
+  </div>
+
+  <div>
+    {: member_prop_names = [u'Член комиссии 1', u'Член комиссии 2', u'Член комиссии 3']}
+    <div>Члены ВК: </div>
+    {for: name in member_prop_names}
+      <div>
+        {action[name]}
+      </div>
+    {end:}
+  </div>
+  
+  
+
+</div>
+</body>
+</html>

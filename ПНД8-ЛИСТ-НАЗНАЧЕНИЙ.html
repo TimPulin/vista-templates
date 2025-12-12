@@ -1,25 +1,20 @@
-<!--Начальная дата разработки 22.10.2025 г.-->
-<!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!-- 20.11.2025  -->
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>лист назначений</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
+{: setOrientation('L')}
+{setMargins(5)}
 
 {: from library.Utils import forceString }
 {: from library.Utils import forceInt }
 {: from PyQt4 import QtGui }
 {: db = QtGui.qApp.db }
+{: from datetime import datetime, timedelta }
 
 {: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
@@ -28,16 +23,16 @@ write('''
 <style>
 .h1 {
     text-align: center;
-    margin-bottom: 20px;
-    font-size: 14pt;
+    margin-bottom: 10px;
+    font-size: 10pt;
     font-weight: 900;
 }
 .main {
     font-family: 'Times New Roman';
-    font-size: 12pt;
+    font-size: 8pt;
 }
 .small {
-  font-size: 8pt;
+  font-size: 6pt;
 }
 .bold {
   font-weight: 900;
@@ -48,16 +43,225 @@ write('''
 .white-wrap {
   white-space: nowrap;
 }
+.page-break {
+  page-break-after: always;
+}
+.header-spacing {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
 </style>
 ''')}
+
+{:
+def show(value):
+  write('''<div>{value}</div>'''.format(value=value))
+}
+
+{:
+def convert_to_datetime(date_string):
+  return datetime.strptime(date_string, '%d.%m.%Y')
+}
+
+{:
+def get_purpose_dateline(start_date, end_date):
+  purpose_dateline = []
+  current_date = start_date
+  while current_date <= end_date:
+    purpose_dateline.append(current_date)
+    current_date = current_date + timedelta(days=1)
+
+  return purpose_dateline
+}
+
+{:
+date_list = []
+for item in action[u'Назначено']:
+  if item[u'Дата назначения'].value:
+    date_list.append(convert_to_datetime(item[u'Дата назначения'].value.toString('dd.MM.yyyy')))
+  if item[u'Дата отмены'].value:
+    date_list.append(convert_to_datetime(item[u'Дата отмены'].value.toString('dd.MM.yyyy')))
+
+if date_list:
+  start_date = min(date_list)
+  end_date = max(date_list)
+  purpose_dateline = get_purpose_dateline(start_date, end_date)
+else:
+  purpose_dateline = []
+}
+
+{:
+# Разделение на периоды по 30 дней
+periods = []
+if purpose_dateline:
+  total_days = len(purpose_dateline)
+  days_per_period = 30
+  num_periods = (total_days + days_per_period - 1) // days_per_period
+
+  for i in range(num_periods):
+    start_idx = i * days_per_period
+    end_idx = min((i + 1) * days_per_period, total_days)
+    periods.append(purpose_dateline[start_idx:end_idx])
+}
+
+{:
+DATE_PROP_NAME = u'Дата выполнения'
+NURSE_PROP_NAME = u'Мед сестра'
+
+def getPurposeExecution(purpose):
+  purpose_date_execute_list = []
+  nurse_executor_list = []
+  
+  for prop in purpose:
+    if DATE_PROP_NAME.lower() in prop.name.lower() and prop.value:
+      prop_index = getDatePropIndex(prop.shortName)
+      nurse = getNurse(prop_index, purpose)
+
+      purpose_date_execute_list.append(prop.value.toString(u'dd.MM.yyyy'))
+      nurse_executor_list.append(nurse)
+  
+  return dict(zip(purpose_date_execute_list, nurse_executor_list))
+}
+
+
+{:
+def getNurse(prop_index, purpose):
+  nurse = u''
+  if prop_index != u'':
+    current_nurse_prop_shortName = NURSE_PROP_NAME + u' ' + prop_index
+    for prop in purpose:
+      if prop.shortName == current_nurse_prop_shortName:
+        nurse = prop.value
+  return nurse
+}
+
+{:
+def getDatePropIndex(name):
+  index = ''
+  temp_list = name.rsplit(u' ', 1)
+  if len(temp_list) > 1:
+    index = temp_list[1]
+  return index
+}
+
 <!-- @formatter:on -->
+
+
 </head>
-<body>
-
-<div class="main">
-  <div align="center" class="h1"></div>
+<body style="font-family: Arial; font-size: 8pt;">
 
 
-</div>
+{:
+diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB
+  from Diagnosis ds
+  where ds.id = getEventDiagnosis({event_id})
+""".format(event_id=event.id))
+
+if diag_ref:
+  diag_mkb = forceString(diag_ref.value(u'MKB'))
+else:
+  diag_mkb = '_______'
+}
+
+
+{:
+leaved_act_list = filter(lambda x: x.flatCode == u'leaved', event.actions)
+leaved_act = leaved_act_list[0] if len(leaved_act_list) > 0 else None
+}
+
+{:
+received_act_list = filter(lambda x: x.flatCode == u'received', event.actions)
+received_act = received_act_list[0] if len(leaved_act_list) > 0 else None
+}
+
+{: global_index = 0}
+
+{for: period_idx, current_period in enumerate(periods)}
+  {if: period_idx > 0}
+    <div class="page-break"></div>
+  {end:}
+
+  <div align="center" class="header-spacing"> <b>Лист назначений и их выполнений.</b></div>
+  <div>Фамилия,  имя, отчество (при наличии) <b>{client.fullName}</b> ({client.birthDate} г.) № медицинской карты <b> {client.id}</b> </div>
+  <div>Диагноз (основное заболевание):
+    {if: leaved_act}
+        <b>{leaved_act[u'Основное заболевание']}</b>
+    {end:}
+  </div>
+  <div>
+    Аллергические реакции на лек. преп. и д.р.:
+    {if: received_act}
+        <b>{received_act[u'Аллергологический анамнез']}</b>
+    {end:}
+  </div>
+
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <th rowspan="2">
+        № <br>
+        п/п
+      </th>
+      <th rowspan="2">
+        Лекарственный препарат
+      </th>
+      <th rowspan="2">
+        Дата <br>
+        назн.
+      </th>
+      <th rowspan="2">
+        Дата
+        отм.
+      </th>
+      <th colspan="{len(current_period) + 1}">
+        Отметки об исполнении назначения лекарственного препарата, лечебного питания, режима, (дата и время исполнения) подпись медицинского работника, ответственного за исполнение (время, дата, подпись)
+      </th>
+    </tr>
+    <tr>
+      {for: date in current_period}
+        <th width="2%"><span class="white-wrap">{date.strftime('%d.%m')}&nbsp;</span></th>
+      {end:}
+      <th>Сведения о реакции <br> на применение</th>
+    </tr>
+
+    {: global_index = 0}
+    {for: purpose in action[u'Назначено']}
+      {: global_index += 1}
+
+      <tr>
+        <td align="center">{global_index}</td>
+        <td valign="top">{purpose[u'Действующее вещество']} {purpose[u'Лекарственная форма']} {purpose[u'Дозировка на прием (мг)']} {purpose[u'Способ введения']} {purpose[u'Добавочный препарат']}</td>
+        <td align="center" width="4%">
+          <div class="white-wrap">{purpose[u'Дата назначения']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+        <td align="center" width="4%">
+          <div class="white-wrap">{purpose[u'Дата отмены']}&nbsp;</div>
+          <div>&nbsp;</div>
+        </td>
+
+        {: purpose_execution = getPurposeExecution(purpose)}
+        {for: date in current_period}
+          {: nurse = purpose_execution.data.get(date.strftime('%d.%m.%Y'), u'')}
+          <td>
+            {nurse}
+            &nbsp;
+          </td>
+        {end:}
+        <td>
+          {purpose[u'Сведения о реакции на применение:']}
+        </td>
+      </tr>
+    {end:}
+
+    <tr>
+      <td colspan="{len(current_period) + 5}">
+        Подпись медицинского работника, ответственного за контроль исполнения назначений {'_' * 15}
+      </td>
+    </tr>
+  </table>
+{end:}
+
 </body>
 </html>

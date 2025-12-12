@@ -1,63 +1,45 @@
-<!--Начальная дата разработки 02.09.2025 г.-->
-<!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+{:
+def getDiagName(mkb_id):
+  ref = None
+  if mkb_id and mkb_id != '':
+    ref = db.getRecordEx(stmt=u"""
+      select mkb.DiagName as diag_name
+      from MKB mkb
+      where mkb.DiagID = '{mkb_id}'
+    """.format(mkb_id=mkb_id))
+  if ref:
+    return forceString(ref.value(u'diag_name'))
+  else:
+    return ''
+}
 
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Document</title>
-<!-- @formatter:off -->
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
-
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
 {:
-write('''
-<style>
-.h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 14pt;
-    font-weight: 900;
+def cut_code(value):
+    if value:
+      return forceString(value).split(u' ', )[0]
+    else:
+      return u''
 }
-.main {
-    font-family: 'Times New Roman';
-    font-size: 12pt;
-}
-.small {
-  font-size: 8pt;
-}
-.bold {
-  font-weight: 900;
-}
-.red-line {
-  text-indent: 10px;
-}
-.white-wrap {
-  white-space: nowrap;
-}
-</style>
-''')}
-<!-- @formatter:on -->
-</head>
-<body>
+    <div>
+      Код субъекта Российской Федерации
+      {if: u'Субъекты Российской Федерации' in action}
+        <b>{cut_code(action[u'Субъекты Российской Федерации'].value)}</b>
+      {else:}
+        <b>{region_code}</b>
+      {end:}
 
-<div class="main">
-  <div align="center" class="h1"></div>
+    </div>
 
-
-</div>
-</body>
-</html>
+    <div>
+      Климат в месте проживания пациента (код)
+        <b>{cut_code(action[u'Климат в месте проживания'].value)}</b>
+    </div>
+    <div>
+      Климатические факторы в месте проживания пациента (код)
+        <b>{cut_code(action[u'Климатические факторы в месте проживания'].value)}</b>
+    </div>
+    <div>
+      Код меры социальной поддержки
+        <b>{cut_code(action[u'Льготная категория'].value)}</b>
+    </div>

@@ -1,0 +1,739 @@
+<!-- изменил Пулин дата 20.11.2025 задача  -->
+<!-- изменил Пулин дата 19.11.2025 задача  -->
+<!--Начальная дата разработки 17.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6128 Разработать ШП СЭМД. (237) Протокол осмотра мультидисциплинарной реабилитационной команды (ред.1) -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Протокол осмотра МДРК</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+.page-break {
+    page-break-after: always;
+}
+
+.title {
+    font-weight: 900;
+    text-decoration: underline;
+}
+.sub-title {
+    text-decoration: underline;
+}
+.ml {
+    margin-left: 20px
+}
+.mb {
+    margin-bottom: 10px;
+}
+.mt-10 {
+    margin-top: 5px;
+}
+.main div > div {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+.act-title {
+    font-style: italic;
+}
+.act-name {
+    color: #666;
+    font-size: 10pt;
+    font-style: italic;
+}
+.solid-block {
+    page-break-inside: avoid;
+}
+</style>
+''')}
+
+
+{:
+def parse_mkf(value):
+  result = [u'', u'']
+  if value:
+    list =value.split(u' ', 1)
+    if len(list) > 1:
+      result = list
+  return result
+}
+
+{:
+def parse_by_whitespace(value):
+  result = ''
+  if value:
+    list = value.split(u' ', 1)
+    if len(list) > 0:
+      result =  list[0]
+  return result
+}
+
+{:
+def parsePersonName(value):
+  name = value
+  if value:
+    temp_list = value.split(u',')
+    if len(temp_list) > 0:
+      name = temp_list[0]
+
+  return name
+}
+
+{:
+event_info_ref = db.getRecordEx(stmt=u"""
+  select os.name as orgStructure_name
+  from Event e
+           join OrgStructure os on e.orgStructure_id = os.id
+  where e.id = {event_id};
+""".format(event_id=event.id))
+
+if event_info_ref:
+  orgStructure_name = forceString(event_info_ref.value(u'orgStructure_name'))
+else:
+  orgStructure_name = u''
+}
+
+{:
+diag_ref = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 3 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName, DATE_FORMAT(dc.date_registration, '%d.%m.%Y')),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ' '
+      ) AS diffDiags,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 5 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName, DATE_FORMAT(dc.date_registration, '%d.%m.%Y')),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ''
+      ) AS relatedDiags
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  WHERE e.id = {event_id};
+""".format(event_id=event.id))
+}
+
+{:
+if diag_ref:
+  mainId = forceString(diag_ref.value(u'mainId'))
+  mainName = forceString(diag_ref.value(u'mainName'))
+  diffDiags = forceString(diag_ref.value(u'diffDiags'))
+  relatedDiags = forceString(diag_ref.value(u'relatedDiags'))
+else:
+  mainId = ''
+  mainName = ''
+  diffDiags = ''
+  relatedDiags = ''
+}
+
+{:
+def parse_diag(value):
+  diags = []
+  if value != u'':
+    diag_list = value.split(u';')
+    if len(diag_list) > 0:
+      for diag in diag_list:
+        items = diag.split(u'$')
+        diagId = u''
+        diagName = u''
+        diagDate = u''
+        if len(items) > 1:
+          diagId = items[0]
+          diagName = items[1]
+        if len(items) > 2:
+          diagDate = items[2]
+        diags.append([diagId, diagName, diagDate])
+
+  return diags
+}
+
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+
+<div class="main">
+  <div align="center" class="h1">
+    Протокол осмотра МДРК от
+    {if: action.endDate}
+        {: actDate = action.endDate}
+    {else:}
+        {: actDate = action.begDate}
+    {end:}
+    {actDate.toString(u'dd.MM.yyyy')}
+  </div>
+
+  <br>
+
+  <div>
+    <div>
+      <span class="title">Отделение:</span>
+      {orgStructure_name}
+    </div>
+
+    <div>
+      <span class="title">Пациент:</span>
+      {client.fullName}
+      ({u'муж' if client.sex == u'М' else u'жен.'})
+      {client.birthDate} ({client.age})
+    </div>
+  </div>
+
+  <div>
+    <div><span class="title">Клинический диагноз:</span></div>
+    <div class="ml">
+      <table width="100%" cellpadding="0" cellspacing="2" class="report">
+        <tr>
+          <td><span class="sub-title">Основное заболевание:</span></td>
+          <td>
+            {mainId}
+            {mainName}
+          </td>
+        </tr>
+        <tr>
+          <td><span class="sub-title">Осложнение основного заболевания:</span></td>
+          <td>
+            {: diags = parse_diag(diffDiags)}
+            {for: diag in diags}
+              {: diagId, diagName, diagDate = diag}
+              <div>{diagId} {diagName} {u'от' if diagDate != u'' else u''}  {diagDate}</div>
+            {end:}
+          </td>
+        </tr>
+        <tr>
+          <td><span class="sub-title">Сопутствующее заболевание:</span></td>
+          <td>
+            {: diags = parse_diag(relatedDiags)}
+            {for: diag in diags}
+              {: diagId, diagName, diagDate = diag}
+              <div>{diagId} {diagName} {u'от' if diagDate != u'' else u''}  {diagDate}</div>
+            {end:}
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  
+  
+  <div>
+    <div>
+      <div class="title">Реабилитационный диагноз:</div>
+    </div>    
+    
+    <table width="100%" cellpadding="3" cellspacing="0" border="1" class="mt-10">
+      <tr>
+        <th width="50%">Код по МКФ</th>
+        <th width="50%">
+          Реабилитационный прогноз (ожидаемая <br>
+          оценка по МКФ в конце курса)
+        </th>
+      </tr>
+
+      <!-- note парсить знак и цифру из Определитель первого уровня -->
+      {: prop_parent = action[u'Реабилитационный диагноз']}
+      {for: act_child in prop_parent}
+        {: mkf_code, mkf_name = parse_mkf(act_child[u'МКФ'].value)}
+        {if: mkf_code == u'pf'}
+          <tr>
+            <td colspan="2">
+              {act_child[u'Описание персональных факторов (при персональных факторах)']}
+            </td>
+          </tr>
+        {elif: mkf_code != u''}
+          <tr>
+            <td>
+              {: determinant_first = parse_by_whitespace(act_child[u'Определитель первого уровня'].value)}
+              {: determinant_second = parse_by_whitespace(act_child[u'Определитель второго уровня'].value)}
+              {mkf_code}{u'.' if determinant_first != u'' else ''}{determinant_first}{determinant_second} {mkf_name}
+            </td>
+            <td>
+              {: forecast_first = parse_by_whitespace(act_child[u'Реабилитационный прогноз первого уровня (ожидаемая оценка по МКФ в конце курса)'].value)}
+              {: forecast_second = parse_by_whitespace(act_child[u'Реабилитационный прогноз второго уровня (ожидаемая оценка по МКФ в конце курса)'].value)}
+              {forecast_first}{forecast_second}
+            </td>
+          </tr>
+        {end:}
+      {end:}
+
+    <!--   note второй уровень выводить если есть value -->
+    <!--   note если код pf, выводить поле Описание персональных факторов (при персональных факторах)-->
+    </table>    
+  </div>
+
+
+
+
+
+  <div>
+    <div class="title">Сведения о реабилитации:</div>
+    <div class="ml">
+
+
+      <div class="sub-title">Факторы, ограничивающие проведение реабилитационных мероприятий:</div>
+      <div class="ml">
+        <div>Этап медицинской реабилитации: {action[u'Этап медицинской реабилитации']}</div>
+        <div>
+          Длительность курса медицинской реабилитации в стационаре: {action[u'Длительность курса реабилитации (койк. дн)']} койко-дней
+        </div>
+        <div>
+          Реабилитационный потенциал: {action[u'Реабилитационный потенциал']}
+        </div>
+
+        <div class="sub-title">Факторы, ограничивающие проведение реабилитационных мероприятий:</div>
+        <div class="ml">
+          {: current_list = action[u'Ограничивающий фактор'].value}
+          {for: item in current_list}
+            <div>{item}</div>
+          {end:}
+          <div>{action[u'Ограничивающий фактор (текстом)']}</div>
+        </div>
+
+        <div class="sub-title">Факторы риска проведения реабилитационных мероприятий:</div>
+        <div class="ml">
+          {: current_list = action[u'Фактор риска'].value}
+          {for: item in current_list}
+            <div>{item}</div>
+          {end:}
+          <div>{action[u'Фактор риска (текстом)']}</div>
+        </div>
+
+        <div>
+          Цель реабилитации на курсе: {action[u'Цель реабилитации на курсе']}
+        </div>
+
+        <div>
+          Краткосрочная цель реабилитации: {action[u'Краткосрочная цель реабилитации']}
+        </div>
+
+        <div>Задачи реабилитации:</div>
+        <div>{action[u'Задачи реабилитации'].value:n}</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="title">Анамнез заболевания:</div>
+    <div class="ml">
+      <div>{action[u'Анамнез заболевания']}</div>
+
+      <div class="title">Оперативные вмешательства:</div>
+        <div class="ml">
+          {: current_list = action[u'Добавить оперативные вмешательства']}
+          {for: item in current_list}
+            <div>
+              {item[u'Наименование оперативного вмешательства']}
+              {: code_list = item[u'Код оперативного вмешательства по НМУ'].value.split(u' ')}
+              {if: len(code_list) > 0}
+                  ({code_list[0]})
+              {end:}
+              Дата проведения оперативного вмешательства:
+              {item[u'Дата и время окончания оперативного вмешательства'].value.toString(u'dd.MM.yyyy')}.
+              Время:
+              {item[u'Дата и время окончания оперативного вмешательства'].value.toString(u'HH:mm')}.
+            </div>
+          {end:}
+        </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="title">Анамнез жизни:</div>
+    <div class="ml">{action[u'Анамнез жизни']}</div>
+  </div>
+
+  <div>
+    <p class="title">Объективизированная оценка состояния пациента по шкалам:</p>
+    
+    <table width="100%" cellpadding="3" cellspacing="0" border="1" class="mt-10 mb">
+      <tr>
+        <th width="1%">
+          <div class="white-wrap">
+            Дата и время <br>
+            расчета шкалы
+          </div>
+        </th>
+        <th>Шкала</th>
+        <th width="1%">
+          <div class="white-wrap">
+            Результат <br>
+            расчета
+          </div>
+        </th>
+        <th>Заключение</th>
+      </tr>
+      {: prop_name_list = [u'Модифицированная шкала Рэнкина', u'Шкала реабилитационной маршрутизации', u'Шкала Бартель', u'Индекс мобильности Ривермид']}
+      {for: item in prop_name_list}
+        <tr>
+          <td class="white-wrap">{action[item][u'Дата и время расчета клинической шкалы']}&nbsp;</td>
+          <td>{item}</td>
+          <td align="center" class="white-wrap">{action[item][u'Результат расчета клинической шкалы']}&nbsp;</td>
+          <td>{action[item][u'Заключение']}</td>
+        </tr>
+      {end:}
+    </table>
+  </div>
+
+
+  <div class="title">Результаты диагностических мероприятий:</div>
+
+  <div class="ml">
+    <div class="title">Лабораторные исследования</div>
+    <div class="ml">
+      {: current_list = action[u'Добавить лабораторные исследования']}
+      {for: item in current_list}
+        <div>
+          <div>
+            {item[u'Лабораторное исследование']}
+            {if: item[u'Дата проведения'].value}
+              ({item[u'Дата проведения'].value.toString(u'dd.MM.yyyy')})
+            {end:}
+            {if: item[u'Врач'].value}
+              {parsePersonName(item[u'Врач'].value)}
+            {end:}
+          </div>
+
+          {if: item[u'Заключение'].value}
+              <div class="ml">Заключение: {item[u'Заключение']};</div>
+          {end:}
+
+          {if: item[u'Примечание'].value}
+              <div class="ml">Примечание: {item[u'Примечание']};</div>
+          {end:}
+        </div>
+      {end:}
+    </div>
+    <!--<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;" class="ml">-->
+    <!--    <tr>-->
+    <!--        <th>Показатель</th>-->
+    <!--        <th>Значение</th>-->
+    <!--        <th>Единицы измерения</th>-->
+    <!--        <th>Референтный диапазон</th>-->
+    <!--        <th>Комментарий</th>-->
+    <!--    </tr>-->
+    <!--</table>-->
+  </div>
+
+
+
+  <div class="ml">
+    <div class="title">Инструментальные исследования</div>
+
+    <div>
+      {: current_list = action[u'Проведенные инструментальные исследования'].value}
+
+        {for: item in current_list}
+          {: name = u''}
+          {: result = u''}
+          {: date = u''}
+          {: splitted = item.split(u' ', 2)}
+          {if: len(splitted) > 0}
+              {: date = splitted[0]}
+          {end:}
+          {if: len(splitted) > 2}
+              {: name, result = splitted[2].split(u'Результат:')}
+          {end:}
+
+          <div>{name} {(date)}</div>
+
+        {end:}
+    </div>
+
+
+    <div>
+      {: current_list = action[u'Добавить инструментальные исследования']}
+      {for: item in current_list}
+        <div>
+          <div>
+            {item[u'Инструментальное исследование']}
+            {if: item[u'Дата проведения'].value}
+              ({item[u'Дата проведения'].value.toString(u'dd.MM.yyyy')})
+            {end:}
+            {if: item[u'Врач'].value}
+              {parsePersonName(item[u'Врач'].value)}
+            {end:}
+          </div>
+
+          {if: item[u'Заключение'].value}
+              <div class="ml">Заключение: {item[u'Заключение']};</div>
+          {end:}
+
+          {if: item[u'Примечание'].value}
+              <div class="ml">Примечание: {item[u'Примечание']};</div>
+          {end:}
+        </div>
+
+      {end:}
+    </div>
+
+    <!--<table width="100%" cellpadding="0" cellspacing="0" class="tbl-report">-->
+    <!--  <tr class="tbl-report&#45;&#45;value">-->
+    <!--    <td></td>-->
+    <!--    <td></td>-->
+    <!--  </tr>-->
+    <!--  <tr class="tbl-report&#45;&#45;value">-->
+    <!--    <td></td>-->
+    <!--    <td></td>-->
+    <!--  </tr>-->
+    <!--</table>-->
+  </div>
+
+  <div class="ml">
+    <div class="title">Результаты осмотров участников МДРК и консультантов</div>
+
+    <div>
+      {: current_list = action[u'Проведенные осмотры'].value}
+      {for: item in current_list}
+        {: item_list = item.split(u'Заключение:', 1)}
+         {if: len(item_list) > 0}
+            <div>{item_list[0]}</div>
+        {end:}
+        {if: len(item_list) > 1}
+            <div class="ml">Заключение: {item_list[1]}</div>
+        {end:}
+      {end:}
+    </div>
+
+    <div>
+      {: current_list = action[u'Добавить осмотры']}
+      {for: item in current_list}
+        <div>
+          <div>
+            {if: item[u'Дата проведения'].value}
+              {item[u'Дата проведения'].value.toString(u'dd.MM.yyyy')}
+            {end:}
+            {if: item[u'Врач'].value}
+              {parsePersonName(item[u'Врач'].value)}
+            {end:}
+          </div>
+
+          {if: item[u'Заключение'].value}
+              <div class="ml">Заключение: {item[u'Заключение']};</div>
+          {end:}
+
+          {if: item[u'Примечание'].value}
+              <div class="ml">Примечание: {item[u'Примечание']};</div>
+          {end:}
+        </div>
+
+      {end:}
+    </div>
+
+
+  </div>
+
+
+  {: current_list = action[u'Консультация юриста']}
+  {for: item in current_list}
+    {if: item[u'Дата проведения консультации'].value}
+      <div class="ml solid-block">
+        <div class="title">Консультация юриста {item[u'Дата проведения консультации']}</div>
+
+        {if: item[u'ФИО юриста'].value}
+            <div>ФИО: {item[u'ФИО юриста']}</div>
+        {end:}
+
+        {if: item[u'Заключение'].value}
+          <div>
+            Заключение: {item[u'Заключение']}
+          </div>
+        {end:}
+
+        {if: item[u'Примечание'].value}
+          <div>
+            Примечание: {item[u'Примечание']}
+          </div>
+        {end:}
+
+      </div>
+    {end:}
+  {end:}
+
+
+  <div class="title">Назначения и рекомендации:</div>
+
+  <div class="ml">
+    <div class="title">Режим и питание:</div>
+    <div class="ml">
+      <div>Двигательный режим: {action[u'Двигательный режим']}</div>
+      <div>Описание питания: {action[u'Описание питания']}</div>
+    </div>
+    <div class="title">Медикаментозное лечение:</div>
+    <div class="ml">
+      {action[u'Медикаментозное лечение']}
+    </div>
+  </div>
+
+  <div class="ml">
+    <div class="title">План реабилитации:</div>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border="1" class="mt-10 mb">
+      <thead>
+        <tr>
+          <th>Реабилитационные процедуры</th>
+          <th>Цель проведения</th>
+          <th width="1%">Количество&nbsp;</th>
+          <th width="1%" class="white-wrap">
+            Продолж.&nbsp; <br>
+            в мин.&nbsp;
+          </th>
+          <th width="1%">Кратность&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>
+        {: current_list = action[u'План реабилитации']}
+        {for: item in current_list}
+          <tr class="solid-block">
+            <td>
+              {item[u'Реабилитационная процедура']}
+            </td>
+            <td>
+              {item[u'Цель проведения реабилитационной процедуры']}
+            </td>
+            <td>
+              {item[u'Количество реабилитационных процедур']}
+            </td>
+            <td>
+              {item[u'Продолжительность процедуры (мин.)']}
+            </td>
+            <td>
+              {item[u'Кратность проведения']}
+            </td>
+          </tr>
+        {end:}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="title">Оказанные услуги:</div>
+  <table width="100%" cellpadding="3" cellspacing="0" border="1" class="mt-10 mb">
+    <thead>
+      <tr>
+        <th width="1%">
+          Код
+        </th>
+        <th>
+          Наименование
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {: current_list = action[u'Оказанные услуги'].value}
+      {for: item in current_list}
+        {: code = u''}
+        {: name = u''}
+
+        {: splitted = item.split(u' ', 1)}
+        {if: len(splitted) > 0}
+          {: code = splitted[0]}
+        {end:}
+        {if: len(splitted) > 1}
+          {: name = splitted[1]}
+        {end:}
+        <tr class="solid-block">
+          <td>
+            <div class="white-wrap">{code}&nbsp;</div>
+          </td>
+          <td>
+            {name}
+          </td>
+        </tr>
+      {end:}
+    </tbody>
+  </table>
+
+  <div class="sub-title">Участники МДРК:</div>
+  {: current_list = action[u'Участники команды'].value}
+  <div>
+    {for: item in current_list}
+      <div>{parsePersonName(item)}</div>
+    {end:}
+  </div>
+
+  <br>
+
+
+  <table width="100%" cellpadding="0" cellspacing="5">
+    <tr>
+      <td>
+        <div class="sub-title">Лечащий врач:</div>
+        {if: action.person}
+          <div>{action.person.shortName} {action.person.speciality} </div>
+        {end:}
+      </td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>
+        <div class="sub-title">Заведующий отделением медицинской реабилитации:</div>
+        <div>
+          {parsePersonName(action[u'Заведующий отделением'].value)}
+        </div>
+      </td>
+      <td></td>
+    </tr>
+
+  </table>
+
+</div>
+</body>
+</html>

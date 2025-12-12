@@ -1,0 +1,400 @@
+<!--Начальная дата разработки 06.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6046 Сделать ШП для СЭМД. (287) Предоперационный осмотр врачом-анестезиологом-реаниматологом (ред.1) -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Предоперационный осмотр врачом-анестезиологом-реаниматологом</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 5px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.section__title {
+    font-weight: 900;
+    text-decoration: underline;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+.tbl-vital tbody td {
+    text-align: center;
+}
+
+.center {
+    text-align: center;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <table width="50%" cellpadding="1" cellspacing="0" border="1">
+    <tr>
+      <td align="center">
+        <table  cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="small">
+              <div align="center">Наименование медицинской организации</div>
+              <div>
+                {currentOrganisation.title}
+              </div>
+              <div>
+                Адрес места нахождения
+                {currentOrganisation.address}
+              </div>
+              <div>
+                Контакты:
+                {currentOrganisation.phone}
+              </div>
+              <div>
+                Номер и дата выдачи лицензии на осуществление медицинской деятельности:
+              </div>
+              <div>
+                &nbsp;
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div align="center" class="h1">
+    Предоперационный осмотр <br> врачом-анестезиологом-реаниматологом
+  </div>
+
+  {if: action.endDate}
+      {:action_date = action.endDate}
+  {else:}
+      {:action_date = action.begDate}
+  {end:}
+
+  <div align="center">
+    «{forceString(action_date.toString('dd'))}» {forceString(month[action_date.date.month()])} {forceString(action_date.date.year())} г.
+  </div>
+
+  <br>
+
+  <div class="section">
+    <div align="center" class="section__title">
+      Пациент
+    </div>
+    <div>
+      {client.fullName}
+      ({u'мужской' if client.sex == u'М' else u'женский'}, дата рождения: {client.birthDate})
+    </div>
+  </div>
+
+  <div class="section">
+    <div align="center" class="section__title">Диагноз</div>
+    <div>
+      Основное заболевание:
+    </div>
+    <div>
+      Осложнения основного заболевания:
+    </div>
+    <div>
+      Сопутствующее заболевание:
+    </div>
+
+  </div>
+
+  <div class="section">
+    <div align="center" class="section__title">Планируемое оперативное вмешательство (операция)</div>
+    <div>
+      {if: action[u'Операция'].value}
+          {action[u'Операция']}
+      {else:}
+        &nbsp;
+      {end:}
+      {if: action[u'Код операции'].value}
+          ({action[u'Код операции']}),
+      {else:}
+        &nbsp;
+      {end:}
+      {if: action[u'Срочность операции'].value}
+          {action[u'Срочность операции']}
+      {else:}
+        &nbsp;
+      {end:}
+    </div>
+  </div>
+
+  <div class="section">
+    <div align="center" class="section__title">Жалобы</div>
+    <div>
+      {if: action[u'Жалобы'].value}
+          {action[u'Жалобы']}
+      {else:}
+        &nbsp;
+      {end:}
+    </div>
+  </div>
+
+  <div class="section">
+    <div align="center" class="section__title">Особенности анамнеза</div>
+    <div>
+      Анамнез заболевания: {action[u'Анамнез заболевания']}
+    </div>
+
+    <div>
+      Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции:
+      {action[u'Аллергические реакции в анамнезе']}
+    </div>
+
+    <div>
+      Постоянный прием лекарственных препаратов:
+      {action[u'Постоянный прием лекарственных препаратов']}
+    </div>
+    <div>
+      Наличие имплантированных медицинских изделий:
+      {action[u'Наличие имплантированных медицинских изделий']}
+    </div>
+    <div>
+      Наличие (отсутствие) обструктивного сонного апноэ:
+      {action[u'Наличие обструктивного сонного апноэ']}
+    </div>
+    <div>
+      Сведения о перенесенных ранее анестезиях:
+      {action[u'Перенесенные ранее анестезии']}
+    </div>
+    <div>
+      Трансфузионный анамнез:
+      {action[u'Наличие трансфузий в анамнезе']}
+    </div>
+  </div>
+
+
+  <div class="section">
+    <div align="center" class="section__title">Физикальное исследование</div>
+
+    <div>
+      Степень тяжести состояния пациента:
+      {action[u'Степень тяжести состояния пациента']}
+    </div>
+    <div>
+      Психический статус:
+      {action[u'Психический статус']}
+    </div>
+    <div>
+      Нервная система и органы чувств:
+      {action[u'Нервная система и органы чувств']}
+    </div>
+    <div>
+      Опорно-двигательная система:
+      {action[u'Опорно-двигательная система']}
+    </div>
+    <div>
+      Органы дыхания:
+      {action[u'Органы дыхания']}
+    </div>
+    <div>
+      Система кровообращения:
+      {action[u'Система кровообращения']}
+    </div>
+    <div>
+      Система пищеварения:
+      {action[u'Система пищеварения']}
+    </div>
+    <div>
+      Мочеполовая система:
+      {action[u'Мочеполовая система']}
+    </div>
+    <div>
+      Состояние вен конечностей:
+      {action[u'Состояние вен конечностей']}
+    </div>
+    <div>
+      Наличие зубных протезов:
+      {action[u'Зубной протез']}
+    </div>
+  </div>
+
+
+  <div class="section">
+    <div align="center" class="section__title">Витальные параметры</div>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border="1" class="tbl-vital">
+      <thead>
+        <tr>
+          <th>Параметр</th>
+          <th>Дата и время оценки</th>
+          <th>Значение</th>
+          <th>Единицы измерения</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+            <td>Рост</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Антропометрия (Измерение роста) (см.)']}</td>
+            <td align="center">см</td>
+        </tr>
+        <tr>
+            <td>Масса тела</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Антропометрия (массы тела) (кг.)']}</td>
+            <td align="center">кг</td>
+        </tr>
+        <tr>
+            <td>Артериальное давление систолическое</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Артериальное давление систолическое (мм.рт.ст.)']}</td>
+            <td align="center">мм.рт.ст.</td>
+        </tr>
+        <tr>
+            <td>Артериальное давление диастолическое</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Артериальное давление диастолическое  (мм.рт.ст.)']}</td>
+            <td align="center">мм.рт.ст.</td>
+        </tr>
+        <tr>
+            <td>Пульс</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Измерения частоты сердечных сокращений, пульса (ударов в минуту)']}</td>
+            <td align="center">1/мин</td>
+        </tr>
+        <tr>
+            <td>Температура тела</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Термометрия (С)']}</td>
+            <td align="center">°С</td>
+        </tr>
+        <tr>
+            <td>Сатурация</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Насыщение крови кислородом (сатурация) (%)']}</td>
+            <td align="center">%</td>
+        </tr>
+        <tr>
+            <td>Частота дыхания</td>
+            <td align="center">{action_date}</td>
+            <td align="center">{action[u'Частота дыхательных движений (в минуту)']}</td>
+            <td align="center">1/мин</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div align="center" class="section__title">Результаты медицинского обследования</div>
+
+    <div>
+      {action[u'Результаты медицинского обследования']:n}
+    </div>
+
+    <div>
+      <div>Группа крови: {action[u'Группа крови']}</div>
+      <div>Резус-принадлежность: {action[u'Резус']}</div>
+      <div>Антиген K1 системы Kell: {action[u'Антиген']}</div>
+    </div>
+  </div>
+
+
+  <div class="section">
+    <div align="center" class="section__title">Сведения об анестезиологическом пособии</div>
+
+    <div>
+      Планируемый вид анестезиологического пособия:
+      {action[u'Анестезиологическое пособие']}
+    </div>
+    <div>
+      Премедикация:
+      {action[u'Способ проведения анестезиологического пособия']}
+    </div>
+    <div>
+      Периоперационная антибиотикопрофилактика:
+
+    </div>
+    <div>
+      Мониторинг жизненно-важных функций организма:
+      {action[u'Мониторируемый параметр']}
+    </div>
+  </div>
+
+  {if: action[u'Заключение'].value}
+    <div class="section">
+      <div align="center" class="section__title">Заключение</div>
+      <div>
+        {action[u'Заключение']}
+      </div>
+    </div>
+  {end:}
+
+
+
+  {if: action[u'Рекомендованные консультации врачей-специалистов'].value}
+    <div class="section">
+      <div align="center" class="section__title">Рекомендации</div>
+      <div>
+        {action[u'Рекомендованные консультации врачей-специалистов']}
+      </div>
+    </div>
+  {end:}
+
+  {if: action[u'Рекомендованные диагностические исследования'].value}
+    <div class="section">
+      <div align="center" class="section__title">Назначения</div>
+      <div>
+        {action[u'Рекомендованные диагностические исследования']}
+      </div>
+    </div>
+  {end:}
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">
+        <div>Врач-анестезиолог-реаниматолог:</div>
+        <div>{action.person.shortName}</div>
+      </td>
+      <td>
+
+      </td>
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

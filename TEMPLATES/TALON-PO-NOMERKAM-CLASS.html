@@ -1,3 +1,57 @@
+<!--Начальная дата разработки 12.09.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Направления на исследования</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from io import BytesIO}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.big {
+    font-size: 14pt;
+}
+.normal {
+    font-size: 12pt;
+}
+small {
+    font-size: 8pt;
+}
+</style>
+''')}
+
+
+
+
 {:
 def makePostfix(act, prefix):
   postfix = u''
@@ -7,8 +61,8 @@ def makePostfix(act, prefix):
 }
 
 {:
-def createIdForGrouping(job_ticket, postfix):
-  return job_ticket.jobType.code + postfix
+def createIdForGrouping(act, postfix):
+  return forceString(act.takenTissueJournal.id) + postfix
 }
 
 {:
@@ -22,15 +76,14 @@ class ReferralAnal:
     self.Ticket_place_full = job_ticket.orgStructure
     self.Ticket_place =  job_ticket.orgStructure.code
     self.Job_type = job_ticket.jobType
+    self.takenTissueJournalId = 0
 
     self.group_id = act.group.id
 
     self.actList = []
     self.job_ticket = job_ticket
 
-    self.idForGrouping = createIdForGrouping(self.job_ticket, postfix)
-
-    self.addAct(act)
+    self.idForGrouping = createIdForGrouping(act, postfix)
 
   def addAct(self, act):
     self.actList.append(act)
@@ -38,6 +91,8 @@ class ReferralAnal:
 
 def createNewReferralAnal(refList, act, prop, postfix):
   newInstance = ReferralAnal(act, prop.value, postfix)
+  newInstance.takenTissueJournalId = act.takenTissueJournal.id
+  newInstance.addAct(act)
   refList.append(newInstance)
 }
 
@@ -46,17 +101,18 @@ def createNewReferralAnal(refList, act, prop, postfix):
 MAIN_REF_LIST = []
 
 for act in event.actions:
-  if act.class_ == 1:
+  if act.class_ == 1 and act.status != 2:
     for prop in act:
       if prop.typeName == u'JobTicket' and prop.value:
         postfix = makePostfix(act, u'')
-        idForGrouping = createIdForGrouping(prop.value, postfix)
+        idForGrouping = createIdForGrouping(act, postfix)
 
         filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_REF_LIST)
         filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
         if filteredRef:
-          filteredRefList[0].addAct(act)
+          filteredRef.addAct(act)
         else:
           createNewReferralAnal(MAIN_REF_LIST, act, prop, postfix)
 
 }
+<!-- @formatter:on -->

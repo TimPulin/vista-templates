@@ -1,63 +1,162 @@
-<!--Начальная дата разработки 04.09.2025 г.-->
-<!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!-- note запрос с JSON -->
+{:
+diagRef = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+              CONCAT(
+                  '[',
+                  GROUP_CONCAT(
+                      IF(dc.diagnosisType_id = 3 AND mkb.DiagID IS NOT NULL,
+                         JSON_OBJECT('DiagID', mkb.DiagID, 'DiagName', mkb.DiagName),
+                         NULL)
+                      SEPARATOR ','
+                  ),
+                  ']'
+              ),
+              '[]'
+          ),
+          '[]'
+      ) AS diffDiags,
+      COALESCE(
+          NULLIF(
+              CONCAT(
+                  '[',
+                  GROUP_CONCAT(
+                      IF(dc.diagnosisType_id = 21 AND mkb.DiagID IS NOT NULL,
+                         JSON_OBJECT('DiagID', mkb.DiagID, 'DiagName', mkb.DiagName),
+                         NULL)
+                      SEPARATOR ','
+                  ),
+                  ']'
+              ),
+              '[]'
+          ),
+          '[]'
+      ) AS relatedDiags
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  where e.id = {event_id};
+""".format(event_id=event.id))
+}
 
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Document</title>
-<!-- @formatter:off -->
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
 
-{: from library.Utils import forceString }
-{: from library.Utils import forceInt }
-{: from PyQt4 import QtGui }
-{: db = QtGui.qApp.db }
-
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
 
 {:
-write('''
-<style>
-.h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 14pt;
-    font-weight: 900;
+diagRef = db.getRecordEx(stmt=u"""
+  SELECT
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagID, NULL)) AS mainId,
+      MAX(IF(ds.id = getEventDiagnosis(e.id), mkb.DiagName, NULL)) AS mainName,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 3 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ' '
+      ) AS diffDiags,
+      COALESCE(
+          NULLIF(
+          GROUP_CONCAT(
+              IF(dc.diagnosisType_id = 21 AND mkb.DiagID IS NOT NULL,
+                 CONCAT_WS('$', mkb.DiagID, mkb.DiagName),
+                 NULL)
+              SEPARATOR ';'
+          ),
+          ''
+      ),
+      ''
+      ) AS relatedDiags
+  FROM Event e
+  JOIN Diagnostic dc ON e.id = dc.event_id AND dc.deleted = 0
+  JOIN Diagnosis ds ON dc.diagnosis_id = ds.id AND ds.deleted = 0
+  JOIN MKB mkb ON ds.MKB = mkb.DiagID
+  WHERE e.id = {event_id};
+""".format(event_id=event.id))
 }
-.main {
-    font-family: 'Times New Roman';
-    font-size: 12pt;
+{:
+if diagRef:
+    mainId = forceString(diagRef.value('mainId'))
+    mainName = forceString(diagRef.value('mainName'))
+    diffDiags = forceString(diagRef.value('diffDiags'))
+    relatedDiags = forceString(diagRef.value('relatedDiags'))
+else:
+  mainId = ''
+  mainName = ''
+  diffDiags = ''
+  relatedDiags = ''
 }
-.small {
-  font-size: 8pt;
-}
-.bold {
-  font-weight: 900;
-}
-.red-line {
-  text-indent: 10px;
-}
-.white-wrap {
-  white-space: nowrap;
-}
-</style>
-''')}
-<!-- @formatter:on -->
-</head>
-<body>
 
-<div class="main">
-  <div align="center" class="h1"></div>
+
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select mkb.DiagName as diag_name,
+         mkb.DiagID   as diag_id
+  from Diagnosis ds
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = getEventDiagnosis({event_id})
+""".format(event_id=event.id))
+}
 
 
-</div>
-</body>
-</html>
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select mkb.DiagID, mkb.DiagName
+  from Diagnosis ds
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = getEventDiagnosis({event_id})
+""".format(event_id=event.id))
+if main_diag_ref:
+  DiagID = forceString(main_diag_ref.value(u'DiagID'))
+  DiagName = forceString(main_diag_ref.value(u'DiagName'))
+else:
+   DiagID = u''
+   DiagName = u''
+}
+
+
+<!-- note main diag-->
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB       as diag_id,
+         mkb.DiagName as diag_name
+  from Diagnosis ds
+           left join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = (select getEventDiagnosis({event_id}))
+""".format(event_id=event.id))
+
+if main_diag_ref:
+  main_diag_id = forceString(main_diag_ref.value(u'diag_id'))
+  main_diag_name = forceString(main_diag_ref.value(u'diag_name'))
+else:
+  main_diag_id = u''
+  main_diag_name = u''
+}
+
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td></td>
+        <td width="1%"></td>
+        <td></td>
+      </tr>
+      {: diag_type_name_list = [u'Осложнения основного заболевания:', u'Внешняя причина при травмах, отравлениях:', u'Сопутствующие заболевания:']}
+      {for: diag_type_name in diag_type_name_list}
+        <tr>
+          <td class="white-wrap">
+            {diag_type_name}&nbsp;
+            {render_line(diag_type_name, 60)}
+          </td>
+          <td class="white-wrap">код по МКБ</td>
+          <td>{'_' * 12}</td>
+        </tr>
+      {end:}
+    </table>

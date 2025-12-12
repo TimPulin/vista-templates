@@ -1,13 +1,14 @@
+<!-- медицинское вмешательство -->
 <!--Начальная дата разработки 15.10.2025 г.-->
 <!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!--Контекст печати: 145-13709-4 -->
+<!--Задача: DEV_TEMP-5968 ИДС и СОГЛАСИЕ на обработку ПД -->
 
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>Информированное добровольное согласие на медицинское вмешательство</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
 {: setOrientation('P')}
@@ -50,14 +51,140 @@ write('''
 }
 </style>
 ''')}
+
+{:
+def render_line(str, base_length = 95):
+  return u'_' * (base_length - len(str))
+}
 <!-- @formatter:on -->
 </head>
 <body>
 
+<div>
+    <div>
+        {template.id=3403}
+    </div>
+</div>
+
 <div class="main">
-  <div align="center" class="h1"></div>
+  <div align="center" class="h1">
+    Информированное добровольное согласие на медицинское вмешательство
+  </div>
 
+{:
+if action[u'Ф.И.О. законного представителя'].value:
+  isGuardian = True
+  applicant_fio = action[u'Ф.И.О. законного представителя'].value
+  applicant_reg_address = action[u'Адрес регистрации законного представителя'].value
+  applicant_loc_address = u''
+  applicant_doc = action[u'Документы законного представителя'].value
+  applicant_birth_date = action[u'Дата рождения законного представителя']
+else:
+  isGuardian = False
+  applicant_fio = client.fullName
+  applicant_reg_address = client.regAddress
+  applicant_loc_address = client.locAddress
+  applicant_doc = forceString(client.document.seral) + u' №' + forceString(client.document.number) + u' ' + u'выдан ' + forceString(client.document.origin) u' ' + forceString(client.document.date)
+  applicant_birth_date = client.birthDate
+}
 
+  <div class="red-line">
+    Я,
+    <b>{applicant_fio}</b>
+  </div>
+
+  <div>
+    зарегистрированный по адресу:
+    <b>{applicant_reg_address}</b>
+  </div>
+
+  <div>
+    проживающий по адресу: <b>{applicant_loc_address}</b>
+  </div>
+
+  <div align="justify">
+    даю информированное добровольное согласие на виды медицинских вмешательств, включённые в Перечень определённых видов медицинских вмешательств, на которые граждане дают информированное добровольное согласие при выборе врача и медицинской организации для получения первичной медико-санитарной помощи, утверждённый приказом Министерства здравоохранения и социального развития Российской Федерации от 23 апреля 2012 г. № 390н (далее – Перечень), для получения
+    {if: isGuardian}
+      получения медицинской помощи лицом, законным представителем которого я являюсь:
+      <b>{client.fullName}</b>
+      <b>{client.birthDate}</b>
+    {else:}
+      мною медицинской помощи
+    {end:}
+    в СПб ГБУЗ «Городская больница №15».
+  </div>
+
+  <div>
+    Медицинским работником
+    <b>{action.person.post}</b>
+    <b>{action.person.fullName}</b>
+  </div>
+
+  <div align="justify">
+    в доступной для меня форме мне разъяснены цели, методы оказания медицинской помощи, связанный с ними риск, возможные варианты медицинских вмешательств, их последствия, в том числе вероятность развития осложнений, а также предполагаемые результаты оказания медицинской помощи.
+  </div>
+  <div align="justify" class="red-line">
+    Мне разъяснено, что я имею право отказаться от одного или нескольких видов медицинских вмешательств, включённых в Перечень, или потребовать его (их) прекращения, за исключением случаев, предусмотренных частью 9 статьи 20 Федерального закона от 21 ноября 2011 г № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации».
+  </div>
+  <div align="justify" class="red-line">
+    Сообщаю следующие сведения о выбранном (-ых) мною лице (лицах), которому (-ым) в соответствии с пунктом 5 части 5 статьи 19 Федерального закона от 21 ноября 2011 г № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации» может быть передана информация о состоянии
+
+    {if: isGuardian}
+      состоянии лица, законным представителем которого я являюсь,
+    {else:}
+      моего здоровья,
+    {end:}
+    в том числе после смерти:
+  </div>
+
+  <div>
+    <b>{action[u'Контакты']}</b>
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <div align="center">
+          {if: action.endDate}
+            {action.endDate.toString(u'dd.MM.yyyy')}
+          {else:}
+            {action.begDate.toString(u'dd.MM.yyyy')}
+          {end:}
+        </div>
+        <div align="center"><sup>дата</sup></div>
+      </td>
+      <td>
+        <div>
+          {'_' * 20}/ {applicant_fio}
+        </div>
+        <div align="center"><sup> (
+          подпись
+          {if: isGuardian}
+              законного представителя
+          {else:}
+              пациента
+          {end:}
+           / Ф.И.О.)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        Расписался в моём присутствии:
+      </td>
+      <td>
+        {'_' * 20}
+        <b>{action.person.fullName}</b>
+        <b>{action.person.post}</b>
+      </td>
+    </tr>
+  </table>
+
+  
 </div>
 </body>
 </html>

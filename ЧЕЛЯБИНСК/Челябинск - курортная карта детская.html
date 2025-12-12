@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 27.08.2025 задача  -->
 <!-- изменил Пулин дата 15.08.2025 задача  -->
 <!-- изменил Пулин дата 13.08.2025 задача  -->
 <!-- изменил Пулин дата 23.07.2025 задача последний дневник кхо №4 -->
@@ -72,7 +73,7 @@ referral_info_ref_list = db.getRecordList(stmt=u"""
          rbS.name                                                           as sanatorium,
          CONCAT_WS(' ', p.lastName, p.firstName, p.patrName)                as person_fio,
          CONCAT_WS(' ', pChief.lastName, pChief.firstName, pChief.patrName) as chief_fio
-
+         IF(isNeedMilieu = 1, 1, 2)                                         as isNeedMilieu
   FROM SpaTreatment st
            join rbSpaTreatmentSanator rbS on st.sanator_id = rbS.id
            join Person p on st.person_id = p.id
@@ -113,6 +114,7 @@ if referral_info_ref_list and ref_index is not None:
   sanatorium = forceString(ref.value('sanatorium'))
   person_fio = forceString(ref.value('person_fio'))
   chief_fio = forceString(ref.value('chief_fio'))
+  isNeedMilieu = forceString(ref.value('isNeedMilieu'))
 else:
   actDate = ''
   is_need_gurdian = 0
@@ -121,6 +123,7 @@ else:
   sanatorium = ''
   person_fio = ''
   chief_fio = ''
+  isNeedMilieu = '2'
 }
 
 <!-- @formatter:on -->
@@ -250,7 +253,7 @@ else:
     </div>
 
     <div>
-      Нуждаемость в условиях доступной среды: <span class="small">да - 1, нет - 2</span>
+      Нуждаемость в условиях доступной среды: <span class="small">да - 1, нет - 2</span> <b>{isNeedMilieu}</b>
     </div>
   </section>
     <!-- note END верхняя часть 1 -->

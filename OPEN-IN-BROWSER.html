@@ -1,0 +1,86 @@
+<!--больного чесоткой-->
+<!-- изменил Пулин дата 14.11.2025 задача  -->
+<!-- изменил Пулин дата 18.09.2025 задача  -->
+<!-- изменил Пулин дата 25.03.2024 задача DEV_TEMP-3737 Доработать шаблоны медицинская карта больного чесоткой/грибковым заболеванием -->
+<!-- изменил Пулин дата 19.03.2024 задача DEV_TEMP-3576 Шаблоны печати в КВД -->
+<!--исправил пулин дата 02.02.2024 задача DEV_TEMP-3472 Не открывается шаблон печати-->
+<HTML>
+<head>
+{:setPageSize('A4')}
+{:setOrientation('L')}
+{:setMargins(10)}
+
+</head>
+<body style = "font-family: TimesNewRoman; font-size: 13pt;">
+<h2>start</h2>
+{:
+import os
+import webbrowser
+from time import sleep
+import platform
+import subprocess
+
+def get_template():
+    with open('/home/user/CODE/templates/test3.html', 'r') as f:
+        content = f.read()
+    return content
+
+
+def open_in_browser(file_path):
+    # to absolute path
+    abs_path = os.path.abspath(file_path)
+    try:
+        if platform.system() == 'Windows':
+            os.startfile(abs_path)
+        else:  # Linux
+            cmd = 'xdg-open "{}"'.format(abs_path)
+            write('<div>{content}</div>'.format(content=cmd))
+            os.system(cmd)
+            subprocess.call(['xdg-open', abs_path])
+    except Exception as e:
+        write('e'.format(e=e))
+
+
+    # add file:// and shield whitespace
+    url = 'file://' + abs_path.replace(' ', '%20')
+
+    write('<div>{url}</div>'.format(url=url))
+    browsers = webbrowser._browsers
+    chrome = webbrowser.get('/usr/bin/google-chrome %s')
+
+
+    write('<div>{chrome}</div>'.format(chrome=chrome))
+
+    # chrome.open(url)
+    sleep(2)
+
+
+def generate_template(file_path):
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # create HTML-file
+    template = get_template()
+    with open(file_path, "w") as f:
+        f.write(template)
+
+    return
+
+
+FILE_PATH = "/home/user/CODE/templates/index.html"
+try:
+    generate_template(FILE_PATH)
+    open_in_browser(FILE_PATH)
+except Exception as e:
+    write('<div>{e}</div>'.format(e=e))
+
+}
+
+<h1>смотреть в браузере</h1>
+
+
+
+
+
+</body>

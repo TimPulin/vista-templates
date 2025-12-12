@@ -1,0 +1,889 @@
+<!-- изменил Пулин дата 20.08.2025 г. задача  -->
+<!--ЕСЛИ ЧТО-ТО МЕНЯТЬ, ТО В "обход с и.о. зав отделением" РАЗНЫЕ ID на ПРОДЕ и ТЕСТЕ-->
+<!-- изменил Пулин дата 19.08.2025 г. задача  -->
+<!-- Разработал: Васильев Андрей Денисович -->
+<!-- Дата: 23.12.2022 -->
+<!-- Задача: IMP-1162 -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 21.06.2023. Задача: DEV_TEMP-2416 Изменить вывод диагноза в шаблонах печати ЛОКБ -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 03.08.2023. Задача: IMP-1850 Проверить шаблоны на ошибки (незакрытые теги и тд) и исправить -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 11.08.2023. Задача: IMP-1893 Дневниковая запись. Добавить поле Участники совместного осмотра -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 11.08.2023. Задача: IMP-1906 Не выводится поле Неврологический статус -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 08.09.2023. IMP-1982 Дневник. Не печатается диагноз с типом Осложнение основного -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 22.09.2023. IMP-1613 Добавить тип дневниковой записи - обход с и.о. зав отделением -->
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 22.09.2023. IMP-1997 Дневник. Добавить тип дневниковой записи Осмотр врачом-специалистом -->
+
+<html>
+<head>
+	{: setPageSize('A4')}
+	<style type="text/css" media="print">
+		body {u'{'}
+		margin-left: 30mm;
+		margin-right: 10mm;
+		margin-top: 5mm;
+		margin-bottom: 5mm;
+			{u'}'}
+	</style>
+	{: from PyQt4 import QtGui }
+	{: from PyQt4 import QtCore, QtSql}
+	{: from library.Utils import forceString }
+	{: from library.Utils import forceDate }
+	{: from datetime import datetime }
+	{: db = QtGui.qApp.db }
+
+	{:mkb = ''}
+	{:diag = ''}
+	{:chifr = ''}
+
+	{: mkb_pred = '' }
+	{: diag_pred = '' }
+	{: chifr_pred = '' }
+
+	{: mkb_zakl = '' }
+	{: diag_zakl = '' }
+	{: chifr_zakl = '' }
+
+	{: mkb_osln = '' }
+	{: diag_osln = '' }
+	{: chifr_osln = '' }
+
+	{: ref = db.getRecordEx(stmt="""SELECT AD.MKB as mkb, AD.notes as diag,  M.DiagName as chifr
+												FROM Action_Diagnostic AD
+												LEFT JOIN MKB M on M.DiagID=AD.MKB
+											WHERE action_id = {actionId} AND AD.diagnosisType_id = 2 AND AD.deleted = 0;""".format(actionId=action.id)) }
+	{if: ref }
+		{ :mkb = forceString(ref.value('mkb')) }
+		{ :diag = forceString(ref.value('diag')) }
+		{ :chifr = forceString(ref.value('chifr')) }
+	{end:}
+
+	{: ref_osln = db.getRecordEx(stmt="""SELECT AD.MKB as mkb, AD.notes as diag,  M.DiagName as chifr
+												FROM Action_Diagnostic AD
+												LEFT JOIN MKB M on M.DiagID=AD.MKB
+											WHERE action_id = {actionId} AND AD.diagnosisType_id = 3 AND AD.deleted = 0;""".format(actionId=action.id)) }
+	{if: ref_osln }
+		{ :mkb_osln = forceString(ref_osln.value('mkb')) }
+		{ :diag_osln = forceString(ref_osln.value('diag')) }
+		{ :chifr_osln = forceString(ref_osln.value('chifr')) }
+	{end:}
+
+	{: ref_pred = db.getRecordEx(stmt="""SELECT AD.MKB as mkb, AD.notes as diag,  M.DiagName as chifr
+												FROM Action_Diagnostic AD
+												LEFT JOIN MKB M on M.DiagID=AD.MKB
+											WHERE action_id = {actionId} AND AD.diagnosisType_id = 12 AND AD.deleted = 0;""".format(actionId=action.id)) }
+	{if: ref_pred }
+		{ :mkb_pred = forceString(ref_pred.value('mkb')) }
+		{ :diag_pred = forceString(ref_pred.value('diag')) }
+		{ :chifr_pred = forceString(ref_pred.value('chifr')) }
+	{end:}
+
+	{: ref_zakl = db.getRecordEx(stmt="""SELECT AD.MKB as mkb, AD.notes as diag,  M.DiagName as chifr
+												FROM Action_Diagnostic AD
+												LEFT JOIN MKB M on M.DiagID=AD.MKB
+											WHERE action_id = {actionId} AND AD.diagnosisType_id = 1 AND AD.deleted = 0;""".format(actionId=action.id)) }
+	{if: ref_zakl }
+		{ :mkb_zakl = forceString(ref_zakl.value('mkb')) }
+		{ :diag_zakl = forceString(ref_zakl.value('diag')) }
+		{ :chifr_zakl = forceString(ref_zakl.value('chifr')) }
+	{end:}
+
+	{: ref_sop = db.getRecordList(stmt="""SELECT CONCAT(AD.MKB, ' ', M.DiagName) as mkbSop, AD.notes as diagSop
+												FROM Action_Diagnostic AD
+												LEFT JOIN MKB M on M.DiagID=AD.MKB
+											WHERE action_id = {actionId} AND diagnosisType_id = 5 AND deleted=0;""".format(actionId=action.id)) }
+
+	{: ref_oper = db.getRecordEx(stmt="""SELECT aps.value AS oper
+		FROM Event e
+		LEFT JOIN Action a ON e.id = a.event_id
+		LEFT JOIN ActionType at ON a.actionType_id = at.id
+		LEFT JOIN ActionProperty ap ON a.id = ap.action_id
+		LEFT JOIN ActionPropertyType apt ON ap.type_id = apt.id
+		JOIN ActionProperty_String aps ON ap.id = aps.id
+		WHERE e.id = {eventId} AND a.actionType_id = 16702 AND ap.deleted = 0 AND apt.id = 31707 ORDER BY a.begDate LIMIT 1;""".format(eventId=event.id)) }
+
+	{: glav1 = db.getRecordEx(stmt="""
+		SELECT p.name as glav FROM ActionProperty ap
+			JOIN ActionProperty_Reference apr ON ap.id = apr.id
+			JOIN Person pe ON apr.value = pe.id
+            JOIN rbPost p on pe.post_id = p.id
+			WHERE ap.action_id = {actionId} AND ap.type_id = 33281 AND ap.deleted = 0;""".format(actionId=action.id)) }
+
+	{: glav2 = db.getRecordEx(stmt="""
+		SELECT u.signaturePost
+			FROM ActionProperty ap
+					 JOIN ActionProperty_Reference apr ON ap.id = apr.id
+					 JOIN Person p ON apr.value = p.id
+					 JOIN User_Person UP ON p.id = UP.person_id
+					 JOIN User u ON UP.user_id = u.id
+			WHERE ap.action_id = {actionId}
+			  AND ap.type_id = 33281
+			  AND ap.deleted = 0
+			  AND u.deleted = 0
+			  AND p.deleted = 0;""".format(actionId=action.id))}
+
+    {: vrach = db.getRecordEx(stmt="""
+        select u.signaturePost
+        from Person p
+                 inner join User_Person UP on p.id = UP.person_id
+                 inner join User u on UP.user_id = u.id
+        where u.deleted = 0
+          and p.deleted = 0
+        and p.id={clientId};""".format(clientId=action.person.id)) }
+
+	{: type_dnevnik = db.getRecordEx(stmt="""
+		select aps.value as dnevnik from ActionProperty ap
+			join ActionProperty_String aps on ap.id = aps.id
+			where ap.type_id = 31652 and action_id={actionId};""".format(actionId=action.id)) }
+	{if: type_dnevnik}
+		{if: forceString(type_dnevnik.value('dnevnik')) == u'обход с курирующим зам.гл.врача'}
+			{: zaved1 = db.getRecordEx(stmt="""
+				SELECT p.name as zaved FROM ActionProperty ap
+					JOIN ActionProperty_Reference apr ON ap.id = apr.id
+					JOIN Person pe ON apr.value = pe.id
+					JOIN rbPost p on pe.post_id = p.id
+					WHERE ap.action_id = {actionId} AND ap.type_id = 33280 AND ap.deleted = 0;""".format(actionId=action.id))}
+
+			{: zaved2 = db.getRecordEx(stmt="""
+				SELECT u.signaturePost
+					FROM ActionProperty ap
+							 JOIN ActionProperty_Reference apr ON ap.id = apr.id
+							 JOIN Person p ON apr.value = p.id
+							 JOIN User_Person UP ON p.id = UP.person_id
+							 JOIN User u ON UP.user_id = u.id
+					WHERE ap.action_id = {actionId}
+					  AND ap.type_id = 33280
+					  AND ap.deleted = 0
+					  AND u.deleted = 0
+					  AND p.deleted = 0;""".format(actionId=action.id))}
+
+		{elif: forceString(type_dnevnik.value('dnevnik')) == u'обход с зав. отделением'}
+			{: zaved1 = db.getRecordEx(stmt="""
+				SELECT p.name as zaved FROM ActionProperty ap
+					JOIN ActionProperty_Reference apr ON ap.id = apr.id
+					JOIN Person pe ON apr.value = pe.id
+					JOIN rbPost p on pe.post_id = p.id
+					WHERE ap.action_id = {actionId} AND ap.type_id = 33279 AND ap.deleted = 0;""".format(actionId=action.id))}
+
+			{: zaved2 = db.getRecordEx(stmt="""
+				SELECT u.signaturePost
+					FROM ActionProperty ap
+							 JOIN ActionProperty_Reference apr ON ap.id = apr.id
+							 JOIN Person p ON apr.value = p.id
+							 JOIN User_Person UP ON p.id = UP.person_id
+							 JOIN User u ON UP.user_id = u.id
+					WHERE ap.action_id = {actionId}
+					  AND ap.type_id = 33279
+					  AND ap.deleted = 0
+					  AND u.deleted = 0
+					  AND p.deleted = 0;""".format(actionId=action.id))}
+
+		{elif: forceString(type_dnevnik.value('dnevnik')) == u'обход с главным врачом'}
+			{: zaved1 = db.getRecordEx(stmt="""
+				SELECT p.name as zaved FROM ActionProperty ap
+					JOIN ActionProperty_Reference apr ON ap.id = apr.id
+					JOIN Person pe ON apr.value = pe.id
+					JOIN rbPost p on pe.post_id = p.id
+					WHERE ap.action_id = {actionId} AND ap.type_id = 33282 AND ap.deleted = 0;""".format(actionId=action.id))}
+
+			{: zaved2 = db.getRecordEx(stmt="""
+				SELECT u.signaturePost
+					FROM ActionProperty ap
+							 JOIN ActionProperty_Reference apr ON ap.id = apr.id
+							 JOIN Person p ON apr.value = p.id
+							 JOIN User_Person UP ON p.id = UP.person_id
+							 JOIN User u ON UP.user_id = u.id
+					WHERE ap.action_id = {actionId}
+					  AND ap.type_id = 33282
+					  AND ap.deleted = 0
+					  AND u.deleted = 0
+					  AND p.deleted = 0;""".format(actionId=action.id))}
+		{elif: forceString(type_dnevnik.value('dnevnik')) == u'обход с и.о. зав отделением'}
+			{: zaved1 = db.getRecordEx(stmt="""
+				SELECT p.name as zaved FROM ActionProperty ap
+					JOIN ActionProperty_Person apr ON ap.id = apr.id
+					JOIN Person pe ON apr.value = pe.id
+					JOIN rbPost p on pe.post_id = p.id
+					WHERE ap.action_id = {actionId} AND ap.type_id = 320852 AND ap.deleted = 0;""".format(actionId=action.id))}
+
+			{: zaved2 = db.getRecordEx(stmt="""
+				SELECT u.signaturePost
+					FROM ActionProperty ap
+							 JOIN ActionProperty_Person apr ON ap.id = apr.id
+							 JOIN Person p ON apr.value = p.id
+							 JOIN User_Person UP ON p.id = UP.person_id
+							 JOIN User u ON UP.user_id = u.id
+					WHERE ap.action_id = {actionId}
+					  AND ap.type_id = 320852
+					  AND ap.deleted = 0
+					  AND u.deleted = 0
+					  AND p.deleted = 0;""".format(actionId=action.id))}
+		{end:}
+	{end:}
+
+	{: ecp = db.getRecordEx(stmt="""SELECT * FROM Action WHERE id = {actionId} AND signature = 1;""".format(actionId=action.id)) }
+
+	{:record = db.getRecordEx(stmt=
+					"""SELECT
+					TO_BASE64(api.value) as image
+					FROM
+					ActionProperty_Image api
+					WHERE
+					api.id = 2748481;""")}
+
+	{: otd = db.getRecordEx(stmt="""SELECT os.address as otd
+					FROM Event e
+					LEFT JOIN Action a ON e.id = a.event_id
+					LEFT JOIN ActionType at ON a.actionType_id = at.id
+					LEFT JOIN ActionProperty ap ON a.id = ap.action_id
+					LEFT JOIN ActionPropertyType apt ON ap.type_id = apt.id
+					JOIN ActionProperty_OrgStructure aps ON ap.id = aps.id
+					LEFT JOIN OrgStructure os ON aps.value = os.id
+					WHERE e.id = {eventId} AND a.actionType_id = 11127 AND apt.id = 33 AND ap.deleted = 0 ORDER BY a.createDatetime DESC LIMIT 1;""".format(eventId=event.id)) }
+
+
+ <!-- 'дневниковая запись',
+  'осмотр врачом-специалистом',
+  'обход с зав. отделением',
+  'обход с и.о. зав отделением',
+  'обход с курирующим зам.гл.врача',
+  'обход с главным врачом',
+  'послеоперационный осмотр' 
+  -->
+
+	<!-- 
+	Анамнез заболевания
+	Анамнез жизни
+
+	Зав. отделением
+
+	Заведующий отделением
+	-->
+{:
+diary_type = action[u'Тип дневниковой записи'].value
+base_bypass = u'обход' in diary_type 
+boss_doctor_bypass = diary_type == u'обход с главным врачом'
+head_doctor_bypass = diary_type == u'обход с зав. отделением'
+io_doctor_bypass = diary_type == u'обход с и.о. зав отделением'
+tutor_doctor_bypass = diary_type == u'обход с курирующим зам.гл.врача'
+croud_bypass = boss_doctor_bypass or head_doctor_bypass or io_doctor_bypass or tutor_doctor_bypass
+operation_bypass = diary_type == u'послеоперационный осмотр'
+}          
+</head>
+{if: ecp}
+	<body style="font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+		{for: prop in action}
+			{if: prop.name == u'Тип дневниковой записи' and prop.value in (u'обход с зав. отделением', u'обход с курирующим зам.гл.врача', u'обход с главным врачом', u'обход с и.о. зав отделением')}
+        <table align="center" width="100%" border="0" STYLE="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black">
+          <tr>
+            <td width="50%">
+              <img src="data:image/png;base64, {if: record}{forceString(record.value('image'))}{end:}" width="265" height="94" />
+            </td>
+            <td width="50%" valign="middle" align="left">
+              <table width="90%" border="0" cellpadding="0" cellspacing="0" STYLE="font-family: 'Avenir Next Cyr Medium'; font-size: 8pt; color: black">
+                <tr>
+                  <td align="left" colspan="3">
+                    {if: otd }{forceString(otd.value('otd')) }{end:}
+                    <br><br>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="20%" align="left" style="white-space: nowrap; padding-right: 0em; padding-left: 0em; margin-left: 0em; margin-right: 0em;" nowrap>ИНН 4700001254&nbsp;&nbsp;</td>
+                  <td width="5%" align="center">
+                    <font color="green">|</font>
+                  </td>
+                  <td width="40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 655-89-27</td>
+                </tr>
+                <tr>
+                  <td width="20%" align="left" style="white-space: nowrap; margin-left: 0em; margin-right: 0em; padding-right: 0em; padding-left: 0em;" nowrap>lokb@47lokb.ru&nbsp;&nbsp;</td>
+                  <td width="5%" align="center">
+                    <font color="green">|</font>
+                  </td>
+                  <td width="40%" align="left">&nbsp;&nbsp;&nbsp;&nbsp;8 (812) 670-18-88</td>
+                </tr>
+              </table>
+            </td>
+        
+            <td valign="bottom" align="right">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAVCAIAAABHbRCDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAALkSURBVEhL3ZXPTxNBFMd3Z3f7awu23bb8LD9U0EZJwAOQcGqiIcajMaIX/gX9N/SiN9A/QYwSlERijIkeSINeMLSNYBNKf2+hP3fpzuysA7N6QCjLgYufTHZnX2be9703b3dZwzCYcwaY9/PEqgY28ML6wpMvT3O1nGmyjFUNBSrxUgIJKC7HTZNlrGqU1TJCSEd6tppjzniCVjVktcRwDNHI1DIa1kyrNVppKJqCDZ3OSw2ZEzgDGzWtVlJK1GiREzW2Sltz3+Zf/3hDm/vAL2ZYhmUBm6lm6BqLHK+hQvV9Ynkf7G8UNyrNisEYRUXGmh50BUg2mWqWLtOQpaIdr/Fp63Md1FETYQbvVNJN2NxT9jiOG+0ahSpMH+aR3EvOfZ9/l1imW1pgaiCM/o7N0uZabg2pyG+XbE57urojKzJEULS5h/xDAi/ISmFX3V3Z/NhgGmvpaKqSok4IUIdkECf0So08vT37+pxOSFnqqC56xEnvhNflfftzMVVOeRwe3sn7XJLX6Q24/NlabjG2lK1nOJ7j7cLq9mpoJERe0qWNpV+VJIQQsACzWADC46lHxKepEWgL0gmhG3T7nL6pgamKWjaaRg7m7UU7cRdwSjzgO9s6C1oxVd8mK8OecKwYi8nxYqNIso8pCRJ9b3uI+uFZs0itvokk2RfRl4X9gqFjjuenL05PhMajO9EPyRWWZTvtHbM3Zl+tLyTVZJAP5ht5EvvMtfvD/mFz/x9O7F0CiTrk7SMZkIbFCPtFiRi723ugRk5Hv3n5lsAJk/2TUIG5Zh44wETX+L8ChFYahL72Xh3q5JBIcSXXgUZve8+DkZmH12cGvP3kcdAz0OfpFy+4fKwUuRQ53HSUUzRCnhAwAOBAm8Mt2kRqDAfDwwEzXlK0O1duj7lH743ctXE2ajzCKRqko/yi3+awSU5JAGaDHKHD3REZjNAsj+UUDdKFY11jPOauBsMkaNN6Rv6Pfy3D/AYyAlKpYFHkOgAAAABJRU5ErkJggg==" />
+            </td>
+          </tr>
+        </table>
+			{end:}
+		{end:}
+		{for: prop in action}
+			{if: prop.name == u'Тип дневниковой записи' and prop.value == u'дневниковая запись'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 45px;"><b>Дневниковая запись</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'послеоперационный осмотр'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 45px;"><b>Послеоперационный осмотр</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с зав. отделением'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 20px;"><b>Совместный осмотр с зав. отделением</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с и.о. зав отделением'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 20px;"><b>Совместный осмотр с и.о. зав. отделением</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с курирующим зам.гл.врача'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 20px;"><b>Совместный осмотр с курирующим зам.гл.врача</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с главным врачом'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 20px;"><b>Совместный осмотр с главным врачом</b></div>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'осмотр врачом-специалистом'}
+				<div align="left" style=" font-family:'Avenir Next Cyr Heavy'; font-size:18pt; line-height: 20px;"><b>Осмотр врачом-специалистом</b></div>
+			{end:}
+		{end:}
+		<br>
+		<table align="left" style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;" width="100%" cellpadding="0" cellspacing="0">
+			<tr>
+				<td>Время осмотра &nbsp; {action.endDate}</td>
+				<td>История болезни: &nbsp; {if: event.externalId} {event.externalId} {end:} от {event.setDate.date.toString('dd.MM.yyyy')}</td>
+			</tr>
+		</table>
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>{event.client.fullName}</b>, &nbsp;{event.client.birthDate}, &nbsp;{event.client.age}</div>
+		<br>
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			{if: action[u'Количество суток после операции/химиотерапии'].value}
+				<b>{action[u'Количество суток после операции/химиотерапии'].value:n}
+				{if: action[u'Количество суток после операции/химиотерапии'].value == 1}
+					сутки
+				{else:}
+					суток
+				{end:}
+				после операции «{if: action[u'Проведенная операция'].value}{action[u'Проведенная операция'].value.split(',')[1]}&nbsp;{action[u'Проведенная операция'].value.split(',')[2]}{end:}»</b><br>
+			{end:}
+			{if: action[u'Жалобы'].value}<b>Жалобы:</b>&nbsp;{action[u'Жалобы'].value:n}{end:}<br>
+			{if: action[u'Оценка боли по шкале ВАШ'].value}<b>Оценка боли по шкале ВАШ:</b>&nbsp;{action[u'Оценка боли по шкале ВАШ'].value}{end:}
+		</div>
+		{if: base_bypass}
+			{for: prop in action}
+				{if: prop.name == u'Тип дневниковой записи' and prop.value not in (u'дневниковая запись', u'послеоперационный осмотр')}
+					{if: action[u'Анамнез заболевания'].value}<div><b>Анамнез заболевания:</b>{action[u'Анамнез заболевания'].value:n}</div>{end:}
+
+
+					{if: action[u'Анамнез жизни'].value}<div><b>Анамнез жизни:</b>{action[u'Анамнез жизни'].value:n}</div>{end:}
+				{end:}
+			{end:}				
+		{end:}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Физикальное исследование:</b><br>
+			{if: action[u'Общее состояние'].value} Общее состояние:&nbsp;{action[u'Общее состояние'].value:n}<br>{end:}
+			{if: action[u'Состояние по системам'].value} Состояние по системам:&nbsp;{action[u'Состояние по системам'].value:n}{end:}
+		</div>
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			{if: action[u'Status localis'].value} <b>Status localis:</b>&nbsp;{action[u'Status localis'].value:n}{end:}
+		</div>
+		{for: prop in action}
+			{if: prop.name == u'Тип дневниковой записи' and prop.value == u'послеоперационный осмотр'}
+				<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Состояние послеоперационной раны:</b>&nbsp;{action[u'Состояние послеоперационной раны'].value:n}</p>
+			{end:}
+		{end:}
+		{if: action[u'Неврологический статус'].value and action.person.speciality.id in (328, 329)}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Неврологический статус:</b>&nbsp;{action[u'Неврологический статус'].value:n}
+		</div>
+		{end:}
+		<br>
+		{if: action[u'Динамика состояния'].value}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Динамика состояния:</b>&nbsp;{action[u'Динамика состояния'].value:n}
+		</div>
+		{end:}
+		{if: action[u'Обоснование диагноза'].value}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Обоснование диагноза:</b>&nbsp;{action[u'Обоснование диагноза'].value:n}
+		</div>
+		{end:}
+
+		<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			{for: prop in action}
+				{if: prop.name == u'Выводить поле «Предварительная дата выписки» на печать' and prop.value == u'да'}
+					<b>Предварительная дата выписки:</b>&nbsp;{action[u'Предварительная дата выписки'].value:n}
+				{end:}
+			{end:}
+		</p>
+		{if: diag_pred or diag or diag_zakl or diag_osln}
+			<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Диагноз:</b></div>
+			{if: diag_pred != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Диагноз основной предварительный:</b>&nbsp;{diag_pred}</div>
+			{end:}
+			{if: diag != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Диагноз основной:</b>&nbsp;{diag}</div>
+			{end:}
+			{if: ref_sop}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Сопутствующий:</b>&nbsp;{for: iter in ref_sop}{forceString(iter.value('diagSop'))}</div>{end:}
+			{end:}
+			{if: diag_osln != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Осложнение основного:</b>&nbsp;{diag_osln}</div>
+			{end:}
+			{if: diag_zakl != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Заключительный:</b>&nbsp;{diag_zakl}</div>
+			{end:}
+		<br>
+			<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Код заболевания по МКБ-10:</b></div>
+			{if: mkb_pred != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Диагноз основной предварительный:</b>&nbsp;{mkb_pred}&nbsp;{chifr_pred}</div>
+			{end:}
+			{if: mkb != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Диагноз основной:</b>&nbsp;{mkb}&nbsp;{chifr}</div>
+			{end:}
+			{if: ref_sop}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Сопутствующий:</b>&nbsp;{for: iter in ref_sop}{forceString(iter.value('mkbSop'))}</div>{end:}
+			{end:}
+			{if: mkb_osln != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Осложнение основного:</b>&nbsp;{mkb_osln}&nbsp;{chifr_osln}</div>
+			{end:}
+			{if: mkb_zakl != ''}
+				<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Заключительный:</b>&nbsp;{mkb_zakl}&nbsp;{chifr_zakl}</div>
+			{end:}
+		{end:}
+		{if: action[u'Выполнены медицинские обследования, вмешательства их оценка врачом'].value}
+		<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Выполненые медицинские обследования, вмешательства их оценка врачом:</b>&nbsp;{action[u'Выполнены медицинские обследования, вмешательства их оценка врачом'].value:n}
+		</p>
+		{end:}
+
+		{if: action[u'Представление о больном (заключение)'].value}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Заключение:</b>&nbsp;{action[u'Представление о больном (заключение)'].value:n}
+		</div>
+		{end:}
+		{if: action[u'План обследования'].value}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>План обследования:</b>&nbsp;{action[u'План обследования'].value:n}
+		</div>
+		{end:}
+		{if: action[u'План лечения'].value}
+		<div style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>План лечения:</b>&nbsp;{action[u'План лечения'].value:n}
+		</div>
+		{end:}
+
+
+		<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			<b>Назначения:</b>
+		</p>
+
+		<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			{if: action[u'Оставлен под наблюдение дежурного врача'].value == 'да'}
+				<b>Оставлен под наблюдение дежурного врача</b>
+				<br>
+			{end:}
+		</p>
+			{if: action[u'Режим'].value}
+			<b>Режим:</b>&nbsp;{action[u'Режим'].value:n}
+			<br>
+			{end:}
+
+
+			{if: action[u'Диета'].value}
+				{if: action[u'Диета'].value}
+					{for: apt in action.type._propertiesById.values()}
+						{if: apt.name == u'Диета'}
+							{: checkShow = db.getRecordEx(stmt="select dontShowForEventType from ActionPropertyType where id = {aptId};".format(aptId=apt.id)) }
+							{if: checkShow}
+								{if: forceString(checkShow.value(u'dontShowForEventType')) != forceString(event.eventType.id)}
+									<b>Диета:</b>&nbsp;{action[u'Диета'].value.split(',')[1]}
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+					<br>
+				{end:}
+			{else:}
+				{if: action[u'Диета old'].value}
+					{for: apt in action.type._propertiesById.values()}
+						{if: apt.name == u'Диета old'}
+							{: checkShow = db.getRecordEx(stmt="select dontShowForEventType from ActionPropertyType where id = {aptId};".format(aptId=apt.id)) }
+							{if: checkShow}
+								{if: forceString(checkShow.value(u'dontShowForEventType')) != forceString(event.eventType.id)}
+									<b>Диета:</b>&nbsp;{action[u'Диета old'].value:n}
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+					<br>
+				{end:}
+			{end:}
+			{if: action[u'Лекарственные препараты'].value}
+				<b>Лекарственные препараты:</b><br>
+					<table width="100%"><tr><td width="5%"></td><td>{action[u'Лекарственные препараты'].value:n}</td></tr></table>
+			{end:}
+			{if: action[u'Нaзначения'].value}
+				<b>Назначения:</b>&nbsp;{action[u'Нaзначения'].value:n}
+			{end:}
+
+
+		{for: prop in action}
+			{if: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с зав. отделением'}
+				<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Тактика ведения и назначения согласованы с заведующим отделением {action.person.orgStructure.name}</b></p>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с курирующим зам.гл.врача'}
+				<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Тактика ведения и назначения согласованы с курирующим зам.гл.врача</b></p>
+			{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с главным врачом'}
+				<p style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;"><b>Тактика ведения и назначения согласованы с главным врачом</b></p>
+			{end:}
+		{end:}
+		<table align="center" width="100%" style=" font-family:'Avenir Next Cyr Medium'; font-size:11pt;">
+			{for: prop in action}
+				{if: prop.name == u'Тип дневниковой записи' and (prop.value == u'дневниковая запись' or prop.value == u'послеоперационный осмотр' or prop.value == u'осмотр врачом-специалистом')}
+					<tr>
+						<td>Врач</td>
+						<td>___________________</td>
+                        {if: vrach }
+							{if: forceString(vrach.value('signaturePost'))}
+								<td>{action.person.shortName}, {forceString(vrach.value('signaturePost'))}</td>
+							{else: }
+								<td>{action.person.shortName}, {action.person.post}</td>
+							{end:}
+						{else: }
+							<td>{action.person.shortName}, {action.person.post}</td>
+						{end:}
+					</tr>
+				{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с зав. отделением'}
+					<tr>
+						<td>Врач</td>
+						<td>___________________</td>
+						{if: vrach }
+							{if: forceString(vrach.value('signaturePost'))}
+								<td>{action.person.shortName}, {forceString(vrach.value('signaturePost'))}</td>
+							{else: }
+								<td>{action.person.shortName}, {action.person.post}</td>
+							{end:}
+						{else: }
+							<td>{action.person.shortName}, {action.person.post}</td>
+						{end:}
+					</tr>
+					{if: boss_doctor_bypass or head_doctor_bypass}
+						<tr>
+							<td>Зав. отделением</td>
+							<td>___________________</td>
+							<td>{if: action[u'Заведующий отделением'].value}
+									{action[u'Заведующий отделением'].value.split(',')[1]}&nbsp;
+									{action[u'Заведующий отделением'].value.split(',')[2][1]}.{action[u'Заведующий отделением'].value.split(',')[3][1]}.,
+									{if: zaved2}
+										{if: forceString(zaved2.value('signaturePost'))}
+											{forceString(zaved2.value('signaturePost'))}
+										{elif: zaved1}
+											{forceString(zaved1.value('zaved'))}
+										{end:}
+									{elif: zaved1}
+										{forceString(zaved1.value('zaved'))}
+									{end:}
+								{end:}
+							</td>
+						</tr>							
+					{end:}
+
+          {for: prop in action}
+            {if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+              <!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+              <tr>
+                <td>Участники совместного осмотра</td>
+                <td></td>
+                <td></td>                  
+              </tr>
+            {end:}
+          {end:}
+					{for: prop in action}
+						{if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+							<!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+							{for: elem in prop.value}
+								{: ref = db.getRecordEx(stmt="""
+									select u.signaturePost
+									from Person p
+											 inner join User_Person UP on p.id = UP.person_id
+											 inner join User u on UP.user_id = u.id
+									where u.deleted = 0
+									  and p.deleted = 0
+									and p.id={clientId};""".format(clientId=elem.id)) }
+								{if: ref }
+									{if: ref.value('signaturePost') == ''}
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {elem.post}</td>
+										</tr>
+									{else: }
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {forceString(ref.value('signaturePost'))}</td>
+										</tr>
+									{end:}
+								{else: }
+									<tr>
+										<td></td>
+										<td>___________________</td>
+										<td>{elem.shortName}, {elem.post}</td>
+									</tr>
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+				{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с и.о. зав отделением'}
+					<tr>
+						<td>Врач</td>
+						<td>___________________</td>
+						{if: vrach }
+							{if: forceString(vrach.value('signaturePost'))}
+								<td>{action.person.shortName}, {forceString(vrach.value('signaturePost'))}</td>
+							{else: }
+								<td>{action.person.shortName}, {action.person.post}</td>
+							{end:}
+						{else: }
+							<td>{action.person.shortName}, {action.person.post}</td>
+						{end:}
+					</tr>
+
+					{if: io_doctor_bypass}
+						<tr>
+							<td>И.о. зав. отделением</td>
+							<td>___________________</td>
+							<td>{if: action[u'И.о. зав. отделением'].value}
+									{forceString(action[u'И.о. зав. отделением'].value).split(',')[0]}&nbsp;
+									{if: zaved2}
+										{if: forceString(zaved2.value('signaturePost'))}
+											{forceString(zaved2.value('signaturePost'))}
+										{elif: zaved1}
+											{forceString(zaved1.value('zaved'))}
+										{end:}
+									{elif: zaved1}
+										{forceString(zaved1.value('zaved'))}
+									{end:}
+								{end:}
+							</td>
+						</tr>							
+					{end:}
+
+          {for: prop in action}
+            {if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+              <!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+              <tr>
+                <td>Участники совместного осмотра</td>
+                <td></td>
+                <td></td>                  
+              </tr>
+            {end:}
+          {end:}
+					{for: prop in action}
+						{if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+							<!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+							{for: elem in prop.value}
+								{: ref = db.getRecordEx(stmt="""
+									select u.signaturePost
+									from Person p
+											 inner join User_Person UP on p.id = UP.person_id
+											 inner join User u on UP.user_id = u.id
+									where u.deleted = 0
+									  and p.deleted = 0
+									and p.id={clientId};""".format(clientId=elem.id)) }
+								{if: ref }
+									{if: ref.value('signaturePost') == ''}
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {elem.post}</td>
+										</tr>
+									{else: }
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {forceString(ref.value('signaturePost'))}</td>
+										</tr>
+									{end:}
+								{else: }
+									<tr>
+										<td></td>
+										<td>___________________</td>
+										<td>{elem.shortName}, {elem.post}</td>
+									</tr>
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+				{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с курирующим зам.гл.врача'}
+					<tr>
+						<td>Врач</td>
+						<td>___________________</td>
+                        {if: vrach }
+							{if: forceString(vrach.value('signaturePost'))}
+								<td>{action.person.shortName}, {forceString(vrach.value('signaturePost'))}</td>
+							{else: }
+								<td>{action.person.shortName}, {action.person.post}</td>
+							{end:}
+						{else: }
+							<td>{action.person.shortName}, {action.person.post}</td>
+						{end:}
+					</tr>
+
+					{if: tutor_doctor_bypass}
+						<tr>
+							<td>Курирующий заместитель главного врача</td>
+							<td>___________________</td>
+							<td>{if: action[u'Курирующий заместитель главного врача'].value}
+									{action[u'Курирующий заместитель главного врача'].value.split(',')[1]}
+									{action[u'Курирующий заместитель главного врача'].value.split(',')[2][1]}.
+									{action[u'Курирующий заместитель главного врача'].value.split(',')[3][1]}.,
+									{if: zaved2}
+										{if: forceString(zaved2.value('signaturePost'))}
+											{forceString(zaved2.value('signaturePost'))}
+										{elif: zaved1}
+											{forceString(zaved1.value('zaved'))}
+										{end:}
+									{elif: zaved1}
+										{forceString(zaved1.value('zaved'))}
+									{end:}
+								{end:}
+							</td>
+						</tr>							
+					{end:}
+
+          {for: prop in action}
+            {if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+              <!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+              <tr>
+                <td>Участники совместного осмотра</td>
+                <td></td>
+                <td></td>                  
+              </tr>
+            {end:}
+          {end:}
+					{for: prop in action}
+						{if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+							<!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+							{for: elem in prop.value}
+								{: ref = db.getRecordEx(stmt="""
+									select u.signaturePost
+									from Person p
+											 inner join User_Person UP on p.id = UP.person_id
+											 inner join User u on UP.user_id = u.id
+									where u.deleted = 0
+									  and p.deleted = 0
+									and p.id={clientId};""".format(clientId=elem.id)) }
+								{if: ref }
+									{if: ref.value('signaturePost') == ''}
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {elem.post}</td>
+										</tr>
+									{else: }
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {forceString(ref.value('signaturePost'))}</td>
+										</tr>
+									{end:}
+								{else: }
+									<tr>
+										<td></td>
+										<td>___________________</td>
+										<td>{elem.shortName}, {elem.post}</td>
+									</tr>
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+				{elif: prop.name == u'Тип дневниковой записи' and prop.value == u'обход с главным врачом'}
+					<tr>
+						<td>Врач</td>
+						<td>___________________</td>
+                        {if: vrach }
+							{if: forceString(vrach.value('signaturePost'))}
+								<td>{action.person.shortName}, {forceString(vrach.value('signaturePost'))}</td>
+							{else: }
+								<td>{action.person.shortName}, {action.person.post}</td>
+							{end:}
+						{else: }
+							<td>{action.person.shortName}, {action.person.post}</td>
+						{end:}
+					</tr>
+					<tr>
+						<td>Зав. отделением</td>
+						<td>___________________</td>
+						<td>{if: action[u'Зав. отделением'].value}
+								{action[u'Зав. отделением'].value.split(',')[1]}&nbsp;
+								{action[u'Зав. отделением'].value.split(',')[2][1]}.
+								{action[u'Зав. отделением'].value.split(',')[3][1]}.,
+								{if: zaved2}
+									{if: forceString(zaved2.value('signaturePost'))}
+										{forceString(zaved2.value('signaturePost'))}
+									{elif: zaved1}
+										{forceString(zaved1.value('zaved'))}
+									{end:}
+								{elif: zaved1}
+									{forceString(zaved1.value('zaved'))}
+								{end:}
+							{end:}
+						</td>
+					</tr>
+					{if: boss_doctor_bypass}
+						<tr>
+							<td>Главный врач</td>
+							<td>___________________</td>
+							<td>{if: action[u'Главный врач'].value}
+									{action[u'Главный врач'].value.split(',')[1]}&nbsp;
+									{action[u'Главный врач'].value.split(',')[2][1]}.
+									{action[u'Главный врач'].value.split(',')[3][1]}.,
+									{if: glav2}
+										{if: forceString(glav2.value('signaturePost'))}
+											{forceString(glav2.value('signaturePost'))}
+										{elif: glav1}
+											{forceString(glav1.value('glav'))}
+										{end:}
+									{elif: glav1}
+										{forceString(glav1.value('glav'))}
+									{end:}
+								{end:}
+							</td>
+						</tr>							
+					{end:}
+          {for: prop in action}
+            {if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+              <!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+              <tr>
+                <td>Участники совместного осмотра</td>
+                <td></td>
+                <td></td>                  
+              </tr>
+            {end:}
+          {end:}
+					{for: prop in action}
+						{if: croud_bypass and prop.name == u'Участники совместного осмотра' and all(map(lambda x: x.id is not None, prop.value))}
+							<!-- Сделал штуку с all, тк почему-то веб возвращает список участников, где лежит 1 элемент с пустым id, когда это поле вообще не трогали  -->
+							{for: elem in prop.value}
+								{: ref = db.getRecordEx(stmt="""
+									select u.signaturePost
+									from Person p
+											 inner join User_Person UP on p.id = UP.person_id
+											 inner join User u on UP.user_id = u.id
+									where u.deleted = 0
+									  and p.deleted = 0
+									and p.id={clientId};""".format(clientId=elem.id)) }
+								{if: ref }
+									{if: ref.value('signaturePost') == ''}
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {elem.post}</td>
+										</tr>
+									{else: }
+										<tr>
+											<td></td>
+											<td>___________________</td>
+											<td>{elem.shortName}, {forceString(ref.value('signaturePost'))}</td>
+										</tr>
+									{end:}
+								{else: }
+									<tr>
+										<td></td>
+										<td>___________________</td>
+										<td>{elem.shortName}, {elem.post}</td>
+									</tr>
+								{end:}
+							{end:}
+						{end:}
+					{end:}
+				{end:}
+			{end:}
+		</table>
+{else:}
+	<div align="center" style="font-family:'Avenir Next Cyr Medium'; font-size: 20pt;"><font color="red">Для печати
+		необходимо подписать документ. Для этого нажмите кнопку Подписать. Если при подписании возникает окно с
+		просьбой подписать ЭЦП, то нужно нажать Нет.</font></div>
+{end:}
+	</body>
+</html>

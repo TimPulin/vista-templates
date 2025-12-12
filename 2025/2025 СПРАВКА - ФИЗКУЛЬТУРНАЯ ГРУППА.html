@@ -1,0 +1,195 @@
+<!-- изменил Пулин дата 10.11.2025 задача DEV_TEMP-5902 Внести изменения в СЭМД "Медицинское заключение о принадлежности несовершеннолетнего к медицинской группе для занятий физической культурой" -->
+<!--Начальная дата разработки 22.09.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Медицинское заключение о принадлежности несовершеннолетнего к медицинской группе для занятий физической культурой</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: import re}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Медицинское заключение о принадлежности несовершеннолетнего к медицинской группе для занятий физической культурой</div>
+  <div align="center">
+    <b>{currentOrganisation.title}</b>
+  </div>
+
+  <div>
+    Выдано
+    {client.fullName}
+  </div>
+  <div>
+    о том, что он (она) к занятиям физической культурой
+  </div>
+
+{:
+def isChecked(value, current_value):
+  default_value = '''<span style="font-size: 18pt">&#9633;</span>'''
+  if value and current_value:
+    if current_value in value:
+      return '''<span>&#9745;</span>'''
+    else:
+      return default_value
+  return default_value
+}
+  <!--
+  &#9633;
+  &#9745;
+  -->
+
+  {: current_value = action[u'Заключение'].value}
+
+
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        {write(isChecked([u'допущен(а) к занятиям физической культурой без ограничений в соответствии с медицинской группой для занятий физической культурой', u'допущен(а) к занятиям физической культурой с ограничениями в соответствии с медицинской группой для занятий физической культурой'], current_value))}
+        допущен (допущена):
+      </td>
+      <td>
+        {write(isChecked([u'допущен(а) к занятиям физической культурой без ограничений в соответствии с медицинской группой для занятий физической культурой'], current_value))}
+        без ограничений/
+        {write(isChecked([u'допущен(а) к занятиям физической культурой с ограничениями в соответствии с медицинской группой для занятий физической культурой'], current_value))}
+        с ограничениями;
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        {write(isChecked([u'не допущен(а) к занятиям физической культурой'], current_value))}
+        не допущен (не допущена):
+      </td>
+    </tr>
+  </table>
+
+  <div>
+    Медицинская группа для занятий физической культурой (в соответствии с приложением N 3 к Порядку проведения профилактических медицинских осмотров несовершеннолетних):
+  </div>
+
+{: current_value = action[u'Медицинская группа для занятий физической культурой'].value}
+{:
+pattern_group = u'([IVX]{1,3})\s+группа'
+match = re.search(pattern_group, current_value)
+if match:
+  current_group = match.group(1)
+else:
+  current_group = u''
+
+pattern_subgroup = u'специальная подгруппа "([АБ])'
+match = re.search(pattern_subgroup, current_value)
+if match:
+  current_subgroup = match.group(1)
+else:
+  current_subgroup = u''
+
+
+}
+
+
+  <table cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="middle">
+        {write(isChecked([u'I'], current_group))}
+      </td>
+      <td valign="middle">
+        основная группа;
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle">
+        {write(isChecked([u'II'], current_group))}
+      </td>
+      <td valign="middle">
+        подготовительная группа;
+      </td>
+    </tr>
+    <tr>
+      <td valign="middle">
+        {write(isChecked([u'III', u'IV'], current_group))}
+      </td>
+      <td valign="middle">
+        специальная группа:
+      </td>
+      <td valign="middle">
+        {write(isChecked([u'А'], current_subgroup))}
+      </td>
+      <td valign="middle" style="padding-right: 10px">
+        подгруппа "А"/
+      </td>
+      <td valign="middle">
+        {write(isChecked([u'Б'], current_subgroup))}
+      </td>
+      <td valign="middle">
+        подгруппа "Б"
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td valign="top">
+            <div class="white-wrap">
+              {action.person.post}&nbsp;
+            </div>
+            <div><sup>(должность врача, выдавшего заключение)</sup></div>
+          </td>
+          <td>
+            <div align="center">{'_' * 15}</div>
+            <div align="center"><sup>подпись</sup></div>
+          </td>
+          <td>
+            <div align="center">{action.person.fullName}&nbsp;</div>
+            <div align="center"><sup>(фамилия, имя, отчество (при наличии)</sup></div>
+          </td>
+        </tr>
+    </table>
+  <div>
+    М.П. (при наличии)
+  </div>
+  <div>
+    Дата выдачи <b>{action.begDate.toString(u'dd.MM.yyyy')}</b>
+  </div>
+</div>
+</body>
+</html>

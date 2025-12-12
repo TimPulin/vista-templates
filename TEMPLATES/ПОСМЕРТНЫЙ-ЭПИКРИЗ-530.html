@@ -1,0 +1,608 @@
+<!--Начальная дата разработки 05.12.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: KPTD-1309 Настроить шаблон печати посмертного эпикриза в соответствии с приказом 530 -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ПОСМЕРТНЫЙ ЭПИКРИЗ</title>
+<!-- @formatter:off -->
+{:
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+}
+
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Courier New';
+    font-size: 10pt;
+}
+.section {
+    margin-bottom: 1em;
+}
+.p {
+    margin-bottom: .5em;
+}
+.tbl-custom {
+    font-size: 10pt;
+}
+.tbl-custom .section {
+    padding-bottom: .5em;
+}
+.invisible {
+    font-size: 1px;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line--mb {
+    margin-bottom: -5px;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+}
+
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ПОСМЕРТНЫЙ ЭПИКРИЗ</div>
+
+  <div class="p">
+    Наименование  медицинской организации (фамилия, имя, отчество (при наличии)
+    индивидуального предпринимателя, осуществляющего медицинскую деятельность),
+    ОГРН (ОГРНИП):
+    <b>{currentOrganisation.fullName}</b>
+    <b>{currentOrganisation.OGRN}</b>
+  </div>
+
+  <div class="p">
+    Наименование отделения (структурного подразделения):
+    <b>{currentOrgStructure.fullName}</b>
+  </div>
+
+  <div class="p">Номер медицинской карты: {event.externalId}</div>
+
+  <section class="section">
+    <div>Сведения о пациенте:</div>
+    <div>Фамилия, имя, отчество (при наличии) <b>{client.fullName}</b></div>
+    <div>
+      Дата рождения {client.birthDate}
+      Пол: <b>{u'мужской' if client.sex == u'М' else u'женский'}</b>
+    </div>
+
+    <!-- note Регистрация по месту -->
+    <section>
+      {:
+      def check_city(city):
+        return (city and city.socr and (city.socr.strip() == "г." or city.socr.strip() == "г"))
+      }
+
+      {:
+      def get_district(district):
+        if district:
+          dst = district.strip()
+          if dst.endswith(u'р-н'):
+            return dst[:-3]
+          elif dst.endswith(u'р-н.'):
+            return dst[:-4]
+        return None
+      }
+
+    {:
+    def get_region(region):
+      prefix = u''
+      postfix = u''
+      if u'г' in region.socr:
+        prefix = region.socr
+
+      if u'кра' in region.socr:
+        postfix = region.socr
+
+      return postfix + region.name + postfix
+    }
+
+      <div>
+        Регистрация по месту жительства:
+        {if: client.regAddress.region}
+            субъект Российской Федерации
+            <b>{get_region(client.regAddress.region)}</b>
+        {end:}
+      </div>
+      <div>
+        {: isToRenderAddrString = True}
+        <div>
+          {: dst = get_district(client.regAddress.district)}
+          {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+          {if: check_city(client.regAddress.parentCity)} город <b>{client.regAddress.parentCity.name}</b> {: isToRenderAddrString = False}{end:}
+          {if: client.regAddress.city}населенный пункт <b>{client.regAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+        </div>
+
+        <div>
+          {if: event.client.regAddress.street} {event.client.regAddress.street.socr} <b>{event.client.regAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.regAddress.number} дом <b>{event.client.regAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.regAddress.corpus} корпус <b>{event.client.regAddress.corpus}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.regAddress.flat} квартира <b>{event.client.regAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+        </div>
+
+        <!-- note на случай, если адрес введен в виде строки, а не с использованием КЛАДР -->
+        {if: isToRenderAddrString}
+            <b>{client.regAddress}</b>
+        {end:}
+      </div>
+
+      <div>
+        Регистрация по месту пребывания:
+        {if: client.locAddress.region}
+            субъект Российской Федерации
+            <b>{get_region(client.locAddress.region)}</b>
+        {end:}
+      </div>
+      <div>
+        {: isToRenderAddrString = True}
+        <div>
+          {: dst = get_district(client.locAddress.district)}
+          {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+          {if: check_city(client.locAddress.parentCity)} город <b>{client.locAddress.parentCity.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False}{end:}
+          {if: client.locAddress.city}населенный пункт <b>{client.locAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+        </div>
+
+        <div>
+          {if: event.client.locAddress.street} {event.client.locAddress.street.socr} <b>{event.client.locAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.locAddress.number} дом <b>{event.client.locAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.locAddress.corpus} корпус <b>{event.client.locAddress.corpus}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+          {if: event.client.locAddress.flat} квартира <b>{event.client.locAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+        </div>
+        {if: isToRenderAddrString}
+            <b>{client.locAddress}</b>
+        {end:}
+      </div>
+    </section>
+    <!-- note END Регистрация по месту -->
+  </section>
+
+  <section class="section">
+    <div class="p">
+      Поступил: <b>{action[u'Поступление']}</b>
+    </div>
+
+    {: startDate = action[u'Период нахождения в стационаре с'].value}
+    {: endDate = action[u'Период нахождения в стационаре по'].value}
+    <div class="p">
+      Период нахождения в стационаре, дневном стационаре:
+      с  <b>{startDate}</b>
+      по <b> {endDate}</b>
+    </div>
+
+    <div class="p">
+      Количество дней нахождения в медицинской организации
+      {if: startDate and endDate}
+        <b>{startDate.daysTo(endDate)}</b>
+      {end:}
+    </div>
+
+    <div class="p">
+      Дата и время наступления смерти:
+      {: deathDate = action[u'Дата и время смерти'].value}
+    </div>
+
+    <div class="p">
+      Форма оказания медицинской помощи:
+      <b>{action[u'Форма оказания медицинской помощи']}</b>
+    </div>
+
+    <div class="p">
+      Дополнительные сведения о пациенте и госпитализации:
+      <b>{action[u'Дополнительные сведения о пациенте и госпитализации'].value}</b>
+    </div>
+  </section>
+
+  <section class="section">
+
+{:
+def diag_layout(title, name, code):
+  return '''
+    <tr>
+      <td>
+        {title}
+        <b>{name}</b>
+      </td>
+      <td class="white-wrap">код по МКБ&nbsp;</td>
+      <td class="white-wrap"><b>{code}</b>&nbsp;</td>
+    </tr>
+  '''.format(title=title, name=name, code=code)
+}
+
+{:
+def empty_diag_layout(title):
+  code = u'_' * 6
+  return '''
+    <tr>
+      <td>
+        <div class="line">
+          <span>{title}</span>
+          <div class="line__item"></div>
+        </div>
+      </td>
+      <td class="white-wrap">код по МКБ&nbsp;</td>
+      <td class="white-wrap">{code}&nbsp;</td>
+    </tr>
+  '''.format(title=title,code=code)
+
+def empty_tr_layout(td_class):
+    return '''
+      <tr>
+        <td colspan="3" class="{td_class}">
+          <div class="line">
+            <div class="line__item">&nbsp;</div>
+          </div>
+        </td>
+      </tr>
+    '''.format(td_class=td_class)
+}
+
+    <div class="p">Заключительный клинический диагноз (посмертный):</div>
+
+    <!-- note Диагнозы -->
+    <table width="100%" cellpadding="0" cellspacing="0" class="tbl-custom">
+      <tr>
+        <td class="invisible"></td>
+        <td class="invisible" width="1%"></td>
+        <td class="invisible" width="1%"></td>
+      </tr>
+
+      {:write(diag_layout(u'Основное заболевание', action[u'Основное заболевание'].value, action[u'Основное заболевание МКБ'].value))}
+      
+      {: diag_list = action[u'Осложнения основного заболевания']}
+      {: current_title = u'Осложнения основного заболевания'}
+      {if: len(diag_list) > 0}
+        {for: index, diag in enumerate(diag_list)}
+          {: title = current_title if index == 0 else u''}
+          {: write(diag_layout(title, diag[u'Расшифровка'], diag[u'Диагноз']))}
+        {end:}
+      {else:}
+        {: write(empty_diag_layout(current_title))}
+        {for: index in range(3)}
+          {: tr_class = u'section' if index == 2 else u''}
+          {: write(empty_tr_layout(tr_class))}
+        {end:}
+      {end:}
+
+      {: name = action[u'Внешняя причина при травмах, отравлениях'].value or u''}
+      {: mkb = action[u'Внешняя причина при травмах, отравлениях МКБ'].value or u''}
+      {: current_title = u'Внешняя причина при травмах, отравлениях'}
+      {if: name != u'' or mkb != u''}
+        {: write(diag_layout(current_title, name, mkb))}
+      {else:}
+        {: write(empty_diag_layout(current_title))}
+        {for: index in range(3)}
+          {: tr_class = u'section' if index == 2 else u''}
+          {: write(empty_tr_layout(tr_class))}
+        {end:}
+      {end:}
+
+      {: diag_list = action[u'Сопутствующие заболевания']}
+      {: current_title = u'Сопутствующие заболевания'}
+      {if: len(diag_list) > 0}
+        {for: index, diag in enumerate(diag_list)}
+          {: title = current_title if index == 0 else u''}
+          {: write(diag_layout(title, diag[u'Расшифровка'], diag[u'Диагноз']))}
+        {end:}
+      {else:}
+        {: write(empty_diag_layout(current_title))}
+        {for: index in range(3)}
+          {: tr_class = u'section' if index == 2 else u''}
+          {: write(empty_tr_layout(tr_class))}
+        {end:}
+      {end:}
+    </table>
+
+    {: current_act = action[u'Дополнительные сведения о заболевании']}
+    {: current_title = u'Дополнительные сведения о заболевании:'}
+    {if: current_act.value}
+        <div>
+          <span>{current_title}</span>
+          <b>{current_act.value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>{current_title}</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {if: action[u'Состояние при поступлении'].value}
+        <div>
+          Состояние при поступлении:
+          <b>{action[u'Состояние при поступлении'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Состояние при поступлении:</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+
+  <div>
+    Проведенные обследования, лечение, медицинская реабилитация:
+  </div>
+  <section class="section">
+    {if: action[u'Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии'].value}
+        <div>
+          Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии
+          <b>{action[u'Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {if: action[u'Результаты медицинского обследования'].value}
+        <div>
+          Результаты медицинского обследования:
+          <b>{action[u'Результаты медицинского обследования'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Результаты медицинского обследования:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+
+  </section>
+
+  <section class="section">
+    {if: action[u'Применение лекарственных препаратов'].value}
+        <div>
+          Применение лекарственных препаратов (включая химиотерапию, вакцинацию), медицинских изделий, лечебного питания:
+          <b>{action[u'Применение лекарственных препаратов'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Применение лекарственных препаратов (включая химиотерапию, вакцинацию), медицинских изделий, лечебного питания:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {if: action[u'Трансфузии'].value}
+        <div>
+          Трансфузии (переливания) донорской крови и (или) ее компонентов:
+          <b>{action[u'Трансфузии'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Трансфузии (переливания) донорской крови и (или) ее компонентов:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+
+  </section>
+
+  <section class="section">
+    {if: action[u'Оперативные вмешательства'].value}
+        <div>
+          Оперативные вмешательства (операции), включая сведения об анестезиологическом пособии:
+          <b>{action[u'Оперативные вмешательства'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Оперативные вмешательства (операции), включая сведения об анестезиологическом пособии:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+
+  </section>
+
+  <section class="section">
+    {if: action[u'Медицинские вмешательства'].value}
+        <div>
+          Медицинские вмешательства:
+          <b>{action[u'Медицинские вмешательства'].value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>Медицинские вмешательства:</span>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {: current_act = action[u'Медицинские вмешательства']}
+    {: current_title = u'Медицинские вмешательства:'}
+    {if: current_act.value}
+        <div>
+          {current_title}
+          <b>{current_act.value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>{current_title}</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {: current_act = action[u'Дополнительные сведения']}
+    {: current_title = u'Дополнительные сведения:'}
+    {if: current_act.value}
+        <div>
+          {current_title}
+          <b>{current_act.value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>{current_title}</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+  <section class="section">
+    {: current_act = action[u'Обстоятельства смерти пациента']}
+    {: current_title = u'Обстоятельства смерти:'}
+    {if: current_act.value}
+        <div>
+          {current_title}
+          <b>{current_act.value}</b>
+        </div>
+    {else:}
+      <div class="line line--mb">
+        <span>{current_title}</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+      {for: _ in range(2)}
+        <div class="line">
+          <div class="line__item">&nbsp;</div>
+        </div>
+      {end:}
+    {end:}
+  </section>
+
+{:
+chief_ref = db.getRecordEx(stmt=u"""
+  select CONCAT_WS(' ', p.lastName, p.firstName, p.patrName) as full_name
+  from Event e
+           join OrgStructure os on e.orgStructure_id = os.id
+           join Person p on os.chief_id = p.id
+  where e.id = {event_id};
+""".format(event_id=event.id))
+
+if chief_ref:
+  full_name = forceString(chief_ref.value(u'full_name'))
+else:
+  full_name = u''
+}
+
+
+  <section class="section">
+    <div>Фамилия, имя, отчество (при наличии), должность, специальность, подпись</div>
+    {if: event.execPerson}
+        <div>
+          <span>Лечащий врач</span>
+          <b>{event.execPerson.fullName}</b>
+        </div>
+    {else:}
+      <div class="line">
+        <span>лечащий врач</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+    {end:}
+
+    {if: full_name != u''}
+        <div>
+          <span>заведующий отделением</span>
+          <b>{full_name}</b>
+        </div>
+    {else:}
+      <div class="line">
+        <span>заведующий отделением</span>
+        <div class="line_item">&nbsp;</div>
+      </div>
+    {end:}
+  </section>
+
+</div>
+</body>
+</html>

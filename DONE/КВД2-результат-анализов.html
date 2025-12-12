@@ -1,0 +1,189 @@
+
+<!--Начальная дата разработки 28.11.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: SUP-53806 Поправить шаблоны квд2 -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Результаты</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.page-break {
+  page-break-after: always;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+
+{:
+base_researches = []
+
+for act in event.actions:
+  if act.class_==1:
+    isAppend = False
+
+    for prop in act:
+      if prop.name != u"Номерок" and prop.value != "":
+        isAppend = True
+    if isAppend:
+      base_researches.append(act)
+
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+
+    {for: act in base_researches}
+      <div class="section">
+        <table border="0" width="100%" cellpadding="2" cellspacing="0" style="font-family: Times New Roman; font-size: 10pt; color: black">
+
+            <tr>
+                <td align="right" width="50%" style="font-size:13pt; font-weight: bold; padding: 20px 50px 20px 0;">
+                    {currentOrganisation.shortName}
+                </td>
+                <td  align="left" width="30%">
+                    {currentOrganisation.address}<br>
+                    тел.: {currentOrganisation.phone}<br>
+                    Email: kvd2@zdrav.spb.ru <br>
+                    Сайт: kvd2.spb.ru
+                </td>
+                <td  align="center" width="20%" style="font-size: 40pt;">
+                    <font face="Code 3 de 9">
+                        {client.id}
+                    </font>
+                </td>
+            </tr>
+        </table>
+
+        <br>
+        <hr>
+
+        <table width="100%" cellpadding="2" cellspacing="0" style="font-size: 10pt;">
+
+            <tr>
+                <td width="50%">
+                    Пациент:
+                    <span style="text-transform: uppercase; font-weight: bold;">
+                        {client.fullName}
+                    </span>
+                    &nbsp;&nbsp;
+                    Пол:
+                    <span style="text-transform: uppercase; font-weight: bold;">
+                        {client.sex}
+                    </span>
+
+                    <br>
+
+                    Дата рождения:
+                    <span style="text-transform: uppercase; font-weight: bold;">
+                        {client.birthDate} ({client.age})
+                    </span>
+
+                    <br>
+
+                    Адрес:
+                    <span style="text-transform: uppercase;">
+                        {client.locAddress}
+                    </span>
+
+                    <br>
+
+                    Диагноз:
+                    <span style="text-transform: uppercase;">
+                        {for: diagnosis in event.diagnosises}
+                            {diagnosis.MKB} {('+'+str(diagnosis.MKBEx)) if diagnosis.MKBEx.code != '' else ''} ({diagnosis.type.code});&nbsp;
+                        {end:}
+                    </span>
+
+                    <br>
+
+                    Дата забора образца:
+                    <span style="text-transform: uppercase; font-weight: bold;">
+                        {act.begDate.toString(u'dd.MM.yyyy')}
+                    </span>
+                </td>
+                <td width="50%">
+                    № заявки:
+                    <span style="text-transform: uppercase; font-weight: bold;">
+                        {act.id}
+                    </span>
+                </td>
+            </tr>
+        </table>
+        <hr>
+
+
+        <h4 align="center">
+            {act.name} {act.endDate.date.toString(u"dd.MM.yyyy")}
+        </h4>
+
+
+        <table width="100%" border="1" cellpadding="3" cellspacing="0">
+          <tr>
+            <th>Название теста</th>
+            <th>Результат</th>
+            <th>Ед.изм.</th>
+            <th>Норма</th>
+          </tr>
+            {for: prop in act}
+              {if: prop.name != u"Номерок" and prop.value != ""}
+                <tr>
+                  <td>{prop.name}</td>
+                  <td>{prop.value}</td>
+                  <td></td>
+                  <td>{prop.norm}</td>
+                </tr>
+              {end:}
+            {end:}
+        </table>
+      </div>
+      <div class="page-break"></div>
+    {end:}
+
+</div>
+</body>
+</html>

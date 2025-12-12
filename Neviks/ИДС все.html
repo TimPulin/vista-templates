@@ -11,6 +11,8 @@
   <title>Информированное добровольное согласие на медицинские вмешательства в ООО «Невикс»</title>
 <!-- @formatter:off -->
 
+{:
+write('''
 <style>
 .h1 {
     text-align: center;
@@ -35,6 +37,7 @@
   white-space: nowrap;
 }
 </style>
+''')}
 <!-- @formatter:on -->
 </head>
 <body>
@@ -48,16 +51,16 @@
 
 
     <div>
-      Я, <b>{{context.clientFullName}}</b>
-      дата рождения <b>{context.clientBirthDate}</b>
+      Я, <b>{client.fullName}</b>
+      дата рождения <b>{client.birthDate}</b>
     </div>
 
     <div>
-      Зарегистрированный (ая) по адресу: <b>{{context.clientRegAddress}}</b>
+      Зарегистрированный (ая) по адресу: <b>{client.regAddress}</b>
     </div>
 
     <div>
-      Проживающий (ая) по адресу: <b>{{context.clientLocAddress}}</b>
+      Проживающий (ая) по адресу: <b>{client.locAddress}</b>
     </div>
 
     <div>
@@ -65,12 +68,12 @@
     </div>
 
   <table width="100%" cellpadding="0" cellspacing="0">
-    {% for index in range(5) %}
+    {for: index in range(5)}
       <tr>
         <td>- ________________________________________________________</td>
         <td>____________________/_____________________________</td>
       </tr>
-    {% endfor %}
+    {end:}
     <tr>
       <td>- врачебную консультацию_________________________________</td>
       <td>____________________/_____________________________</td>
@@ -129,9 +132,35 @@
   </div>
 
 
+{:
+def format_phone(value):
+  if value:
+    cleared_str = re.sub(u'\D', u'', value)
+    reversed_str = cleared_str[::-1]
+    new_value = u''
+    for index, char in enumerate(reversed_str):
+      if index == 7:
+        new_value += u')'
+      new_value += char
+      if index in (1, 3, 6):
+        new_value += u'-'
+      if index == 9:
+        new_value += u'('
+        if index == len(reversed_str) - 1:
+          new_value += u'8'
+    return new_value[::-1]
+  return ''
+}
+
   <div>
-    <b>{{context.clientFullName}}</b>,
-    <b>{{context.clientPhone}}</b>
+    <b>{client.fullName}</b>,
+    {if: contact_ref_list}
+        {: phones = set()}
+        {for: index, contact_ref in enumerate(contact_ref_list)}
+          {: phones.add(format_phone(forceString(contact_ref.value(u'contact'))))}
+        {end:}
+        <b>{u'; '.join(phones)}</b>
+    {end:}
 
   </div>
   <div><sup>(ФИО гражданина, контактный телефон)</sup></div>
