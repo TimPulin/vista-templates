@@ -1,0 +1,253 @@
+<!--Начальная дата разработки 27.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+  <header>
+    <table width="75%" cellpadding="0" cellspacing="0" class="small">
+      <tr>
+        <td>
+          <div>{currentOrganisation.title}</div>
+          <div>{currentOrganisation.address}</div>
+          <div>
+            ОГРН: {currentOrganisation.OGRN},
+            ОКПО: {currentOrganisation.OKATO},
+            ОКАТО: {currentOrganisation.OKPO}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+<div class="main">
+  <div align="center" class="h1">Медицинская справка в бассейн</div>
+
+  <div>
+    <b>ФИО:</b> {client.fullName}
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">
+        <b>Пол:</b>
+        {u'мужской' if client.sex == u'М' else u'женский'}
+      </td>
+      <td width="50%">
+        <b>Дата рождения:</b>
+        {client.birthDate} ({client.age})
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <div align="center" class="h1"><b><u>Общие сведения</u></b></div>
+
+  <div>
+    <b>Заключение:</b> {action[u'Заключение']}
+  </div>
+  {if: action[u'Комментарий'].value}
+    <div>
+      <b>Комментарий:</b> {action[u'Комментарий']}
+    </div>
+  {end:}
+  <div>
+    <b>Справка действительна до:</b> {action[u'Справка действительна до']}
+  </div>
+
+  <br>
+
+<section>
+<!-- @formatter:off -->
+<!--  note подпись специалиста -->
+{:
+from library.Utils import forceString
+from PyQt4 import QtGui
+db = QtGui.qApp.db
+
+signRef = None
+flag_sgn = False
+
+if action.id:
+  signRef = db.getRecordEx(stmt="""
+    select
+        certSerial as certificate,
+        certOwner as name,
+        ownerOrganisation as organisation,
+        notValidBefore as beg_valid_date,
+        notValidAfter as end_valid_date
+    from SignedIEMKDocument
+    where sign_date is not null
+      and sign_path is not null
+      and action_id = {actionId}
+      and person_id != 0
+      and template_id = 489
+      and deleted = 0
+    limit 1;
+  """.format(actionId=action.id))
+
+if signRef:
+  flag_sgn = True
+  certificate = forceString(signRef.value('certificate'))
+  name = forceString(signRef.value('name'))
+  organisation = forceString(signRef.value('organisation'))
+  beg_valid_date = forceString(signRef.value('beg_valid_date'))
+  end_valid_date = forceString(signRef.value('end_valid_date'))
+}
+
+<!-- @formatter:on -->
+
+
+<table width="100%" cellpadding="0" cellspacing="5">
+  <tr>
+    <td width="50%">
+      <div class="white-wrap">{action.person.post}&nbsp;</div>
+      <div class="white-wrap">{action.person.fullName}&nbsp;</div>
+    </td>
+
+    <td align="right" width="50%">
+      {if: flag_sgn}
+        <table border="1" cellpadding="3" cellspacing="0">
+            <tr>
+                <td>
+                    <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                        <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                        <tr><td>Сертификат: {certificate}</td></tr>
+                        <tr><td>Владелец: {name}</td></tr>
+                        {if: organisation}
+                            <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                        {else:}
+                            <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                        {end:}
+                        <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+      {end:}
+    </td>
+  </tr>
+
+
+<!--  note подпись организации -->
+{:
+signRef = None
+flag_sgn = False
+
+if action.id:
+  signRef = db.getRecordEx(stmt="""
+    select
+        certSerial as certificate,
+        certOwner as name,
+        ownerOrganisation as organisation,
+        notValidBefore as beg_valid_date,
+        notValidAfter as end_valid_date
+    from SignedIEMKDocument
+    where sign_date is not null
+      and sign_path is not null
+      and action_id = {actionId}
+      and person_id = 0
+      and template_id = 489
+      and deleted = 0
+    limit 1;
+  """.format(actionId=action.id))
+
+if signRef:
+  flag_sgn = True
+  certificate = forceString(signRef.value('certificate'))
+  name = forceString(signRef.value('name'))
+  organisation = forceString(signRef.value('organisation'))
+  beg_valid_date = forceString(signRef.value('beg_valid_date'))
+  end_valid_date = forceString(signRef.value('end_valid_date'))
+
+
+}
+
+
+  {if: flag_sgn}
+    <tr>
+      <td></td>
+      <td align="right">
+          <table border="1" cellpadding="3" cellspacing="0">
+              <tr>
+                  <td>
+                      <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                          <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                          <tr><td>Сертификат: {certificate}</td></tr>
+                          <tr><td>Владелец: {name}</td></tr>
+                          {if: organisation}
+                              <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                          {else:}
+                              <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                          {end:}
+                          <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                      </table>
+                  </td>
+              </tr>
+          </table>
+      </td>
+    </tr>
+  {end:}
+</table>
+</section>
+
+
+
+</div>
+</body>
+</html>

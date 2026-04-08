@@ -7,6 +7,7 @@
 пол <b>{client.sex}</b>
 
 <b>{1 if client.sex == u'М' else 2}</b>
+<b>{u'мужской' if client.sex == u'М' else u'женский'}</b>
 
 {:
 def render_line(str, base_length = 95):
@@ -22,6 +23,8 @@ def render_line(str, base_length = 95):
   { render_line(u'Группа инвалидности:')}
 {end:}
 
+<b>{client.regAddress}</b>
+<b>{client.locAddress}</b>
 
 <!-- note Регистрация по месту -->
 <section>
@@ -144,7 +147,7 @@ def get_region(region):
 
 <div>
   Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
-  серия <b>{client.document.seral}</b>
+  серия <b>{client.document.serial}</b>
   № <b>{client.document.number}</b>
 
   <b>{client.document.origin}</b>
@@ -155,7 +158,7 @@ def get_region(region):
   Номер телефона: <b>{client.primaryPhones}</b>
   Адрес электронной почты: <b>{client.email if client.email != '' else '_' * 15}</b>
 </div>
-
+<b>{client.phones}</b>
 
 
 <!-- note Родственники -->
@@ -198,3 +201,36 @@ relative_ref_list = db.getRecordList(stmt=u"""
     {end:}
 
   </div>
+
+<!-- note Социальные статусы -->
+
+{:
+soc_status_ref = db.getRecordEx(stmt=u"""
+  select max(if(css.socStatusClass_id = 7, rbSST.code, ''))                           as busyness_code,
+         max(if(css.socStatusClass_id = 7, rbSST.name, ''))                           as busyness_name,
+         max(if(css.socStatusClass_id = 7, DATE_FORMAT(css.endDate, '%d.%m.%Y'), '')) as busyness_end_date,
+
+         max(if(css.socStatusClass_id = 2, rbSST.name, ''))                           as family_name,
+
+         max(if(css.socStatusClass_id = 5, rbSST.name, ''))                           as education_name
+
+  from ClientSocStatus css
+           join rbSocStatusType rbSST on css.socStatusType_id = rbSST.id
+  where css.deleted = 0
+    and css.client_id = {clientId};
+""".format(clientId=event.client.id))
+
+
+if soc_status_ref:
+  busyness_code = forceString(soc_status_ref.value(u'busyness_code'))
+  busyness_name = forceString(soc_status_ref.value(u'busyness_name'))
+  busyness_end_date = forceString(soc_status_ref.value(u'busyness_end_date'))
+  family_name = forceString(soc_status_ref.value(u'family_name'))
+  education_name = forceString(soc_status_ref.value(u'education_name'))
+else:
+  busyness_code = u''
+  busyness_name = u''
+  busyness_end_date = u''
+  family_name = u''
+  education_name = u''
+}

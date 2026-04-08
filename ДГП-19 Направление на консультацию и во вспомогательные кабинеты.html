@@ -1,0 +1,227 @@
+<!-- изменил Пулин дата 03.02.2026 задача  -->
+<!--Начальная дата разработки 02.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: RReferralCabinet -->
+<!--Задача: DEV_TEMP-6378 Создать шаблон печати "Направление на проведение РКТ и МРТ"  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+p, .p {
+  margin: 0 0 10px 0;
+}
+
+.pr {
+  padding-right: 50px;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<header>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="99%"></td>
+      <td width="1%">
+        <div class="white-wrap">
+          Приложение №3&nbsp;
+        </div>
+        <div class="white-wrap">
+          к распоряжению комитета по здравоохранению&nbsp;
+        </div>
+        <div class="white-wrap">
+          от 07.02.2020 года №54-р&nbsp;
+        </div>
+      </td>
+    </tr>
+  </table>
+</header>
+<br>
+<div class="main">
+  <div align="center" class="h1">Направление на проведение РКТ и МРТ № {action[u'№ направления']}</div>
+
+  <p>
+    Дата проведения и номер врачебной (отборочной) комиссии:
+    <b>{action[u'Дата проведения врачебной (отборочной) комиссии']}</b>
+    №<b>{action[u'№ врачебной (отборочной) комиссии']}</b>
+  </p>
+
+  <p>
+    Наименование медицинской организации, выдавшей направление на проведение рентгеновской компьютерной томографии и магнитно-резонансной томографии:
+    <b>{currentOrganisation.fullName}</b>
+  </p>
+
+  <p>
+    Наименование медицинской организации, где будет проводится исследование:
+    <b>{action[u'Наименование медицинской организации, где будет проводится исследование']}</b>
+  </p>
+
+  <p>
+    Пациент: <b>{client.fullName}</b>
+  </p>
+
+  <p>
+    <table width="100%" cellpadding="0" cellspacing="0" class="p">
+      <tr>
+        <td>
+          Пол:
+          <b>{u'Мужской' if client.sex == u'М' else u'Женский'}</b>
+        </td>
+        <td>
+          Дата рождения:
+           <b>{client.birthDate}</b>
+        </td>
+        <td>
+          № амбулаторной карты:
+          <b>{client.id}</b>
+        </td>
+      </tr>
+    </table>
+  </p>
+
+  <p>
+    Адрес регистрации:  <b>{client.regAddress}</b>
+  </p>
+
+  <p>
+    Адрес проживания: <b>{client.locAddress}</b>
+  </p>
+
+  <p>
+    Телефон:
+    <b>{client.phones}</b>
+  </p>
+
+  <p>
+    Полис ОМС
+    серия <b>{client.policy.serial}</b>
+    № <b>{client.policy.number}</b>
+  </p>
+
+  <p> СНИЛС: <b>{client.SNILS}</b></p>
+
+  <p>
+    Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
+    серия <b>{client.document.serial}</b>
+    № <b>{client.document.number}</b>
+
+    <b>{client.document.origin}</b>
+    <b>{client.document.date}</b>
+  </p>
+
+
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB       as diag_id,
+         mkb.DiagName as diag_name
+  from Diagnosis ds
+           left join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = (select getEventDiagnosis({event_id}))
+""".format(event_id=event.id))
+
+if main_diag_ref:
+  main_diag_id = forceString(main_diag_ref.value(u'diag_id'))
+  main_diag_name = forceString(main_diag_ref.value(u'diag_name'))
+else:
+  main_diag_id = u''
+  main_diag_name = u''
+}
+  <p>
+    Диагноз: <b>{main_diag_id}</b> <b>{main_diag_name}</b>
+  </p>
+  
+  <p>
+    Жалобы: <b>{action[u'Жалобы']}</b>
+  </p>
+
+  <p>
+    Анамнез заболевания: <b>{action[u'Анамнез заболевания']}</b>
+  </p>
+
+  <p>
+    Объективный статус:
+    <b>{action[u'Объективный статус']}</b>
+  </p>
+
+  <p>
+    <table width="75%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td>Рост: <b>{action[u'Рост']}</b></td>
+        <td>Вес: <b>{action[u'Вес']}</b></td>
+      </tr>
+    </table>
+  </p>
+
+  <p>
+    Наименование исследования в соответствии с номенклатурой медицинских услуг, утверждённой приказом МЗ РФ от 13.10.2017 года №804н:
+    <b>{action[u'Наименование исследования в соответствии с номенклатурой медицинских услуг, утверждённой приказом МЗ РФ от 13.10.2017 года №804н']}</b>
+  </p>
+
+  <p>
+    Область исследования:
+    <b>{action[u'Область исследования']}</b>
+  </p>
+
+  <br>
+  
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>Лечащий врач:</td>
+      <td class="white-wrap">{event.execPerson.fullName}</td>
+      <td class="white-wrap">{event.execPerson.speciality}</td>
+      <td class="white-wrap">{'_' * 20}</td>
+    </tr>
+    <tr>
+      <td>Главный врач:</td>
+      <td colspan="2">Кокоев Валерий Нодарович</td>
+      <td class="white-wrap">{'_' * 20}</td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!--Начальная дата разработки 04.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: Chel-698 Вопрос с выгруженным осмотром невролога -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Осмотры</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.tbl {
+  font-size: 10pt;
+}
+
+.sub-title {
+  color: #666;
+}
+.p {
+  margin-bottom: 10px;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+event_info_ref = db.getRecordEx(stmt=u"""
+  select CASE e.isPrimary
+             WHEN 1 THEN 'первичный'
+             WHEN 2 THEN 'повторный'
+             WHEN 3 THEN 'активное посещение'
+             WHEN 4 THEN 'перевозка'
+             WHEN 5 THEN 'амбулаторно'
+             ELSE ''
+             END          AS visit_type,
+         rbR.name         as event_result,
+         mkbMain.DiagID   as main_diag_id,
+         mkbMain.DiagName as main_diag_name,
+         group_concat(CONCAT_WS(' ', mkbAd.DiagID, mkbAd.DiagName) separator '; ') as ad_diag_list
+
+  from Event e
+           join rbResult rbR on e.result_id = rbR.id
+           left join Diagnostic dcMain on e.id = dcMain.event_id and e.deleted = 0
+           left join Diagnosis dsMain on dcMain.diagnosis_id = dsMain.id and dsMain.id = getEventDiagnosis(e.id)
+           left join MKB mkbMain on dsMain.MKB = mkbMain.DiagID
+
+           left join Diagnostic dcAd on e.id = dcAd.event_id and e.deleted = 0
+           left join Diagnosis dsAd on dcAd.diagnosis_id = dsAd.id and dsAd.id <> getEventDiagnosis(e.id)
+           left join MKB mkbAd on dsAd.MKB = mkbAd.DiagID
+
+  where e.id = {event_id};
+""".format(event_id=event.id))
+
+if event_info_ref:
+  visit_type = forceString(event_info_ref.value(u'visit_type'))
+  event_result = forceString(event_info_ref.value(u'event_result'))
+  main_diag_id = forceString(event_info_ref.value(u'main_diag_id'))
+  main_diag_name = forceString(event_info_ref.value(u'main_diag_name'))
+  ad_diag_list = forceString(event_info_ref.value(u'ad_diag_list'))
+else:
+  visit_type = u''
+  event_result = u''
+  main_diag_id = u''
+  main_diag_name = u''
+  ad_diag_list = u''
+}
+
+
+{:
+soc_status_ref = db.getRecordEx(stmt=u"""
+  select max(if(css.socStatusClass_id = 7, rbSST.code, ''))                           as busyness_code,
+         max(if(css.socStatusClass_id = 7, rbSST.name, ''))                           as busyness_name,
+         max(if(css.socStatusClass_id = 7, DATE_FORMAT(css.endDate, '%d.%m.%Y'), '')) as busyness_end_date,
+
+         max(if(css.socStatusClass_id = 2, rbSST.name, ''))                           as family_name,
+
+         max(if(css.socStatusClass_id = 5, rbSST.name, ''))                           as education_name,
+
+         max(if(css.socStatusClass_id in (51, 52), rbSC.name, ''))                    as disability_type,
+         max(if(css.socStatusClass_id = 5, rbSST.name, ''))                           as disability_name,
+         max(if(css.socStatusClass_id = 5, DATE_FORMAT(css.begDate, '%d.%m.%Y'), '')) as disability_beg_date,
+         max(if(css.socStatusClass_id = 5, DATE_FORMAT(css.endDate, '%d.%m.%Y'), '')) as disability_end_date
+
+  from ClientSocStatus css
+           join rbSocStatusType rbSST on css.socStatusType_id = rbSST.id
+           join rbSocStatusClass rbSC on css.socStatusClass_id = rbSC.id
+  where css.deleted = 0
+    and css.client_id = {clientId};
+""".format(clientId=event.client.id))
+
+
+if soc_status_ref:
+  busyness_code = forceString(soc_status_ref.value(u'busyness_code'))
+  busyness_name = forceString(soc_status_ref.value(u'busyness_name'))
+  busyness_end_date = forceString(soc_status_ref.value(u'busyness_end_date'))
+  family_name = forceString(soc_status_ref.value(u'family_name'))
+  education_name = forceString(soc_status_ref.value(u'education_name'))
+
+  disability_type = forceString(soc_status_ref.value(u'disability_type'))
+  disability_name = forceString(soc_status_ref.value(u'disability_name'))
+  disability_beg_date = forceString(soc_status_ref.value(u'disability_beg_date'))
+  disability_end_date = forceString(soc_status_ref.value(u'disability_end_date'))
+else:
+  busyness_code = u''
+  busyness_name = u''
+  busyness_end_date = u''
+  family_name = u''
+  education_name = u''
+  disability_type = u''
+  disability_name = u''
+  disability_beg_date = u''
+  disability_end_date = u''
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+{for: act in event.actions}
+  <section>
+    <header>
+      <div>
+        Федеральное государственное бюджетное учреждение
+      </div>
+      <div>
+        «Федеральный центр сердечно-сосудистой хирургии»
+      </div>
+      <div>
+        Министерства здравоохранения Российской Федерации (г. Челябинск)
+      </div>
+      <div>
+        {currentOrgStructure.name}
+      </div>
+      <div>
+        {currentOrganisation.address}
+      </div>
+      <div>
+        ОГРН: {currentOrganisation.OGRN}; ОКПО: {currentOrganisation.OKPO}; ОКАТО: {currentOrganisation.OKATO};
+      </div>
+      <div>
+        Тел: {currentOrganisation.phone}
+      </div>
+    </header>
+
+
+
+
+
+    <div class="main">
+      <div align="center" class="h1">{act.name}</div>
+      <br>
+
+      <!-- данные пациента-->
+      <div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td colspan="2" class="sub-title">Пациент</td>
+          </tr>
+          <tr>
+            <td>
+              <div>
+                ФИО <b>{client.fullName}</b>
+              </div>
+
+              <div>
+                Дата рождения <b>{client.birthDate}</b>
+              </div>
+
+              <div>
+                Пол <b>{client.sex}</b>
+              </div>
+            </td>
+            <td>
+              <div>
+                Полис ОМС
+                серия <b>{client.policy.serial}</b>
+                № <b>{client.policy.number}</b>
+                ({client.compulsoryPolicy.insurer})
+              </div>
+
+              <div>
+                СНИЛС <b>{client.SNILS}</b>
+              </div>
+
+              <div>
+                Номер амбулаторной карты {client.id}
+              </div>
+            </td>
+          </tr>
+        </table>
+
+
+
+
+        <div class="p">
+          Адрес по месту жительства (постоянной регистрации) <b>{client.regAddress}</b>
+        </div>
+
+        <div class="p">
+          Тип документа, удостоверяющего личность пациента {client.document.documentType}
+          серия {client.document.serial}
+          № {client.document.number}
+          от {client.document.date}
+          выдан {client.document.origin}
+        </div>
+        <div class="p">
+          Тел <b>{client.phones}</b>
+        </div>
+
+      {:
+      soc_ref_list = db.getRecordList(stmt=u"""
+        select rbSST.code,
+               rbSST.name,
+               DATE_FORMAT(css.endDate, '%d.%m.%Y') as end_date
+        from ClientSocStatus css
+                 join rbSocStatusType rbSST on css.socStatusType_id = rbSST.id
+        where css.deleted = 0
+          and css.socStatusClass_id = 1
+          and css.client_id = {clientId};
+      """.format(clientId=event.client.id))
+      }
+
+        <div class="p">
+          Код льготы
+          {if: soc_ref_list}
+            {for: ref in soc_ref_list}
+              <span>
+                {forceString(ref.value(u'code'))}
+                {forceString(ref.value(u'name'))}
+                (действует до {forceString(ref.value(u'end_date'))})
+              </span>
+            {end:}
+          {end:}
+        </div>
+
+        <div class="p">
+          Занятость {busyness_name}
+        </div>
+
+        <div class="p">
+          Семейное положение {family_name}
+        </div>
+
+        <div class="p">
+          Образование {education_name}
+        </div>
+
+        <div class="p">
+          Место работы <b>{client.work.shortName}</b>
+        </div>
+
+        <div class="p">
+          Должность <b>{client.work.post}</b>
+        </div>
+
+        <div class="p">
+          Группа инвалидности {disability_name}
+        </div>
+
+        <div class="p">
+          Установлена {disability_beg_date}
+        </div>
+
+        <div class="p">
+          Тип инвалидности {disability_type}
+        </div>
+
+        <div class="p">
+          Причина инвалидности
+        </div>
+
+        <div class="p">
+          Степень утраты профессиональной трудоспособности (%)
+        </div>
+
+        <div class="p">
+          Срок, на который установлена степень утраты профессиональной трудоспособности
+        </div>
+      </div>
+      <!-- END данные пациента-->
+
+      <hr>
+
+      <!-- данные обращения-->
+      <div class="p">
+        <div class="sub-title">Обращение</div>
+        <div>
+          Тип обращения: {visit_type}
+        </div>
+        <div>
+          Шифр МКБ данного случая: {main_diag_id} {main_diag_name};
+          {ad_diag_list}
+        </div>
+        <div>
+          Результат обращения: {event_result}
+        </div>
+      </div>
+      <!-- END данные обращения-->
+    </div>
+
+    <!-- пропы обращения-->
+
+    <div>
+      {: empty_value_list = [u'', u'.', u'-']}
+      {: str_prop_type_list = [u'String', u'Text']}
+      {for: prop in act}
+        {if: prop.value and (prop.typeName in str_prop_type_list and prop.value not in empty_value_list)}
+          <div class="p">
+            <div class="sub-title">{prop.name}</div>
+            <div>{prop.value}</div>
+          </div>
+        {end:}
+      {end:}
+    </div>
+    <!-- END пропы обращения-->
+  </section>
+{end:}
+
+
+</div>
+</body>
+</html>

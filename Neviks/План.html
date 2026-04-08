@@ -1,0 +1,124 @@
+<!--Начальная дата разработки 25.12.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: neviks -->
+<!--Задача: DEV_TEMP-6293 Шаблоны печати для Регистратуры НЭВИКСа  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>План</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.logo {
+    font-size: 18pt;
+    font-style: italic;
+}
+.org-info {
+    margin-bottom: 20px;
+    font-weight: 900;
+}
+
+.line-wrapper {
+    margin-bottom: 16pt;
+}
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    border-bottom: 1px solid #000 ;
+    min-height: 1px;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div class="h1">
+    <span class="logo">Nevix</span>
+    <div>ПЛАН обследования и лечения</div>
+    <div>{currentDate}</div>
+  </div>
+
+  <div class="org-info">
+    <div>Медицинский центр «Невикс»</div>
+    <div>Тел. для записи: 963-05-00,</div>
+    <div>Email: nevixspb@yandex.ru</div>
+    <div>Адрес: СПб,18-линия В.О., д.45,лит.А</div>
+    <div>www.nevix.spb.ru</div>
+  </div>
+
+
+
+  <div align="center">
+    <b>{client.fullName}</b>
+  </div>
+  <div class="line"><div class="line__item"></div></div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%">Приложение к мед. карте № <b>{client.id}</b></td>
+      <td width="50%">Врач_____________________________</td>
+    </tr>
+  </table>
+
+  <br>
+  <br>
+
+  {for: _ in range(21)}
+    <div class="line-wrapper">
+      <div class="line"><div class="line__item"></div></div>
+    </div>
+  {end:}
+
+  <div align="justify">
+    С планом лечения ознакомлен(а) и согласен(а). Мне понятен план, объем лечения, возможные осложнения на этапах лечения, возможность возникновения дополнительного обследования, изменения объемов и сроков лечения, дополнительной оплаты.
+  </div>
+
+  <br>
+
+  <div>
+    Подпись пациента_________________________
+  </div>
+
+
+</div>
+</body>
+</html>

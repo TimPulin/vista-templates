@@ -1,0 +1,167 @@
+<!--Начальная дата разработки 03.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: analysis_blood_group_rf -->
+<!--Задача: Chel-811 Шаблон печати для анализа ручного ввода -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Анализ мочи по Зимницкому</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.medium {
+  font-size: 10pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="0" cellspacing="0" class="small">
+      <tr>
+        <td width="1%" valign="top">
+          <div class="white-wrap" align="center">
+            Министерство здравоохранения&nbsp; <br>
+            и социального развития&nbsp; <br>
+            Российской Федерации&nbsp;
+          </div>
+          <div class="white-wrap">
+            <b>{currentOrganisation.title}&nbsp;</b>
+          </div>
+          <div align="center">
+            <sup>наименование учреждения&nbsp;</sup>
+          </div>
+        </td>
+        <td></td>
+        <td width="1%" valign="top" class="white-wrap">
+          Код формы по ОКУД&nbsp;<br>
+          Код учреждения по ОКПО&nbsp;<br>
+          Медицинская документация&nbsp;<br>
+          Форма № 211\у&nbsp;<br>
+          Утверждена Минздравом СССР&nbsp;<br>
+          04.10.80г. №1030&nbsp;
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">Анализ мочи по Зимницкому №</div>
+  <div align="center">
+    дата взятия биоматериала <b>{action.begDate.toString(u'dd.MM.yyyy')}</b>
+  </div>
+  <br>
+
+  <div>
+    Фамилия, имя, отчество: <b>{client.fullName}</b>
+  </div>
+  <div>
+    Дата рождения: <b>{client.birthDate}</b>,
+    возраст: <b>{client.age}</b>
+    Пол: <b>{u'мужской' if client.sex == u'М' else u'женский'}</b>
+  </div>
+  <div>
+    Отделение:
+    палата:
+  </div>
+  <div>
+    Медицинская карта № <b>{client.id}</b>
+  </div>
+
+  <div>
+    Количество принятой жидкости:
+    <b>{action[u'Количество принятой жидкости']}</b>
+  </div>
+
+  <br>
+  
+
+  <table cellpadding="3" cellspacing="0" border="1" class="medium">
+    <tr>
+      <th>Время</th>
+      <th>Количество (мл)</th>
+      <th>Удельный вес (мл)</th>
+    </tr>
+
+    {: time_list = [u'с 6 до 9', u'с 9 до 12', u'с 12 до 15', u'с 15 до 18', u'с 18 до 21', u'с 21 до 24', u'с 0 до 3']} <!--u'с 3 до 6'-->
+    {for: time in time_list}
+      {: amount_name = u'Количество ({time})'.format(time=time)}
+      {: weight_name = u'Удельный вес ({time})'.format(time=time)}
+      <tr>
+        <td>{time}</td>
+        <td>{action[amount_name]}</td>
+        <td>{action[weight_name]}</td>
+      </tr>
+    {end:}
+  </table>
+  <br>
+
+  <div>
+    Дневной диуарез: <b>{action[u'Дневной диуарез']}</b>мл.
+  </div>
+  <div>
+    Ночной диуарез: <b>{action[u'Ночной диуарез']}</b>мл.
+  </div>
+  <div>
+    Общий диурез: <b>{action[u'Общий диурез']}</b>мл.
+  </div>
+  {if: action[u'Комментарий'].value}
+      <div>
+        Комментарий: {action[u'Комментарий'].value}
+      </div>
+  {end:}
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>Исследование выполнил: <b>{action.person.fullName}</b></td>
+      <td align="right"><b>{action.begDate.toString(u'dd.MM.yyyy')}</b></td>
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

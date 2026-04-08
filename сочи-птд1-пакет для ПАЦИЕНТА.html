@@ -1,0 +1,993 @@
+<!-- пакет ПАЦИЕНТ -->
+<!-- изменил Пулин дата 19.03.2026 задача  -->
+<!--Начальная дата разработки 16.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6408 Добавить по 2 шаблона печати для Платных -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Пакет для Пациента</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt, forceDouble }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from PyQt4.QtCore import QDate}
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.page-break {
+  page-break-after: always;
+}
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 9pt;
+    line-height: 10pt;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 11pt;
+    font-weight: 900;
+}
+/* Договор об оказании платных услуг */
+
+.h2 {
+  font-size: 9pt;
+  font-weight: 900;
+  margin-top: 5px;
+}
+.small {
+  font-size: 8pt;
+}
+.red-line {
+  text-indent: 20px;
+}
+
+.section--contract div {
+  font-size: 8pt;
+}
+
+.section--contract .h1 {
+  font-size: 10pt;
+}
+
+.section--contract .h2 {
+  font-size: 9pt;
+}
+
+
+
+div {
+  text-indent: 1.5cm;
+}
+
+/* СОГЛАСИЕ */
+.p {
+  margin-bottom: 10px;
+  text-align: justify;
+}
+
+/* ИДС */
+.white-wrap {
+  white-space: nowrap;
+}
+
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+contract_info_ref = db.getRecordEx(stmt=u"""
+	select DATE_FORMAT(dateContract, '%d.%m.%Y')                  as contract_start_date,
+				 el.lastName                                            as payer_lastName,
+				 el.firstName                                           as payer_firstName,
+				 el.patrName                                            as payer_patrName,
+				 CONCAT_WS(' ', el.lastName, el.firstName, el.patrName) as payer_fio,
+				 DATE_FORMAT(el.birthDate, '%d.%m.%Y')                  as payer_birthdate,
+				 CONCAT(el.serialLeft, el.serialRight)                  as payer_doc_serial,
+				 el.number                                              as payer_doc_number,
+				 rbDT.name                                              as payer_doc_type,
+				 el.issuedBy                                            as payer_doc_issue,
+				 el.regAddress                                          as payer_regAddress,
+				 el.phoneNumber                                         as payer_phone,
+         el.numberContract
+	from Event_LocalContract el
+					 left join rbDocumentType rbDT on el.documentType_id = rbDT.id
+	where el.master_id = {event_id};
+""".format(event_id=event.id))
+
+if contract_info_ref:
+	contract_start_date_str = forceString(contract_info_ref.value(u'contract_start_date'))
+	contract_start_date = QDate.fromString(contract_start_date_str, 'dd.MM.yyyy')
+	payer_lastName = forceString(contract_info_ref.value(u'payer_lastName'))
+	payer_firstName = forceString(contract_info_ref.value(u'payer_firstName'))
+	payer_patrName = forceString(contract_info_ref.value(u'payer_patrName'))
+	payer_fio = forceString(contract_info_ref.value(u'payer_fio'))
+	payer_birthdate = forceString(contract_info_ref.value(u'payer_birthdate'))
+	payer_doc_serial = forceString(contract_info_ref.value(u'payer_doc_serial'))
+	payer_doc_number = forceString(contract_info_ref.value(u'payer_doc_number'))
+	payer_doc_type = forceString(contract_info_ref.value(u'payer_doc_type'))
+	payer_doc_issue = forceString(contract_info_ref.value(u'payer_doc_issue'))
+	payer_regAddress = forceString(contract_info_ref.value(u'payer_regAddress'))
+	payer_phone = forceString(contract_info_ref.value(u'payer_phone'))
+	numberContract = forceString(contract_info_ref.value(u'numberContract'))
+else:
+	contract_start_date = None
+	payer_lastName = u'__________'
+	payer_firstName = u'__________'
+	payer_patrName = u'__________'
+	payer_fio = u'____________'
+	payer_birthdate = u'«____» ______ 20____'
+	payer_doc_serial = u'____'
+	payer_doc_number = u'____'
+	payer_doc_type = u'____'
+	payer_doc_issue = u'____'
+	payer_regAddress = u'____________'
+	payer_phone = u'________'
+	numberContract = u'____'
+}
+
+{: split_date = None}
+{if: contract_info_ref}
+  {: split_date = contract_start_date_str.split(u'.')}
+{end:}
+
+{:
+end_date = u'«____» ______ 20____'
+end_date_dial = dialogs.dialDate(u'Введите дату окончания договора')
+end_date = end_date_dial.getVar()
+}
+
+{:
+code_service = dict()
+code_service.data.setdefault(u'B01.037.005', u'прием')
+code_service.data.setdefault(u'K10422001', u'койко-день')
+code_service.data.setdefault(u'K40422001', u'пациенто-день')
+code_service.data.setdefault(u'B01.055.001', u'прием')
+code_service.data.setdefault(u'A11.05.001', u'манипуляция')
+code_service.data.setdefault(u'A11.12.009', u'манипуляция')
+code_service.data.setdefault(u'A11.01.003.001', u'манипуляция')
+code_service.data.setdefault(u'A12.26.002', u'манипуляция')
+code_service.data.setdefault(u'', u'манипуляция')
+code_service.data.setdefault(u'', u'манипуляция')
+code_service.data.setdefault(u'', u'манипуляция')
+}
+
+{:
+service_ref_list = db.getRecordList(stmt=u"""
+  SELECT at.code  as service_code,
+         at.name  as service_name,
+         ct.price as price,
+         a.amount as amount
+  FROM Action a
+           JOIN ActionType at ON a.actionType_id = at.id and a.deleted= 0
+           JOIN ActionType_Service ats ON at.id = ats.master_id and at.deleted = 0
+           JOIN Contract_Tariff ct ON ats.service_id = ct.service_id and ct.deleted = 0
+           JOIN Contract c ON ct.master_id = c.id AND c.finance_id = 4 and c.deleted = 0
+  WHERE a.event_id = {event_id};
+""".format(event_id=event.id))
+
+total_sum = 0.0
+if service_ref_list:
+	for ref in service_ref_list:
+		price = forceDouble(ref.value(u'price'))
+		total_sum += price
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+<!-- note Договор об оказании платных услуг -->
+<div class="section--contract">
+
+  <header class="header">
+
+    <div class="h1" align="center">Договор № {numberContract} <br>на оказание платных медицинских услуг</div>
+
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="10%" valign="top" class="small">г.Сочи</td>
+        <td></td>
+        {if: split_date}
+          <td align="right" width="20%" valign="top" class="small">«{split_date[0]}» {month[forceInt(split_date[1])]} {split_date[2]}г.</td>
+        {else:}
+          <td align="right" width="20%" valign="top" class="small">«____» ______ 20____г.</td>
+        {end:}
+      </tr>
+    </table>
+  </header>
+
+
+
+  <main class="main">
+
+    <div class="red-line" align="justify">
+			<b>Государственное бюджетное учреждение здравоохранения «Противотуберкулезный диспансер № 1» министерства здравоохранения Краснодарского края</b>,
+       именуемое в дальнейшем «Исполнитель»,
+      в лице главного врача Майдан Валентины Вартавасовны, действующего на основании Устава и Лицензии на осуществление медицинской деятельности № ЛО-23-01-011127 от 22 марта 2017 г., выданной Министерством здравоохранения Краснодарского края с одной стороны и
+      <b>{client.fullName}</b>, именуемый (-ая) в дальнейшем "Потребитель", с другой стороны,
+       заключили настоящий Договор о нижеследующем:
+    </div>
+
+
+
+    <div>
+      <div class="h2" align="center">1. ПРЕДМЕТ ДОГОВОРА</div>
+
+      <div class="red-line" align="justify">
+        1.1. Исполнитель обязуется оказать платные медицинские услуги (Приложение №3), а Потребитель обязуется оплатить платные медицинские услуги по цене, в сроки и на условиях, установленных настоящим Договором.
+      </div>
+
+      <div class="red-line" align="justify">
+        1.2. Перечень и стоимость услуг, предоставляемых Потребителю, указаны в прейскуранте Исполнителя, действующем на дату составления настоящего договора.
+      </div>
+
+      <div class="red-line" align="justify">
+        1.3. При необходимости Потребителю могут быть оказаны дополнительные медицинские услуги, перечень и сроки оказания которых согласуются Сторонами в дополнительном соглашении к настоящему Договору.
+      </div>
+
+      <div class="red-line" align="justify">
+        1.4. Исполнитель оказывает услуги в соответствии с лицензией на медицинскую деятельность № ЛО-23-01-011127 от 22 марта 2017 г., выданной Министерством здравоохранения Краснодарского края.
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</div>
+
+      <div class="red-line" >
+        2.1. Исполнитель в соответствии с п. 1.1. настоящего Договора оказывает медицинские услуги по настоящему Договору в помещениях Исполнителя, расположенных по адресам: <br>
+        - Краснодарский край, г. Сочи, Центральный район, ул. Дагомысская, д.44;<br>
+        - Краснодарский край, г. Сочи, Адлерский район, ул. Свердлова, д.27;<br>
+        - Краснодарский край, г. Сочи, Лазаревский район, ул. Победы, д.150;<br>
+        - Краснодарский край, Туапсинский район, г. Туапсе, пер. Сочинский, д.1А и пер. Сочинский, д.2В.
+      </div>
+
+      <div class="red-line" align="justify">
+        2.2. Потребитель при заключении договора об оказании платных медицинских услуг подписывает Согласие на обработку персональных данных (Приложение №1), и Информированное добровольное согласие на медицинское вмешательство (Приложение № 2).
+      </div>
+
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">3. СТОИМОСТЬ УСЛУГ, СРОКИ И ПОРЯДОК ОПЛАТЫ</div>
+
+      <div class="red-line" align="justify">
+        <div>3.1. Потребитель оплачивает медицинские услуги Исполнителю в объеме, установленном в п.1.1 к настоящему Договору (либо в соответствии с действующим прейскурантом цен у Исполнителя на момент обращения за медицинскими услугами). Действующий прейскурант цен на медицинские услуги размещен на сайте https://www.sochiptd1.ru/ и на информационных стендах Исполнителя.</div>
+        <div>Общая сумма договора составляет  <b>{format(total_sum, '.2f')}</b> рублей (<b>{amountToWords(forceInt(total_sum)).lower()}</b>)</div>
+      </div>
+
+      <div class="red-line" align="justify">
+        3.2. Потребитель оплачивает медицинские услуги Исполнителю путем предоплаты в размере 100% стоимости услуг по прейскуранту. Денежные средства вносятся в кассу Исполнителя или перечисляются на расчетный счет Исполнителя.
+      </div>
+
+      <div class="red-line" align="justify">
+        3.3. После оказания услуги стороны подписывают Акт сдачи-приемки медицинских услуг (Приложение №4).
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">4. ПРАВА И ОБЯЗАННОСТИ СТОРОН</div>
+
+      <div class="red-line" align="justify">
+        4.1. <b>Исполнитель обязан:</b>
+
+        <div class="red-line" align="justify">
+          4.1.1. Своевременно и качественно оказать Потребителю медицинские услуги в установленный договором срок; предоставить Потребителю доступную для его понимания достоверную информацию о предоставляемых услугах до подписания договора; при оказании медицинских услуг использовать, медицинские технологии, лекарственные средства, дезинфекционные средства, разрешенные к применению в установленном законом порядке.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.1.2. Обеспечить Потребителя в установленном порядке информацией, включающей в себя сведения о разрешении (лицензии) на медицинскую деятельность, о режиме работы, перечне платных медицинских услуг, их стоимости, условиях предоставления и получения этих услуг.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.1.3. Обеспечить выполнение принятых на себя обязательств по оказанию медицинских    услуг    силами    собственных    специалистов.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.1.4. Вести установленную законодательством медицинскую документацию, а также учет видов, объемов и стоимости оказываемых Потребителю услуг.
+        </div>
+
+      </div>
+
+      <div class="red-line" align="justify">
+        4.2. <b>Исполнитель имеет право:</b>
+
+        <div class="red-line" align="justify">
+          4.2.1. Требовать от Потребителя предоставления всей информации, необходимой для качественного и полного оказания ему медицинских услуг.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.2.2. В случае невозможности оказания услуги отказаться от исполнения обязательств по договору при условии возврата Потребителю стоимости оплаченной услуги.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.2.3. Требовать от Потребителя полной оплаты оказанных услуг.
+        </div>
+
+
+      </div>
+
+      <div class="red-line" align="justify">
+        4.3. <b>Потребитель обязан:</b>
+
+        <div class="red-line" align="justify">
+          4.3.1. Своевременно оплатить стоимость услуги.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.3.2. Сообщить Исполнителю сведения, необходимые для качественного исполнения услуги (реакция на медикаменты, перенесенные заболевания и пр.).
+        </div>
+
+        <div class="red-line" align="justify">
+          4.3.3. Соблюдать в полном объеме правила и условия получения медицинской услуги, установленные Исполнителем.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.3.4. Своевременно информировать Исполнителя о любых обстоятельствах, препятствующих исполнению Потребителем условий договора, а также о необходимости изменения назначенного Потребителю времени получения медицинской услуги.
+        </div>
+      </div>
+
+      <div class="red-line" align="justify">
+        4.4. <b>Потребитель имеет право:</b>
+
+        <div class="red-line" align="justify">
+          4.4.1. Получать от Исполнителя полную, доступную для   понимания, своевременную информацию о получаемой медицинской услуге.
+        </div>
+
+        <div class="red-line" align="justify">
+          4.4.2. Отказаться от получения услуги на любом этапе и получить оплаченную сумму с возмещением Исполнителю фактически понесенных затрат.
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">5. ОТВЕТСТВЕННОСТЬ</div>
+
+      <div class="red-line" align="justify">
+        5.1. Стороны несут ответственность за неисполнение или ненадлежащее исполнение обязательств по настоящему Договору в соответствии с настоящим Договором и законодательством Российской Федерации.
+      </div>
+
+      <div class="red-line" align="justify">
+        5.2. Все споры и разногласия, вытекающие из настоящего Договора, решаются в соответствии с законодательством Российской Федерации.
+      </div>
+
+
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">6. СРОК ДЕЙСТВИЯ ДОГОВОРА</div>
+
+      <div class="red-line" align="justify">
+        6.1. Срок действия настоящего Договора с
+        {if: contract_start_date}
+          <b>{contract_start_date.toString(u'dd.MM.yyyy')}</b>
+        {else:}
+          «____» ______ 20____г.
+        {end:}
+        по <b>{end_date}</b>
+        (за исключением случаев нахождения на стационарном лечении).
+      </div>
+
+      <div class="red-line" align="justify">
+        	6.2. Условия договора могут быть изменены по соглашению сторон путем оформления в письменной форме дополнений, являющихся неотъемлемой частью договора.
+      </div>
+
+      <div class="red-line" align="justify">
+        	6.3. Договор может быть расторгнут по соглашению сторон, а также по другим основаниям, предусмотренным действующим законодательством Российской Федерации.
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">7. ИЗМЕНЕНИЕ УСЛОВИЙ И РАСТОРЖЕНИЕ ДОГОВОРА</div>
+
+      <div class="red-line" align="justify">
+        7.1. Настоящий Договор может быть изменен или расторгнут Сторонами в период его действия на основе их письменного соглашения. Обязательства Сторон по настоящему Договору считаются измененными или прекращенными с момента подписания соглашения об изменении или расторжении настоящего Договора.
+      </div>
+
+      <div class="red-line" align="justify">
+        7.2. В случае отказа Потребителем после заключения договора от получения медицинских услуг, договор расторгается, при этом потребитель оплачивает исполнителю фактически понесенные исполнителем расходы, связанные с исполнением обязательств по договору.
+      </div>
+
+      <div class="red-line" align="justify">
+        7.3. Потребитель обязан оплатить оказанную исполнителем медицинскую услугу (выполненную работу) в порядке и сроки, которые установлены договором.
+      </div>
+
+      <div class="red-line" align="justify">
+        7.4. Потребителю в случаях, установленных законодательством Российской Федерации о применении контрольно-кассовой техники, выдается документ, подтверждающий произведенную оплату предоставленных медицинских услуг (кассовый чек или бланк строгой отчетности).
+      </div>
+
+      <div class="red-line" align="justify">
+        7.5. Медицинская организация выдает иной документ, подтверждающий факт осуществления расчета, в случаях, если в соответствии с требованиями законодательства Российской Федерации о применении контрольно-кассовой техники у медицинской организации отсутствует обязанность по применению контрольно-кассовой техники при осуществлении расчетов.
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">8. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ</div>
+
+      <div class="red-line" align="justify">
+        8.1. Настоящий Договор составляется в двух экземплярах, один из которых находится у Исполнителя, другой - у Потребителя.
+      </div>
+
+      <div class="red-line" align="justify">
+        8.2. Все вопросы, не урегулированные настоящим Договором, разрешаются в соответствии с законодательством Российской Федерации.
+      </div>
+
+      <div class="red-line" align="justify">
+        8.3. Все приложения, дополнения и изменения к настоящему Договору являются действительными, если они составлены в письменной форме и подписаны обеими Сторонами.
+      </div>
+
+      <div class="red-line" align="justify">
+        8.4. Подписывая настоящий договор, Потребитель подтверждает, что он (она), был(а) проинформирован(а) о возможности получения медицинской помощи в рамках программы государственных гарантий бесплатного оказания гражданам медицинской помощи и территориальной программы государственных гарантий бесплатного оказания гражданам медицинской помощи. Действующие Федеральный закон от 21.11.2011 № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации», Программа государственных гарантий бесплатного оказания гражданам медицинской помощи и территориальная программа государственных гарантий бесплатного оказания гражданам медицинской помощи, постановление Правительства РФ от 11.05.2023 г. № 736 «Об утверждении Правил предоставления медицинскими организациями платных медицинских услуг», Закон РФ от 07.02.1992 № 2300-1 «О защите прав потребителей» (с изменениями и дополнениями) размещены на сайте исполнителя www.sochiptd1.ru и информационных стендах Исполнителя.
+      </div>
+
+      <div class="red-line">
+        8.5. Информационные стенды Исполнителя находятся в холле здания по адресам: <br>
+        - Краснодарский край, г. Сочи, Центральный район, ул. Дагомысская, д. 44; <br>
+        - Краснодарский край, г. Сочи, Адлерский район, ул. Свердлова, д. 27; <br>
+        - Краснодарский край, г. Сочи, Лазаревский район, ул. Победы, д. 150; <br>
+        - Краснодарский край, Туапсинский район, г. Туапсе, пер. Сочинский, д. 1А и пер. Сочинский, д. 2В.
+
+      </div>
+
+      <div class="red-line" align="justify">
+        8.6.Потребитель в целях оказания ему медицинских услуг предоставляет Исполнителю право на обработку своих персональных данных, а именно: фамилия, имя, отчество, пол, дата рождения, адрес места жительства, телефон, место работы, данные паспорта (или иного документа, удостоверяющего личность), данные полиса ОМС (или ДМС), страховой номер индивидуального лицевого счета (СНИЛС), сведения о состоянии его здоровья, заболеваниях, случаях обращения за медицинской помощью, сведения о диагностических мероприятиях, назначенном и проведенном лечении, данных рекомендациях.
+      </div>
+
+      <div class="red-line" align="justify">
+        	8.7. Исполнитель обязуется при обработке персональных данных, полученных от Потребителя, соблюдать требования Федерального закона от 27.07.2006г. «О персональных данных» № 152-ФЗ, других нормативных правовых актов, обеспечивающих конфиденциальность и безопасность персональных данных при их обработке.
+      </div>
+
+    </div>
+
+
+
+    <div>
+
+      <div class="h2" align="center">9. АДРЕСА И РЕКВИЗИТЫ СТОРОН</div>
+
+      <table width="100%" cellpadding="3" cellspacing="0" border="1">
+        <thead>
+          <tr>
+            <th width="50%">ИСПОЛНИТЕЛЬ </th>
+            <th width="50%">ПОТРЕБИТЕЛЬ</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td align="left">
+              Государственное бюджетное учреждение здравоохранения «Противотуберкулёзный диспансер № 1» <br>
+              министерства здравоохранения Краснодарского края (ГБУЗ ПТД № 1) <br>
+              Юридический и почтовый адрес: 354057 г. Сочи ул. Дагомысская, д.44 <br>
+              Тел: 8 (862) 261-41-77, <br>
+              Электронная почта – sochiptd1@mail.ru <br>
+              ИНН 2320032703, КПП 232001001 <br>
+              Минфин КК (ГБУЗ ПТД № 1 л/с 828522840) <br>
+              Наименование банка: ОКЦ № 1 ЮГУ Банка России//УФК по Краснодарскому краю г. Краснодар <br>
+              БИК ТОФК 010349101 <br>
+              Единый казначейский счёт:40102810945370000010 <br>
+              Казначейский счет 03224643030000001800 <br>
+              ОГРН 1032311677056; ОКПО 26971586 <br>
+              ОКТМО 03726000; ОКОПФ 75203; ОКФС 13 <br>
+
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>Главный врач</td>
+                  <td align="right">/В.В.Майдан/</td>
+                </tr>
+              </table>
+              <div align="left">М.П.</div>
+            </td>
+
+            <td>
+              ФИО <b>{client.fullName}</b> <br>
+              Паспорт (серия №) <b>{client.document.serial}</b> <br>
+              № <b>{client.document.number}</b> <br>
+              (место и дата выдачи) <b>{client.document.origin}</b> <b>{forceString(client.document.date)}</b>  <br>
+
+              Адрес регистрации: {client.regAddress} <br> <br>
+
+
+              <div align="bottom">Подпись {'_' * 15} (Ф.И.О.) <b>{client.fullName}</b></div>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+  </main>
+
+</div>
+<!-- END note Договор об оказании платных услуг -->
+<div class="page-break"></div>
+
+<!-- note note Согласие на обработку перс.данных -->
+<div class="main">
+  <div align="center" class="h1">СОГЛАСИЕ<br/>на обработку персональных данных</div>
+
+  <div>
+    Я,
+    <b>{client.fullName}</b>,
+  </div>
+  <div align="center">
+    <sup>(Ф.И.О. полностью)</sup>
+  </div>
+
+  <div>
+    Дата рождения:
+    <b>«{client.birthDate.date.toString('dd')}» {forceString(month[client.birthDate.month])} {forceString(client.birthDate.year)} г.</b>,
+  </div>
+
+  <div>
+    Паспорт
+
+    серия
+    <b>{client.document.serial}</b>
+    номер
+    <b>{client.document.number}</b>
+
+    кем выдан
+    <b>{client.document.origin}</b>
+
+    дата выдачи
+    <b>{client.document.date.toString(u'dd.MM.yyyy')}</b>,
+  </div>
+
+  <div>
+    Зарегистрированный (ая) по адресу:
+    <b>{client.regAddress}</b>,
+  </div>
+
+  <div>
+    Фактическое место проживания:
+    <b>{client.locAddress}</b>,
+  </div>
+
+{:
+contact_ref = db.getRecordEx(stmt=u"""
+  select GROUP_CONCAT(cc.contact separator ', ') as phone_number
+  from ClientContact cc
+  where cc.contactType_id in (1, 2, 3)
+    and cc.client_id = {clientId};
+""".format(clientId=client.id))
+
+if contact_ref:
+  phone_number = forceString(contact_ref.value(u'phone_number')) + u','
+else:
+  phone_number = u''
+}
+
+
+  <div>
+    Телефон:
+    <b>{phone_number}</b>
+  </div>
+
+
+  <div align="justify">
+    в соответствии с требованиями статьи 9 Федерального закона "О персональных данных" от 27.07.2006 N152-ФЗ,
+    статьи 13 Федерального закона от 21.11.2011 N 323-ФЗ "Об основах охраны здоровья граждан в РФ"
+    подтверждаю свое согласие на обработку <b>Государственному бюджетному учреждению здравоохранения «Противотуберкулезный диспансер № 1» министерства здравоохранения Краснодарского края</b>,
+    расположенному по адресу: Краснодарский край, г. Сочи, Центральный район, ул. Дагомысская, 44,
+    (далее - Оператор) персональных данных, включающих: фамилию, имя, отчество, пол, дату и место рождения,
+    адрес места жительства, контактные телефоны, реквизиты паспорта (документа, удостоверяющего личность),
+    реквизиты полиса ОМС (ДМС), страховой номер индивидуального лицевого счета в Фонде пенсионного и социального
+    страхования Российской Федерации (СНИЛС), место работы, данные о состоянии здоровья, заболеваниях,
+    случаях обращения за медицинской помощью и другую информацию - в медико-профилактических целях,
+    в <b>целях</b> установления медицинского диагноза и оказания медицинских услуг по договору,
+    осуществление иных, связанных с этим мероприятий, а также в целях организации внутреннего учета Оператора,
+    при условии сохранения врачебной тайны.
+
+    В процессе оказания Оператором мне (представляемому мной лицу) медицинских услуг я предоставляю право
+    медицинским работникам передавать мои персональные данные (персональные данные представляемого мной лица),
+    в том числе составляющие врачебную тайну, другим должностным лицам Оператора в интересах обследования,
+    лечения и внутреннего учета Оператора.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Предоставляю Оператору право осуществлять все действия (операции) с персональными данными, включая сбор,
+    систематизацию, накопление, хранение, обновление, изменение, использование, передачу
+    (в страховую медицинскую организацию, организацию - заказчика медицинских услуг в рамках заключенных договоров),
+    обезличивание, блокирование, уничтожение.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Оператор вправе осуществлять обработку персональных данных смешанным способом: на бумажных носителях
+    и в информационных системах персональных данных, а именно без использования и с использованием средств автоматизации.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Оператор вправе обрабатывать персональные данные посредством внесения их в электронную базу данных,
+    включения в списки (реестры) и отчетные формы, предусмотренные документами, регламентирующими предоставление отчетных данных.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Передача персональных данных иным лицам или иное их разглашение может осуществляться только
+    с моего письменного согласия на обработку персональных данных, разрешенных субъектом персональных данных для распространения.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Я оставляю за собой право отозвать свое согласие посредством составления соответствующего письменного документа,
+    который может быть направлен мной в адрес Оператора по почте заказным письмом с уведомлением о вручении
+    либо вручен лично под расписку представителю Оператора.
+    В случае получения моего письменного заявления об отзыве настоящего согласия на обработку персональных данных,
+    Оператор обязан прекратить их обработку в течение периода времени, необходимого для завершения взаиморасчетов
+    по оплате, оказанной мне до этого медицинской помощи.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Срок хранения персональных данных после оказания медицинской услуги соответствует сроку хранения
+    первичных бухгалтерских документов и составляет пять лет.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Настоящее согласие на обработку персональных данных дается мной свободно,
+    своей волей и в своем интересе
+  </div>
+
+  <div><b>«{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.</b></div>
+
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="top" width="1%" class="white-wrap">Потребитель&nbsp;</td>
+      <td>
+        <div align="center">{'_' * 20}&nbsp;</div>
+        <div align="center"><sup>(подпись)&nbsp;</sup></div>
+      </td>
+      <td width="1%" class="white-wrap">
+        <div align="center">
+          / <b>{client.fullName}</b> /&nbsp;
+        </div>
+        <div align="center"><sup>(фамилия, инициалы)&nbsp;</sup></div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+<!-- note END note Согласие на обработку перс.данных -->
+<div class="page-break"></div>
+
+<!-- note ИДС на мед.вмешательство ПАЦИЕНТ -->
+<div class="main">
+  <div align="center" class="h1">
+    Информированное добровольное согласие <br> на медицинское вмешательство
+  </div>
+
+
+<div>
+  Я, <b>{client.fullName}</b>
+</div>
+<div align="center">
+  <sup>(фамилия, имя, отчество гражданина либо законного представителя)</sup>
+</div>
+<div>
+  {if: client.birthDate}
+      <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+  {else:}
+    «____» ______ 20____г.
+  {end:}
+  рождения,
+</div>
+<div align="center">
+  <sup>(дата рождения гражданина)</sup>
+</div>
+<div>
+  зарегистрированный по адресу: <b>{client.regAddress}</b>
+</div>
+<div align="center"><sup> (адрес регистрации гражданина) </sup></div>
+
+<div>
+  проживающий по адресу: <b>{client.locAddress}</b>
+</div>
+<div align="center"><sup>(указывается в случае проживания не по месту регистрации)</sup></div>
+
+
+
+
+<div align="justify">
+  даю информированное добровольное согласие на виды медицинских вмешательств,
+  включенные в Перечень определенных видов медицинских вмешательств, на которые
+  граждане дают информированное добровольное согласие при выборе врача и медицинской
+  организации для получения первичной медико-санитарной помощи,
+  утвержденный приказом Министерства здравоохранения и социального развития Российской Федерации
+  от 23 апреля 2012 г. № 390н «Об утверждении Перечня определенных видов медицинских вмешательств,
+  на которые граждане дают информированное добровольное согласие
+  при выборе врача и медицинской организации для получения первичной медико-санитарной помощи»1
+  (далее - виды медицинских вмешательств, включенных в Перечень),
+  для получения первичной медико-санитарной помощи
+  в
+  <b>{currentOrganisation.fullName}</b>
+</div>
+<div align="center"><sup>(полное наименование медицинской организации)</sup></div>
+
+<div>Медицинским работником <b>{currentPerson.fullName}</b></div>
+<div align="center"><sup>(должность, фамилия, имя, отчество медицинского работника)</sup></div>
+
+  <br>
+
+<div align="justify">
+  в доступной для меня форме мне разъяснены цели, методы оказания медицинской помощи, связанный с ними риск, возможные варианты медицинских вмешательств, их последствия, в том числе вероятность развития осложнений, а также предполагаемые результаты оказания медицинской помощи.
+</div>
+
+  <br>
+
+<div align="justify">
+  ‎Мне разъяснено, что я имею право отказаться от одного или нескольких видов медицинских вмешательств, включенных в Перечень, или потребовать его (их) прекращения, за исключением случаев, предусмотренных частью 9 статьи 20 Федерального закона от 21 ноября 2011 г. № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации».
+</div>
+<div align="justify">
+  Сведения о выбранном (выбранных) мною лице (лицах), которому (которых) в соответствии с пунктом 5 части 5 статьи 19 Федерального закона от 21 ноября 2011 г. № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации» может быть передана информация о состоянии моего здоровья или состоянии лица, законным представителем которого я являюсь (ненужное зачеркнуть), в том числе после смерти:
+</div>
+
+  <br>
+
+  {for: _ in range(2)}
+    <div>
+      <div class="line" align="center">{render_line(u'')}</div>
+      <div align="center"><sup>(фамилия, имя, отчество гражданина, контактный телефон)</sup></div>
+    </div>
+  {end:}
+
+  <br>
+
+  <table cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%" class="white-wrap">
+        <div>{'_' * 20}&nbsp;</div>
+        <div align="center"><sup> (подпись) </sup></div>
+      </td>
+      <td>
+        <div>
+          <b>{client.fullName}</b>
+          <b>{client.phones}</b>
+        </div>
+        <div align="center"><sup>(фамилия, имя, отчество гражданина, телефон)</sup></div>
+      </td>
+    </tr>
+
+    <tr>
+      <td width="1%" class="white-wrap">
+        <div>{'_' * 20}&nbsp;</div>
+        <div align="center"><sup> (подпись) </sup></div>
+      </td>
+      <td>
+        <div>
+          <b>{currentPerson.fullName}</b>
+        </div>
+        <div align="center"><sup> (фамилия, имя, отчество медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="99%"></td>
+      <td width="1%">
+        <div class="white-wrap">«{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)}&nbsp;г.&nbsp;</div>
+        <div align="center"><sup>(дата оформления)</sup></div>
+      </td>
+    </tr>
+  </table>
+  <br>
+  <div>{'_' * 20}</div>
+  <div class="small">
+    <sup>1</sup>
+     Зарегистрирован Министерством юстиции Российской Федерации 5 мая 2012 г., регистрационный N 24082.
+  </div>
+
+</div>
+<!-- note end ИДС на мед.вмешательство ПАЦИЕНТ -->
+
+  <div class="page-break"></div>
+
+<!-- note Акт сдачи-приемки медицинских услуг -->
+<div>
+<div>
+
+<div class="main">
+
+	<!-- note Перечень оказываемых услуг -->
+	<div>
+		<header>
+			<table width="100%" cellpadding="0" cellspacing="0" class="small">
+				<tr>
+					<td width="99%"></td>
+					<td width="1%" class="white-wrap">
+						<div>Приложение № 3&nbsp;</div>
+						<div>к Договору об оказании платных услуг&nbsp;</div>
+					</td>
+				</tr>
+			</table>
+		</header>
+
+		<br>
+
+		<div align="center" class="h1">
+			Перечень оказываемых услуг
+		</div>
+		<br>
+		<table width="100%" cellpadding="3" cellspacing="0" border="1">
+			<tr>
+				<th width="1%" class="white-wrap">№&nbsp; <br> п/п&nbsp;</th>
+				<th width="1%" class="white-wrap">Код&nbsp;услуги&nbsp;</th>
+				<th align="center">Наименование услуги</th>
+				<th width="1%" class="white-wrap">Единица&nbsp; <br> измерения&nbsp;</th>
+				<th width="1%" class="white-wrap">Цена,&nbsp; <br>руб.&nbsp;</th>
+			</tr>
+
+
+
+			{if: service_ref_list}
+				{for: index, ref in enumerate(service_ref_list, 1)}
+					<tr>
+						<td>{index}</td>
+						<td>{forceString(ref.value(u'service_code'))}&nbsp;</td>
+						<td>{forceString(ref.value(u'service_name'))}&nbsp;</td>
+						<td>{forceString(ref.value(u'unit'))}&nbsp;</td>
+						<td>{forceString(ref.value(u'price'))}&nbsp;</td>
+					</tr>
+				{end:}
+			{else:}
+				<tr>
+					<td>&nbsp;</td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+			{end:}
+		</table>
+
+			<br>
+			<br>
+			<br>
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td>
+						<div>
+							ИСПОЛНИТЕЛЬ
+							{'_' * 10}
+							Майдан Валентина Вартавасовна
+						</div>
+					</td>
+					<td>
+						<div align="right">
+							ПОТРЕБИТЕЛЬ
+							{'_' * 10}
+							<b>{client.fullName}</b>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<div>М.П.&nbsp;</div>
+
+	</div>
+
+	<br>
+<!-- note Акт сдачи -->
+<div>
+	<header>
+		<table width="100%" cellpadding="0" cellspacing="0" class="small">
+			<tr>
+				<td width="99%"></td>
+				<td width="1%" class="white-wrap">
+					<div>Приложение № 4&nbsp;</div>
+					<div>к Договору об оказании платных услуг&nbsp;</div>
+				</td>
+			</tr>
+		</table>
+	</header>
+
+	<br>
+		<section>
+			<div align="center" class="h1">
+				Акт сдачи-приемки медицинских услуг
+			</div>
+
+			<div align="justify" class="red-line">
+				Мы, нижеподписавшиеся, <b>{currentOrganisation.fullName}</b>, в лице главного врача <b>Майдан Валентины Вартавасовны</b>, действующей на основании Устава, именуемый «Исполнитель», с одной стороны и
+				<b>{client.fullName}</b>
+
+				именуемый «Потребитель» с другой стороны, составили настоящий Акт в том, что согласно договору
+				№ <b>{numberContract}</b> от
+
+				{if: contract_start_date}
+					<b>«{contract_start_date.toString('dd')}» {forceString(month[contract_start_date.month()])} {forceString(contract_start_date.year())}</b>г.,
+				{else:}
+					«____» ______ 20____г.
+				{end:}
+
+				Исполнитель оказал услуги в полном объеме на сумму
+				<b>{format(total_sum, '.2f')}</b> рублей ({amountToWords(forceInt(total_sum)).lower()})
+			</div>
+			<br>
+			<br>
+			<br>
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td>
+						<div>
+							ИСПОЛНИТЕЛЬ
+							{'_' * 10}
+							Майдан Валентина Вартавасовна
+						</div>
+					</td>
+					<td>
+						<div align="right">
+							ПОТРЕБИТЕЛЬ
+							{'_' * 10}
+							<b>{client.fullName}</b>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<div>М.П.&nbsp;</div>
+		</section>
+		<!-- note END Акт сдачи -->
+</div>
+
+
+</div>
+</div>
+
+</div> <!-- end block-->
+<!-- note END Акт сдачи-приемки медицинских услуг -->
+
+</div>
+</body>
+</html>

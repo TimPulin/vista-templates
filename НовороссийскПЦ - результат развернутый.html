@@ -1,0 +1,144 @@
+<!-- РАСШИРЕННЫЙ ТЕКУЩИЙ -->
+<!--Начальная дата разработки 16.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: f30 -->
+<!--Задача: DEV_TEMP-6447 Печатная форма результата анализа -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+
+.mb {
+  margin-bottom: 5px;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{: stop_name_list = [u'Код услуги заявки', u'Номерок']}
+
+{:
+def propCondition(prop):
+  return prop.name not in stop_name_list and prop.value
+}
+{:
+def isActHasValue(act):
+  for prop in act:
+    if propCondition(prop):
+      return True
+  return False
+}
+
+{:
+def actCondition(act):
+  return act.class_ == 1 and act.status == 2 and isActHasValue(act) and act.takenTissueJournal.id is not None
+}
+
+{:
+ACT_LIST = [action]
+}
+
+{:
+event_info_ref = db.getRecordEx(stmt=u"""
+  select os.name as org_structure_name
+  from event e
+  join orgstructure os on e.orgStructure_id = os.id
+  where e.id = {event_id};
+""".format(event_id=event.id))
+
+if event_info_ref:
+  org_structure_name = forceString(event_info_ref.value(u'org_structure_name'))
+else:
+  org_structure_name = u''
+
+}
+
+
+<!-- @formatter:on -->
+
+</head>
+<body>
+
+<div class="main">
+  {for: act in ACT_LIST}
+    <div align="center" class="h1">{act.name}</div>
+
+
+    <div>
+      <b>Наименование отделения (структурного подразделения)</b>: {act[u'Номерок'].value.orgStructure}
+    </div>
+
+    <div>
+      <b>Пациент</b>: {client.fullName}
+    </div>
+
+    <div class="mb">
+      <b>Пол</b>: {u'Муж' if client.sex == u'М' else u'Жен'}
+      <b>Дата рождения</b>: {client.birthDate}
+    </div>
+
+    {for: prop in act}
+      {if: prop.name not in stop_name_list and prop.value}
+        <div>
+          <b>{prop.shortName if prop.shortName else prop.name}</b>: {prop.value}
+        </div>
+      {end:}
+    {end:}
+
+    <table cellpadding="0" cellspacing="0">
+      <tr>
+        <td>{act.endDate.toString(u'dd.MM.yyyy')}</td>
+        <td>{'_' * 20}</td>
+        <td>{act.person.fullName}</td>
+      </tr>
+    </table>
+
+
+  {end:}
+
+
+</div>
+</body>
+</html>

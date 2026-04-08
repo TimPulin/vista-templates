@@ -1,4 +1,4 @@
-<!-- done -->
+<!-- note doctor only -->
 <section>
 <!-- @formatter:off -->
 {:
@@ -64,4 +64,128 @@ if signRef:
         </tr>
     </table>
 {end:}
+</section>
+
+
+<!-- note doctor and mo -->
+<section>
+<!-- @formatter:off -->
+{:
+from library.Utils import forceString
+from PyQt4 import QtGui
+db = QtGui.qApp.db
+
+def getSignInfo(template_id, action_id, isMO=False):
+  person_condition = 'and person_id = 0' if isMO else 'and person_id != 0'
+  ref = None
+  if action_id:
+    ref = db.getRecordEx(stmt="""
+      select
+          certSerial as certificate,
+          certOwner as name,
+          ownerOrganisation as organisation,
+          notValidBefore as beg_valid_date,
+          notValidAfter as end_valid_date
+      from SignedIEMKDocument
+      where sign_date is not null
+        and sign_path is not null
+        and action_id = {action_id}
+        {person_condition}
+        and template_id = {template_id}
+        and deleted = 0
+      limit 1;
+    """.format(template_id=template_id, action_id=action_id, person_condition=person_condition))
+  return ref
+}
+
+{:
+doctor_signRef = None
+doctor_flag_sgn = False
+
+if action.id:
+  doctor_signRef = getSignInfo(6201157, action.id)
+
+if doctor_signRef:
+  doctor_flag_sgn = True
+  certificate = forceString(doctor_signRef.value('certificate'))
+  name = forceString(doctor_signRef.value('name'))
+  organisation = forceString(doctor_signRef.value('organisation'))
+  beg_valid_date = forceString(doctor_signRef.value('beg_valid_date'))
+  end_valid_date = forceString(doctor_signRef.value('end_valid_date'))
+}
+
+{:
+mo_signRef = None
+mo_flag_sgn = False
+
+if action.id:
+  mo_signRef = getSignInfo(6201157, action.id, True)
+
+if mo_signRef:
+  mo_flag_sgn = True
+  mo_certificate = forceString(mo_signRef.value('certificate'))
+  mo_name = forceString(mo_signRef.value('name'))
+  mo_organisation = forceString(mo_signRef.value('organisation'))
+  mo_beg_valid_date = forceString(mo_signRef.value('beg_valid_date'))
+  mo_end_valid_date = forceString(mo_signRef.value('end_valid_date'))
+}
+
+<!-- @formatter:on -->
+
+
+<table width="100%" cellpadding="0" cellspacing="5">
+  <tr>
+    <td width="50%" valign="top">
+      <div class="white-wrap">{action.person.post}&nbsp;</div>
+      <div class="white-wrap">{action.person.fullName}&nbsp;</div>
+    </td>
+
+    <td valign="top" align="right" width="50%">
+      {if: doctor_flag_sgn}
+        <table border="1" cellpadding="3" cellspacing="0">
+            <tr>
+                <td>
+                    <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                        <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                        <tr><td>Сертификат: {certificate}</td></tr>
+                        <tr><td>Владелец: {name}</td></tr>
+                        {if: organisation}
+                            <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                        {else:}
+                            <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                        {end:}
+                        <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+      {end:}
+    </td>
+  </tr>
+  {if: mo_flag_sgn}
+    <tr>
+      <td></td>
+
+      <td align="right" width="50%">
+        <table border="1" cellpadding="3" cellspacing="0">
+            <tr>
+                <td>
+                    <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                        <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                        <tr><td>Сертификат: {mo_certificate}</td></tr>
+                        <tr><td>Владелец: {mo_name}</td></tr>
+                        {if: mo_organisation}
+                            <tr><td>Организация: <font style="font-size: 6pt">{mo_organisation}</font></td></tr>
+                        {else:}
+                            <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                        {end:}
+                        <tr><td>Действителен с {mo_beg_valid_date} по {mo_end_valid_date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+      </td>
+    </tr>
+  {end:}
+</table>
 </section>

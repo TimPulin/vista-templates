@@ -1,7 +1,6 @@
 import pymysql
 from queries import GET_ALL_TEMPLATES_QUERY
 
-
 DB_PARAMS = {
     'host': '192.168.1.3',
     'port': 2401,
@@ -37,6 +36,6 @@ def get_all_templates(connection):
     return execute_query(connection, GET_ALL_TEMPLATES_QUERY)
 
 
-def start_testing()
+def start_testing():
     connection = connect_db(DB_PARAMS)
     all_templates = execute_query(connection, GET_ALL_TEMPLATES_QUERY)

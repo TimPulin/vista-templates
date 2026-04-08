@@ -1,0 +1,373 @@
+<!-- изменил Пулин дата 11.03.2026 задача DEV_TEMP-6524 Не печатаются результаты анализов -->
+<!-- изменил Пулин дата 06.03.2026 задача  -->
+<!-- изменил Пулин дата 06.03.2026 задача DEV_TEMP-6509 Не печатаются результаты анализов за 03.02.2026 -->
+<!-- изменил Шахбанов дата 10.02.2026 задача SUP-55390 -->
+<!-- изменил Шахбанов дата 05.02.2026 задача  -->
+<!-- изменил Шахбанов дата 04.02.2026 задача DEV_TEMP-6391 В печатной форме бактериологического исследования БАК в ДГБ 22 некорректно отображается результат -->
+<!-- изменил Шахбанов дата 09.12.2025 задача  -->
+<!-- изменил Шахбанов дата 08.12.2025 задача DEV_TEMP-6217 Привести в соответствие шаблон печатной формы результатов бактериологического исследования с определением чувствительности к антибиотикам ДГБ22 к формату шаблона БАК исследования Боткина -->
+<!-- изменил Шахбанов дата 17.11.2025 задача  -->
+<!-- изменил Пулин дата 10.07.2025 задача DEV_TEMP-5587 Нет возможность распечатать результаты анализов -->
+<!-- изменил Комиссаров Павел дата 24.11.2024 задача DEV_TEMP-4192 Переделать бланк шаблона печати выдачи результатов бактериологического исследования -->
+<!-- изменил Пулин дата 23.07.2024 задача версия от 23.07.2024 -->
+<!-- изменил Пулин дата 22.07.2024 задача DEV_TEMP-4199 При печати результатов анализов не печатается на одном листе -->
+<!-- изменил Пулин дата 19.07.2024 задача DEV_TEMP-4197 Из медкарты пациента не печатается результат анализа СРБ -->
+<!-- не знаю чей.. правка Белозёров -->
+<!-- IMP-291 -->
+
+<!-- Изменил: Ноговицын Ярослав Эдуардович. Дата: 20.07.2023 DEV_TEMP-2563 Настроить разделительное печатание результатов анализов, а не единым листом все подряд-->
+<!-- Изменил: Пулин Тимур Дата: 07.08.2023 Задача: DEV_TEMP-2633 Результаты лабораторных исследований печатаются вместе без разделения -->
+<!-- Изменил: Кузнецов Андрей Романович Дата: 13.09.2023 Задача: DEV_TEMP-2862 Вместо результата анализа-пустой бланк  -->
+<!-- Изменил: Ильин А.В. Дата: 27.11.2023 Задача: DEV_TEMP-3041 Результаты анализов есть ( биохимия сдана 19.10), при выводе на печать- пустой лист  -->
+
+<html>
+<head>
+    {setPageSize('A4')}
+    {setOrientation('Portrait')}
+    {setMargins(5)}
+
+    {: from PyQt4 import QtCore, QtGui}
+    {: db = QtGui.qApp.db}
+    {: from library.Utils import forceString, forceDate, forceInt, smartDict }
+
+    {: resistance = smartDict()}
+    {: resistance[u'Чувствительный'] = 'S' }
+    {: resistance[u'Устойчивый'] = 'R' }
+    {: resistance[u'Умеренно-устойчивый'] = 'I' }
+
+    {: refList = QtGui.qApp.db.getRecordList(stmt="""
+           select at.name, a.begDate as setDate, a.id as actionId
+            from Action a
+                     join Event e on a.event_id = e.id and e.deleted = 0
+                     inner join ActionType at on a.actionType_id = at.id and at.deleted = 0
+            where e.client_id = {cid}
+              and a.takenTissueJournal_id is not null
+              and a.status in (2, 3)
+              and a.deleted = 0
+              and at.class = 1;""".format(cid = client.id))}
+
+{:
+def custom_print(text):
+    write("""<h2>{text}</h2> """.format(text=text))
+}
+
+</head>
+
+<body style="font-family: 'Times New Roman'; font-size: 11pt;">
+    {: name_actions = [] }
+    {: dialogActNameList = []}
+    {: dialogActIdList = []}
+    {: actIdList = []}
+    {: res = []}
+    {: count=0}
+    {: result=u''}
+    {for: ref in refList }
+        {: dialogActNameList.append(forceString(forceDate(ref.value('setDate'))) + ' ' + forceString(ref.value('name')))}
+        {: dialogActIdList.append(forceInt(ref.value('actionId')))}
+    {end:}
+
+    {: dial = dialogs.dialMultiList(u'Выберите элементы', dialogActNameList, 1) }
+    {: varList = dial.getVar()}
+    {for: var in varList }
+        {: name_actions.append(dialogActNameList[var])}
+        {: actIdList.append(dialogActIdList[var])}
+    {end:}
+
+  <!-- note по задаче DEV_TEMP-6509 добавил split и условие в конце-->
+{:
+import re
+
+def parse_microorganisms(text):
+    if not text:
+        return []
+
+    result = []
+    # Разделяем строку на блоки, соответствующие каждому микроорганизму
+    blocks = re.split(u'([A-Za-z\s]+):', text)
+
+    for i in range(1, len(blocks), 2):
+        name = blocks[i].strip().encode('utf-8')
+        rest = blocks[i + 1].strip()
+
+        # Находим количество обнаруженного
+        if u'Обнаружено' in rest:
+            count = u''
+
+            count_match = re.search(u'Обнаружено: (\d+\^\d+) КОЕ/мл', rest)
+            if count_match:
+                count = count_match.group(1)
+
+            if not count_match:
+                count_match = re.search(u'Обнаружено: ([A-Za-zА-Яа-я\s]+):', rest)
+                if count_match:
+                    count = count_match.group(1)
+
+            if not count_match:
+                parts = rest.split(u'Обнаружено:')
+                if len(parts) > 1:
+                    count = parts[1]
+
+
+        # Находим антибиотики
+        antibiotics_match = re.findall(
+            u'([А-Яа-яA-Za-z\s/]+), чувствительность выделенной культуры диско-диффузионным методом: ([А-Яа-яA-Za-z]+)', rest)
+        antibiotics = [antibiotic for antibiotic in antibiotics_match]
+
+        # Добавляем в результат
+        result.append([name, count, antibiotics])
+
+    return result
+}
+
+{:
+def cut_duplicates(arr):
+    if not arr:
+        return []
+
+    if len(arr) % 2 == 1:
+        return arr
+    res = []
+    for i in range(0, len(arr) / 2):
+        if arr[i] == arr[i + (len(arr) / 2)]:
+            res.append(arr[i])
+        else:
+            return arr
+    return res
+    }
+
+
+
+
+
+
+<div align="center"><B>{currentOrganisation.shortName}</B></div>
+<div align="center"><B>{currentOrgStructure.name}</B></div>
+<div align="center">Результаты лабораторных исследований</div>
+
+
+
+<table width="100%" cellpadding="3" cellspacing="0">
+  <tr>
+    <td>
+        <div>Код: <b>{client.id}</b></div>
+      <div>ФИО: <B>{client.fullName}</B> &nbsp;&nbsp;&nbsp;&nbsp; Пол: <B>{client.sex}</B></div>
+      <div>ДР: <B>{client.birthDate}</B> (<B>{client.age}</B>)</div>
+      <div>СНИЛС: <B>{client.SNILS}</B></div>
+      <div>Документ: <B>{client.document}</B></div>
+      <div>Полис: <B>{client.policy}</B></div>
+      <div>Регистрация: <B>{client.regAddress}</B></div>
+      <div>Проживание: <B>{client.locAddress}</B></div>
+		  </td>
+    <td>
+        <br>
+        <p>Врач: <b>{event.setPerson.longName}</b></p>
+        <p>Специальность: <b>{event.setPerson.speciality}</b></p>
+		</td>
+    </tr>
+</table>
+<br><br>
+
+
+    {for: ev in client.events}
+            {for: act in ev.actions}
+
+                {if: act.id in actIdList}
+                    {: refList = db.getRecordList(stmt="""
+                          select at.name as at_name, apt.name as apt_name, aps.value as value, ap.norm as norm, rbUnit.name as unit, ap.evaluation
+                          from Action a
+                                   inner join ActionType at on a.actionType_id = at.id and at.deleted = 0
+                                   inner join ActionProperty ap on a.id = ap.action_id and ap.deleted = 0
+                                   inner join ActionProperty_String aps on ap.id = aps.id
+                                   left join ActionPropertyType apt on ap.type_id = apt.id and apt.deleted = 0
+                                   left join rbUnit on apt.unit_id = rbUnit.id
+                          where a.id = {actionId}
+                            AND a.deleted = 0
+                        """.format(actionId=act.id)) }
+
+                    {if: act.group.name == u'Биохимическое исследование'}
+
+                        <b>Биохимическое исследование {act.endDate.date.toString(u"dd.MM.yyyy")}</b>
+
+                        {if: refList}
+
+                            <b>{act.name} {act.endDate.date.toString(u"dd.MM.yyyy")}</b>
+                            <table width="100%" border="1" cellpadding="3" cellspacing="0">
+                                <tr>
+                                    <th width="30%">Название теста</th>
+                                    <th width="15%">Результат</th>
+                                    <th width="15%">Ед. изм.</th>
+                                    <th width="15%">Норма</th>
+                                    <th width="25%">Оценка</th>
+                                </tr>
+                                {for: vl in refList}
+                                    {: isEvaluation = True if forceInt(vl.value('evaluation')) else False}
+                                    {: color = 'red' if isEvaluation else '#000'}
+                                    <tr>
+                                        <td style="color: {color};">
+                                            {if: isEvaluation}
+                                                {if: act.name in (u'Группа крови ', u'RH (резус-фактор)')}
+                                                    <b>{forceString(vl.value('at_name'))}</b>
+                                                {else:}
+                                                    <b>{forceString(vl.value('apt_name'))}</b>
+                                                {end:}
+                                            {else:}
+                                                {if: act.name in (u'Группа крови ', u'RH (резус-фактор)')}
+                                                    <b>{forceString(vl.value('at_name'))}</b>
+                                                {else:}
+                                                    <b>{forceString(vl.value('apt_name'))}</b>
+                                                {end:}
+                                            {end:}
+                                        </td>
+                                        <td style="color: {color};" align="center"><b>{forceString(vl.value('value'))}</b></td>
+                                        <td style="color: {color};" align="center"><b>{forceString(vl.value('unit'))}</b></td>
+                                        <td style="color: {color};" align="center"><b>{forceString(vl.value('norm'))}</b></td>
+                                        <td style="color: {color};" align="center">
+                                            {if: isEvaluation}
+                                                <b>выход за норму реф. диапазона</b>
+                                            {else:}
+                                                в пределах реф. диапазона
+                                            {end:}
+                                        </td>
+                                    </tr>
+                                {end:}
+                            </table>
+                        {end:}
+
+
+                    <!-- БАКТЕРИОЛОГИЧЕСКОЕ ИССЛЕДОВАНИЕ -->
+                    {elif: u'Бактериологическое исследование' in act.name or u'БАК исследование' in act.name}
+                        {if: u'Номерок' in act}
+                           <div> Дата проведения анализа: <b>{act[u'Номерок'].value.datetime}</b> </div>
+                        {end:}
+                        <div>Исследование: <b>{act.name}</b></div>
+
+                        <div><b><u>Результаты исследования: {act[1].name}</u></b></div>
+
+                            {if: u'Микроорганизмы' in act and act[u'Микроорганизмы'].value == ''}
+                                <div><b>{act.note}</b></div>
+                            <!-- тут была проверка на u'Выявленная бактерия' in act  -->
+                            {elif: False}
+                                <table width="100%" cellpadding="3" cellspacing="0" border="1">
+                                    <tr><td>
+                                        {act[u'Выявленная бактерия'].value}
+                                    </td></tr>
+                                </table>
+                                <br>
+                            {else:}
+                                {if: u'Выявленная бактерия' in act}
+                                    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+                                        <tr><td>
+                                            {act[u'Выявленная бактерия'].value}
+                                        </td></tr>
+                                    </table>
+                                    <br>
+                                {end:}
+                                <table width="100%" border="1" cellpadding="3" cellspacing="0">
+                                    <tr>
+                                        <th width="5%"><i>№</i></th>
+                                        <th width="30%"><i>Выделенные микроорганизмы</i></th>
+                                        <th width="10%"><i>КОЕ</i></th>
+                                    </tr>
+                                    {for: prop in act}
+                                        {if: prop.name in (u'Результат') and prop.value and len(prop.value) > 0}
+                                            {: result=prop.value[0]}
+                                        {end:}
+                                        {if: prop.name == u'Микроорганизмы'}
+                                            {: res=parse_microorganisms(prop.value)}
+
+                                            {for: item in res}
+                                              <tr>
+                                                  {: count+=1}
+                                                  <th width="5%" style="font-weight: normal;">[{count}]</th>
+                                                  <th width="30%" align="left" style="font-weight: normal;">{item[0]}</th>
+                                                  <th width="10%" align="left" style="font-weight: normal;">{item[1]}</th>
+                                              </tr>
+                                            {end:}
+                                            {: count=0}
+                                        {end:}
+                                    {end:}
+                                </table><br>
+
+                                {for: prop in act}
+                                    {if: prop.name == u'Микроорганизмы'}
+                                        {: res=parse_microorganisms(prop.value)}
+                                        {for: item in res}
+                                            {: count+=1}
+                                            {if: len(item) > 2 and len(item[2])!=0}
+                                                <table width="100%" border="1" cellpadding="3" cellspacing="0">
+                                                    <tr>
+                                                        <th width="25%" align="left"><i>Антибиотикограмма *</i></th>
+                                                        <th width="5%" align="center">[{count}]</th>
+                                                    </tr>
+                                                {for: i in cut_duplicates(item[2])}
+                                                        <tr>
+                                                            <th width="25%" align="left" style="font-weight: normal; ">{i[0]}</th>
+                                                            <th width="5%" align="center" style="font-weight: normal; ">{resistance[i[1]]}</th>
+                                                        </tr>
+                                                {end:}
+                                                </table>
+                                                {: count=0}
+                                            {end:}
+                                        {end:}
+                                    {end:}
+                                {end:}
+                            <br>&nbsp;<br>
+                            <!-- тут был act.note -->
+                            {if: u'Бактериологическое исследование' in act.name or u'БАК исследование' in act.name}
+                            {else:}
+                                Примечание: {act.note}
+                            {end:}
+                            <div style="font-size: 9pt;">
+                                * Пограничные значения EUCAST используются для оценки результата по одной из трех категорий чувствительности:
+                                <br>S (Ч) - Чувствительный при  стандартном режиме дозирования.
+                                <br>I (У) - Чувствительный при  увеличенной экспозиции препарата.
+                                <br>R (Р) - Резистентный, даже при увеличенной экспозиции препарата.
+                            </div>
+                        {end:}
+
+                    {elif: act.group.name != u'Биохимическое исследование'}
+                        {if: refList}
+
+                            <div><b>{act.name} {act.endDate.date.toString(u"dd.MM.yyyy")}</b></div>
+                            <table width="100%" border="1" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <th width="30%">Название теста</th>
+                                    <th width="15%">Результат</th>
+                                    <th width="15%">Ед. изм.</th>
+                                    <th width="15%">Норма</th>
+                                    <th width="25%">Оценка</th>
+                                 </tr>
+                                {for: prop in act}
+                                    {if: prop.name.lower() != u"номерок" and prop.name.lower() != u"код услуги заявки" and prop.value}
+                                        <tr>
+                                            {if: prop.evaluation}
+                                                <td style="color: red;"><b>{prop.name}</b></td>
+                                                <td style="color: red;" align="center"><b>{prop.value}</b></td>
+                                                <td style="color: red;" align="center"><b>{prop.unit}</b></td>
+                                                <td style="color: red;" align="center"><b>{prop.norm}</b></td>
+                                                <td style="color: red;" align="center"><b>выход за норму реф. диапазона</b></td>
+                                            {else:}
+                                                <td>{prop.name}</td>
+                                                <td align="center">{if: prop.name == u'94500-6'}{prop.value}/{act.endDate.date.toString('dd.MM.yyyy')}{else:}{prop.value}{end:}</td>
+                                                <td align="center">{prop.unit}</td>
+                                                <td align="center">{prop.norm}</td>
+                                                <td align="center">в пределах реф. диапазона</td>
+                                            {end:}
+                                        </tr>
+                                    {end:}
+                                {end:}
+                            </table>
+                        {end:}
+
+                    {end:}
+
+                {end:}
+            {end:}
+    {end:}
+
+<br>
+<p>Комментарий:</p>
+<p>Врач: __________________</p>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!-- изменил Пулин дата 25.12.2025 задача  -->
+<!-- изменил Пулин дата 22.12.2025 задача  -->
+<!-- изменил Пулин дата 18.12.2025 задача  -->
+<!DOCTYPE HTML>
+<html lang="ru">
+<head>
+  <title>журнал</title>
+    {setPageSize('A4')}
+    {setOrientation('L')} <!-- Горизонтальная ориентация -->
+    {setTopMargin(20)}    <!-- Верхнее поле: 20 мм -->
+    {setBottomMargin(20)} <!-- Нижнее поле: 20 мм -->
+    {setRightMargin(20)}  <!-- Правое поле: 20 мм -->
+    {setLeftMargin(20)}   <!-- Левое поле: 20 мм -->
+
+
+{:
+write('''
+<style>
+
+  p, li {
+      white-space: pre-wrap;
+  }
+
+  .tbl-result td {
+      break-inside: avoid;
+      border: 1px solid #000;
+  }
+  .tbl-result th {
+    border: 1px solid #000;
+    font-size: 7pt;
+  }
+  .tbl-result td.page-title {
+      border: none;
+      font-weight: 900;
+      font-size: 10pt;
+  }
+  .row-number td {
+      font-size: 8pt;
+      text-align: center;
+  }
+</style>
+''')}
+
+
+{:
+write('''
+  <script>
+      function printDiv(divId) {
+          const tblResult = document.querySelector('.tbl-result');
+          tblResult.setAttribute('border', 0)
+          const content = document.getElementById(divId).innerHTML;
+
+          const iframe = document.createElement("iframe");
+          iframe.style.position = "fixed";
+          iframe.style.right = "0";
+          iframe.style.bottom = "0";
+          iframe.style.width = "0";
+          iframe.style.height = "0";
+          iframe.style.border = "0";
+
+          document.body.appendChild(iframe);
+
+          const doc = iframe.contentWindow.document;
+
+          doc.open();
+          doc.write(`
+            <html lang="ru">
+            <head>
+                <title>Журнал</title>
+                <style>
+                    @media print {
+                      @page {
+                        margin: 18mm;
+
+                        @bottom-center {
+                          content: "Лист " counter(page) " из " counter(pages);
+                          font-size: 12px;
+                          font-family: Arial;
+                        }
+                      }
+                      .tbl-result {
+                        collapse: collapse;
+                        border-collapse: collapse;
+                      }
+                      .tbl-result td {
+                          font-size: 8pt;
+                          break-inside: avoid;
+                          border: 1px solid #000;
+                      }
+                      .tbl-result th {
+                        border: 1px solid #000;
+                        font-size: 7pt;
+                        vertical-align: top;
+                      }
+                      .tbl-result td.page-title {
+                          border: none;
+                          font-weight: 900;
+                      }
+                      .tbl-result td.no-border {
+                        border: none;
+                      }
+                      .tbl-sign td {
+                        border: none;
+                        padding-top: 10px;
+                      }
+                      .row-number td {
+                          font-size: 8pt;
+                          text-align: center;
+                      }
+                    }
+                </style>
+            </head>
+            <body class="body counter" style="font-family:'Arial'";>
+                ${content}
+            </body>
+            </html>
+            `);
+          doc.close();
+
+          iframe.onload = function () {
+              iframe.contentWindow.focus();
+              iframe.contentWindow.print();
+              setTimeout(() => document.body.removeChild(iframe), 1000);
+          };
+      }
+  </script>
+
+''')
+}
+
+</head>
+
+<body style=" font-family:'Arial'; font-size:11pt; font-weight:400; font-style:normal;">
+<button style="font-size: 18px; padding: 10px 20px;" onclick='printDiv("printableArea");'>Печать</button>
+<div id="printableArea">
+    <!-- Заголовок документа -->
+    <div align="center" style="font-size: 10pt; font-weight: bold;">
+        ФГБУ 'ФЦССХ' Минздрава России (г. Челябинск)<br>
+        Журнал<br>
+        учета операций, связанных с обращением лекарственных средств для медицинского применения
+    </div>
+
+    <!-- Таблица -->
+    <table width="100%" cellspacing="0" cellpadding="2" class="tbl-result" border="1">
+      <thead>
+        <tr>
+          <td colspan="14" align="center" class="page-title">
+            <div><b>{journal}</b></div>
+            <div><b>{store}</b></div>
+          </td>
+        </tr>
+        <tr>
+          <!-- Месяц -->
+          <th rowspan="2" width="5.76%">Месяц</th>
+          <!-- Остаток на 1-е число месяца -->
+          <th rowspan="2" width="3.84%">Остаток<br>на 1-е число месяца</th>
+          <!-- Приход (объединение 3 колонок) -->
+          <th colspan="3" width="26.91%">Приход</th>
+          <!-- Всего за месяц по приходу с остатком -->
+          <th rowspan="2" width="5%">Всего за месяц по приходу с остатком</th>
+          <!-- Расход (объединение 3 колонок) -->
+          <th colspan="3">Расход</th>
+          <!-- Всего расход за месяц -->
+          <th rowspan="2" width="3.84%">Всего расход за месяц</th>
+          <!-- Остаток по журналу учета на конец месяца -->
+          <th rowspan="2" width="5.76%">Остаток по журналу учета на конец месяца</th>
+          <!-- Фактический остаток на конец месяца -->
+          <th rowspan="2" width="5.76%">Фактический остаток на конец месяца</th>
+          <!-- Подпись уполномоченного лица -->
+          <th rowspan="2" width="13.46%">Подпись уполномоченного лица</th>
+        </tr>
+        <tr>
+          <!-- Приход -->
+          <th width="7.69%">От кого <br> получено</th>
+          <th width="15.38%">№ и дата документа</th>
+          <th width="3.84%">Количе<br>ство</th>
+          <!-- Расход -->
+          <th width="6.53%">Дата выдачи</th>
+          <th width="19.23%">№ медицинского документа<br>(Ф.И.О. больного)</th>
+          <th width="3.84%">Количе<br>ство</th>
+        </tr>
+        <tr class="row-number">
+          <td align="center">1</td>
+          <td align="center">2</td>
+          <td align="center">3</td>
+          <td align="center">4</td>
+          <td align="center">5</td>
+          <td align="center">6</td>
+          <td align="center">7</td>
+          <td align="center">8</td>
+          <td align="center">9</td>
+          <td align="center">10</td>
+          <td align="center">11</td>
+          <td align="center">12</td>
+          <td align="center">13</td>
+        </tr>
+      </thead>
+    { for: item in items }
+
+      <tbody>
+        <tr>
+            <td width="5.76%" style="font-size: 8pt;">{ item[0] }</td>
+            <td width="3.84%" style="font-size: 8pt;">{ item[1] }</td>
+            <td width="7.69%" style="font-size: 8pt;">{ item[2] }</td>
+            <td width="15.38%" style="font-size: 8pt;">{ item[3] }</td>
+            <td width="3.84%" style="font-size: 8pt;">{ item[4] }</td>
+            <td width="5%" style="font-size: 8pt;">{ item[5] }</td>
+            <td width="6.53%" style="font-size: 8pt;">{ item[6] }</td>
+            <td width="19.23%" style="font-size: 8pt;">{ item[7] }</td>
+            <td width="3.84%" style="font-size: 8pt;">{ item[8] }</td>
+            <td width="3.84%" style="font-size: 8pt;">{ item[9] }</td>
+            <td width="5.76%" style="font-size: 8pt;">{ item[10] }</td>
+            <td width="5.76%" style="font-size: 8pt;">{ item[11] }</td>
+            <td width="13.53%" style="font-size: 8pt;">{ item[12] }</td>
+        </tr>
+      </tbody>
+
+
+    {end:}
+    <tr>
+      <td colspan="13" class="no-border">
+        <table width="100%" border="0" cellspacing="0" cellpadding="2" class="tbl-sign">
+          <thead>
+          <tr>
+            <td width="95%">
+              <div align="right">
+                {post} _____________________________ {doctorName}
+              </div></td>
+            <td width="5%"></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+          </tr>
+          </thead>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

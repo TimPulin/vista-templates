@@ -141,6 +141,30 @@ else:
   main_diag_name = u''
 }
 
+<!-- note без использования getEventDiagnosis -->
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select mkb.DiagID, mkb.DiagName, ds.diagnos_string
+  from Diagnostic dc
+           join rbDiagnosisType rbDT on dc.diagnosisType_id = rbDT.id
+           join Diagnosis ds on dc.diagnosis_id = ds.id
+           join MKB mkb on ds.MKB = mkb.DiagID
+  where dc.deleted = 0
+    and dc.diagnosisType_id in (1, 2, 12, 18)
+    and dc.event_id = {event_id}
+  order by FIELD(dc.diagnosisType_id, 1, 2, 18, 12)
+  limit 1;
+""".format(event_id=event.id))
+if main_diag_ref:
+  DiagID = forceString(main_diag_ref.value(u'DiagID'))
+  DiagName = forceString(main_diag_ref.value(u'DiagName'))
+  diagnos_string = forceString(main_diag_ref.value(u'diagnos_string'))
+else:
+   DiagID = u'___________________________________________'
+   DiagName = u''
+   diagnos_string = u'___________________________________________'
+}
+
 
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>

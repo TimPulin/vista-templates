@@ -1,0 +1,95 @@
+<!-- note РЕЗУЛЬТАТЫ АНАЛИЗОВ -->
+<div>
+  <div align="center"><b>Результаты исследований</b></div>
+  <br>
+{: from library.Utils import smartDict }
+{: from library.Utils import forceString }
+{:
+def create_anal_dict():
+  smart_dict = smartDict()
+  smart_dict['props'] = smartDict()
+  return smart_dict
+
+def create_grouped(group_name):
+  smart_dict = smartDict()
+  smart_dict['group_name'] = group_name
+  smart_dict['dates'] = set()
+  smart_dict['results'] = smartDict()
+  return smart_dict
+}
+
+{:
+def act_condition(act):
+    return (
+        act.class_ == 1
+        and act.endDate
+        and u'узи' not in act.name.lower()
+        and u'инструментал' not in act.name.lower()
+    )
+
+def prop_condition(prop):
+    return prop.typeName != u'JobTicket' and prop.value
+}
+
+{:
+def format_date_key(value):
+  return unicode(value)
+}
+{:
+def create_grouped_id(act):
+  if u'клинический' in act.name.lower():
+    return 'base' + forceString(act.group.id)
+  else:
+    return act.group.id
+
+def create_group_name(act):
+  if u'общий' in act.name.lower():
+    return act.name
+  else:
+    return act.group.name
+}
+{:
+RESULT_GROUPED = smartDict()
+
+for act in event.actions:
+    if act_condition(act):
+        grouped_id = create_grouped_id(act)
+        RESULT_GROUPED.setdefault(grouped_id, create_grouped(create_group_name(act) ) )
+        RESULT_GROUPED[grouped_id]['results'].setdefault(act.name, create_anal_dict())
+        RESULT_GROUPED[grouped_id]['dates'].add(format_date_key(act.endDate))
+        current_result = RESULT_GROUPED[grouped_id]['results'][act.name]
+        for prop in act:
+          if prop_condition(prop):
+            key_prop_name = prop.shortName if prop.shortName else prop.name
+            current_result['props'].setdefault(key_prop_name, smartDict())
+            current_result['props'][key_prop_name][format_date_key(act.endDate)] = prop.value
+
+}
+
+  <div>
+      {for: groupKey, groupValue in RESULT_GROUPED.items()}
+          <div><b>{groupValue['group_name']}</b></div>
+          <table width="100%" cellpadding="3" cellspacing="0" border="1">
+              <tr>
+                  <th>Показатель</th>
+                  {for: analDate in groupValue['dates']}
+                      <td>{analDate}</td>
+                  {end:}
+              </tr>
+
+            {for: analValue in groupValue['results'].values()}
+              {for: propKey, propValues in analValue['props'].items()}
+                  <tr>
+                      <td>{propKey}</td>
+                      {for: analDate in groupValue['dates']}
+                          <td>{propValues.get(analDate, u'')}</td>
+                      {end:}
+                  </tr>
+              {end:}
+            {end:}
+          </table>
+          <br>
+      {end:}
+  </div>
+</div>
+<!-- note END РЕЗУЛЬТАТЫ АНАЛИЗОВ -->

@@ -1,0 +1,308 @@
+<!--Начальная дата разработки 30.01.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: token -->
+<!--Задача: DEV_TEMP-6380 Выписные эпикризы  по установленной форме для выгрузки в ГОРПТД -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.sub-title {
+  font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 75):
+  return u'_' * (base_length - len(str.replace(u' ', u'')))
+}
+
+{:
+epidemic_number = u''
+for code in client.identification:
+  if client.identification.nameDict[code] == u'Эпид.Номер':
+    epidemic_number = client.identification.byCode[code]
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+<div class="main">
+  <div align="center" class="h1">Переводной эпикриз</div>
+  <div align="center" class="sub-title">
+    Информация о пациенте, находящегося под диспансерным наблюдением, на момент завершения реорганизации СПб ГБУЗ ГПТД путем присоединения противотуберкулезных медицинских организаций на основании постановления Правительства Санкт-Петербурга от 30 июля 2025 года № 538 «О реорганизации Санкт-Петербургского государственного бюджетного учреждения здравоохранения «Городской противотуберкулезный диспансер».
+  </div>
+
+  <div>
+    1. Диспансер / диспансерное отделение <b>{currentOrganisation.title}</b>
+  </div>
+  <div>
+    2. Отделение <b>Адмиралтейское отделение</b>
+  </div>
+  <div>
+    3. Участок
+  </div>
+  <div>
+    4. Участковый врач
+  </div>
+  <br>
+  <div>
+    5. ФИО пациента <b>{client.fullName}</b>
+  </div>
+  <div>
+    6. Дата рождения <b>{client.birthDate}</b>
+  </div>
+  <div>
+    7. Возраст пациента <b>{client.age}</b>
+  </div>
+  <div>
+    8. СНИЛС <b>{client.SNILS}</b>
+  </div>
+  <div>
+    9. Документ, удостоверяющий личность: <b>{client.document.documentType}</b>
+    серия <b>{client.document.serial}</b>
+    № <b>{client.document.number}</b>
+    выдан <b>{client.document.origin}</b>
+    <b>{client.document.date}</b>
+  </div>
+  <div>
+    10. Адрес регистрации по месту жительства <b>{client.regAddress}</b>
+  </div>
+  <div>
+    11. Адрес регистрации по месту пребывания <b>{client.locAddress}</b>
+  </div>
+  <div>
+    12. Адрес пребывания (фактического местожительства) <b>{client.locAddress}</b>
+  </div>
+  <div>
+    13. Номер телефон <b>{client.phones}</b>
+  </div>
+  <div>
+    14. Сведения о родителях / законном представителе
+  </div>
+  <div>
+    15. Дополнительные контакты
+  </div>
+  <div>
+    16. Эпидномер <b>{epidemic_number}</b>
+  </div>
+
+  <div>
+    17. УНРЗ в ФРБТ <b>{client.identification['4']}</b>
+  </div>
+  <div>
+    18. Дата установления диспансерного наблюдения
+    {render_line(u'Дата установления диспансерного наблюдения')}
+  </div>
+{:
+watch_type_ref_list = db.getRecordList(stmt=u"""
+  select rbSST.name as watch_type
+  from ClientSocStatus css
+           join rbSocStatusType rbSST on css.socStatusType_id = rbSST.id
+  where css.socStatusClass_id = 33
+    and css.client_id = {clientId};
+""".format(clientId=client.id))
+}
+  <div>
+    19. Текущая группа диспансерного наблюдения
+    {if: watch_type_ref_list}
+        {for: ref in watch_type_ref_list}
+          <span class="bold">{forceString(ref.value(u'watch_type'))}</span>;
+        {end:}
+    {end:}
+  </div>
+  <div>
+    20. Дата начала наблюдения в текущей группе диспансерного наблюдения
+    {render_line(u'Дата начала наблюдения в текущей группе диспансерного наблюдения')}
+  </div>
+  <div>
+    21. Дата установления текущего диагноза
+    {render_line(u'Дата установления текущего диагноза')}
+  </div>
+
+{:
+# Клинический диагноз
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select aps.value
+  from Event e
+           join Action a on e.id = a.event_id and a.deleted = 0 and e.deleted = 0 and
+                            a.actionType_id in (11046, 11683, 11684, 11685)
+  join ActionProperty ap on a.id = ap.action_id and ap.deleted = 0 and ap.type_id in (9, 16060, 15808, 16068)
+  join ActionProperty_String aps on ap.id = aps.id
+  where e.client_id = {clientId}
+  order by a.id desc
+  limit 1;
+""".format(clientId=client.id))
+}
+
+  <div>
+    22. Текущий диагноз
+    {if: main_diag_ref}
+        <b>{forceString(main_diag_ref.value(u'value'))}</b>
+    {end:}
+  </div>
+  <div>
+    23. Наличие распада на дату составления эпикриза (для ТБ)
+    {render_line(u'Наличие распада на дату составления эпикриза (для ТБ)')}
+  </div>
+  <div>
+    24. Наличие бактериовыделения на дату составления эпикриза (для ТБ)
+    {render_line(u'Наличие бактериовыделения на дату составления эпикриза (для ТБ)')}
+  </div>
+  <div>
+    25. Текущий спектр лекарственной устойчивости на дату составления эпикриза (для ТБ, излеченных)
+    {render_line(u'Текущий спектр лекарственной устойчивости на дату составления эпикриза (для ТБ, излеченных)')}
+  </div>
+  <div>
+    26. Наличие положительного результата АТР, дата результата
+    {render_line(u'Наличие положительного результата АТР, дата результата')}
+  </div>
+  <div>
+    27. Планируемый срок завершения ДН (для III группы)
+    {render_line(u'Планируемый срок завершения ДН (для III группы)')}
+  </div>
+
+{:
+# <!--  note Осложнения-->
+difficulty_ref = db.getRecordEx(stmt=u"""
+  select aps.value
+  from Event e
+           join Action a on e.id = a.event_id and a.deleted = 0 and e.deleted = 0 and
+                            a.actionType_id in (11046, 11683, 11684, 11685)
+           join ActionProperty ap
+                on a.id = ap.action_id and ap.deleted = 0  and ap.type_id in (11, 2582)
+           join ActionProperty_String aps on ap.id = aps.id and aps.value not in ('-', '.')
+  where e.client_id = {clientId}
+  order by a.id desc
+  limit 1;
+""".format(clientId=client.id))
+}
+{:
+# <!--  note сопутствующий-->
+related_ref = db.getRecordEx(stmt=u"""
+  select aps.value, e.client_id
+  from Event e
+           join Action a on e.id = a.event_id and a.deleted = 0 and e.deleted = 0 and
+                            a.actionType_id in (11046, 11683, 11684, 11685)
+           join ActionProperty ap
+                on a.id = ap.action_id and ap.deleted = 0  and ap.type_id in (2567, 10, 2581, 2592)
+           join ActionProperty_String aps on ap.id = aps.id and aps.value not in ('-', '.')
+  where e.client_id = {clientId}
+  order by a.id desc
+  limit 1;
+""".format(clientId=client.id))
+}
+
+
+  <div>
+    28. Диагноз осложнений, сопутствующих заболеваний:
+    {if: difficulty_ref}
+        <b>осложнения:</b> {forceString(difficulty_ref.value(u'value')):n};
+    {end:}
+    {if: related_ref}
+        <b>сопутствующие:</b> {forceString(related_ref.value(u'value')):n};
+    {end:}
+  </div>
+  <div>
+    29. Анамнез заболевания (значимые сведения)
+    {render_line(u'Анамнез заболевания (значимые сведения)')}
+  </div>
+  <div>
+    30. Анамнез жизни (значимые сведения)
+    {render_line(u'Анамнез жизни (значимые сведения)')}
+  </div>
+  <div>
+    31. Известные противопоказания, факторы риска для назначения лекарственных препаратов
+    {render_line(u'Известные противопоказания, факторы риска для назначения лекарственных препаратов')}
+  </div>
+  <div>
+    32. Сведения о текущем курсе химиотерапии (РРН, дата регистрации, режим ХТ)
+    {render_line(u'Сведения о текущем курсе химиотерапии (РРН, дата регистрации, режим ХТ)')}
+  </div>
+  <div>
+    33. Информация о прерывании лечения и мероприятиях по привлечению пациента к лечению
+    {render_line(u'Информация о прерывании лечения и мероприятиях по привлечению пациента к лечению')}
+  </div>
+  <div>
+    34. Информация об источнике туберкулеза (для IV, VI группы в формате эпидномер, УНРЗ источника)
+    {render_line(u'Информация об источнике туберкулеза (для IV, VI группы в формате эпидномер, УНРЗ источника)')}
+  </div>
+  <div>
+    35. Информация о химиопрофилактике (для IV, VI группы)
+    {render_line(u'Информация о химиопрофилактике (для IV, VI группы)')}
+  </div>
+
+  <table cellpadding="0" cellspacing="5">
+    <tr>
+      <td valign="top">
+        Врач
+      </td>
+      <td valign="top">
+        <b>{currentPerson.fullName}</b>
+      </td>
+      <td align="center">
+        <div>{'_' * 20}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+    </tr>
+    <tr>
+      <td valign="top">
+        Заведующая
+      </td>
+      <td valign="top">
+        <b>Шевырева Елена Владимировна</b>
+      </td>
+      <td align="center">
+        <div>{'_' * 20}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

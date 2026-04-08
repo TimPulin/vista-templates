@@ -1,0 +1,104 @@
+<!--Начальная дата разработки 02.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>СПРАВКА</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+<header>
+  <table cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <div align="center">
+          ГБУЗ «Каневская ЦРБ» МЗ КК&nbsp;
+        </div>
+        <div align="center"><sup>(штамп медицинской организации)</sup></div>
+      </td>
+    </tr>
+  </table>
+</header>
+<br>
+<div class="main">
+  <div align="center" class="h1">СПРАВКА</div>
+
+  <div>
+    Дана <b>{client.fullName}</b>, <b>{client.birthDate}</b> г.р.
+  </div>
+
+  <div>
+    В том, что он проходил диспансеризацию в поликлинике ГБУЗ «Каневская ЦРБ» МЗ КК
+    {currentDate.toString(u'dd.MM.yyyy')}
+  </div>
+
+  <div>
+    Группа здоровья
+  </div>
+
+  <div>
+    Справка дана для представления по месту требования.
+  </div>
+
+  <div>
+    Дата выдачи <b>{currentDate.toString(u'dd.MM.yyyy')}</b>
+  </div>
+
+  <div>
+    Лечащий врач <b>{event.execPerson.fullName}</b>
+  </div>
+</div>
+
+</body>
+</html>

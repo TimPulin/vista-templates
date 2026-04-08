@@ -1,0 +1,200 @@
+<!-- ПАЦИЕНТ -->
+<!--Начальная дата разработки 06.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6408 Добавить по 2 шаблона печати для Платных -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Информированное добровольное согласие на медицинское вмешательство</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    font-weight: 900;
+}
+
+.line-through {
+   text-decoration: line-through;
+}
+.small {
+  font-size: 8pt;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    width: 100%;
+    height: 1rem;
+    border-bottom: 1px solid #000 ;
+}
+
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str, base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">
+    Информированное добровольное согласие <br> на медицинское вмешательство
+  </div>
+
+
+<div>
+  Я, <b>{client.fullName}</b>
+</div>
+<div align="center">
+  <sup>(фамилия, имя, отчество гражданина либо законного представителя)</sup>
+</div>
+<div>
+  {if: client.birthDate}
+      <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+  {else:}
+    «____» ______ 20____г.
+  {end:}
+  рождения,
+</div>
+<div align="center">
+  <sup>(дата рождения гражданина)</sup>
+</div>
+<div>
+  зарегистрированный по адресу: <b>{client.regAddress}</b>
+</div>
+<div align="center"><sup> (адрес регистрации гражданина) </sup></div>
+
+<div>
+  проживающий по адресу: <b>{client.locAddress}</b>
+</div>
+<div align="center"><sup>(указывается в случае проживания не по месту регистрации)</sup></div>
+
+
+
+
+<div align="justify">
+  даю информированное добровольное согласие на виды медицинских вмешательств,
+  включенные в Перечень определенных видов медицинских вмешательств, на которые
+  граждане дают информированное добровольное согласие при выборе врача и медицинской
+  организации для получения первичной медико-санитарной помощи,
+  утвержденный приказом Министерства здравоохранения и социального развития Российской Федерации
+  от 23 апреля 2012 г. № 390н «Об утверждении Перечня определенных видов медицинских вмешательств,
+  на которые граждане дают информированное добровольное согласие
+  при выборе врача и медицинской организации для получения первичной медико-санитарной помощи»1
+  (далее - виды медицинских вмешательств, включенных в Перечень),
+  для получения первичной медико-санитарной помощи/
+  <span class="line-through">получения первичной медико-санитарной помощи лицом, законным представителем которого я являюсь</span> (ненужное зачеркнуть) в
+  <b>{currentOrganisation.fullName}</b>
+</div>
+<div align="center"><sup>(полное наименование медицинской организации)</sup></div>
+
+<div>Медицинским работником <b>{currentPerson.fullName}</b></div>
+<div align="center"><sup>(должность, фамилия, имя, отчество медицинского работника)</sup></div>
+
+  <br>
+
+<div align="justify">
+  в доступной для меня форме мне разъяснены цели, методы оказания медицинской помощи, связанный с ними риск, возможные варианты медицинских вмешательств, их последствия, в том числе вероятность развития осложнений, а также предполагаемые результаты оказания медицинской помощи.
+</div>
+
+  <br>
+
+<div align="justify">
+  ‎Мне разъяснено, что я имею право отказаться от одного или нескольких видов медицинских вмешательств, включенных в Перечень, или потребовать его (их) прекращения, за исключением случаев, предусмотренных частью 9 статьи 20 Федерального закона от 21 ноября 2011 г. № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации».
+</div>
+<div align="justify">
+  Сведения о выбранном (выбранных) мною лице (лицах), которому (которых) в соответствии с пунктом 5 части 5 статьи 19 Федерального закона от 21 ноября 2011 г. № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации» может быть передана информация о состоянии моего здоровья или состоянии лица, законным представителем которого я являюсь (ненужное зачеркнуть), в том числе после смерти:
+</div>
+
+  <br>
+
+  {for: _ in range(2)}
+    <div>
+      <div class="line" align="center">{render_line(u'')}</div>
+      <div align="center"><sup>(фамилия, имя, отчество гражданина, контактный телефон)</sup></div>
+    </div>
+  {end:}
+
+  <br>
+
+  <table cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%" class="white-wrap">
+        <div>{'_' * 20}&nbsp;</div>
+        <div align="center"><sup> (подпись) </sup></div>
+      </td>
+      <td>
+        <div>
+          <b>{client.fullName}</b>
+          <b>{client.phones}</b>
+        </div>
+        <div align="center"><sup>(фамилия, имя, отчество гражданина, телефон)</sup></div>
+      </td>
+    </tr>
+
+    <tr>
+      <td width="1%" class="white-wrap">
+        <div>{'_' * 20}&nbsp;</div>
+        <div align="center"><sup> (подпись) </sup></div>
+      </td>
+      <td>
+        <div>
+          <b>{currentPerson.fullName}</b>
+        </div>
+        <div align="center"><sup> (фамилия, имя, отчество медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+  <div>{'_' * 20}</div>
+  <div class="small">
+    <sup>1</sup>
+     Зарегистрирован Министерством юстиции Российской Федерации 5 мая 2012 г., регистрационный N 24082.
+  </div>
+
+</div>
+</body>
+</html>

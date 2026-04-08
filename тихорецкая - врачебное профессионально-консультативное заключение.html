@@ -1,0 +1,244 @@
+
+<!-- изменил Пулин дата 22.01.2026 задача  -->
+<!-- изменил Пулин дата 21.01.2026 задача  -->
+<!--Начальная дата разработки 20.01.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: RProfConcl3 -->
+<!--Задача: DEV_TEMP-6340 Разработать ШП СЭМД. (196) Медицинская справка (врачебное профессионально-консультативное заключение) (ред.3) -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>врачебное профессионально-консультативное заключение</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+.mL {
+    margin-left: 10px;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB       as diag_id,
+         mkb.DiagName as diag_name
+  from Diagnosis ds
+           left join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = (select getEventDiagnosis({event_id}))
+""".format(event_id=event.id))
+
+if main_diag_ref:
+  main_diag_id = forceString(main_diag_ref.value(u'diag_id'))
+  main_diag_name = forceString(main_diag_ref.value(u'diag_name'))
+else:
+  main_diag_id = u''
+  main_diag_name = u''
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+  <header>
+    <table width="75%" cellpadding="0" cellspacing="0" class="small">
+      <tr>
+        <td>
+          <div>{currentOrganisation.title}</div>
+          <div>{currentOrganisation.address}</div>
+          <div>
+            ОГРН: {currentOrganisation.OGRN},
+            ОКПО: {currentOrganisation.OKATO},
+            ОКАТО: {currentOrganisation.OKPO}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <div align="center" class="h1">МЕДИЦИНСКАЯ СПРАВКА № {action[u'Номер']}</div>
+
+  <!--
+  Место учёбы, работы:
+Врач-акушер-гинеколог:
+Дата выдачи справки:
+  -->
+  <div>
+    <div><b>Фамилия, имя, отчество</b>: {client.fullName}</div>
+    <div><b>Дата рождения:</b> {client.birthDate}</div>
+    <div><b>Место регистрации:</b> {client.regAddress}</div>
+
+    {if: action[u'Место работы'].value}
+      <div>
+        <b>Место учёбы, работы</b>: {action[u'Место работы']}
+      </div>
+    {end:}
+
+    <div>
+      <b>Перенесённые заболевания</b>:
+      {main_diag_name} ({main_diag_id})
+    </div>
+  </div>
+
+  <div class="mL">
+    <div>Объективные данные и состояние здоровья:</div>
+    <div>
+      <b>Врач-терапевт</b>: {action[u'Заключение врача-терапевта']}
+    </div>
+    <div>
+      <b>Врач-хирург</b>: {action[u'Заключение врача-хирурга']}
+    </div>
+    <div>
+      <b>Врач-невролог</b>: {action[u'Заключение врача-невролога']}
+    </div>
+    <div>
+      <b>Врач-оториноларинголог</b>: {action[u'Заключение врача-отоларинголога']}
+    </div>
+    <div>
+      <b>Врач-офтальмолог</b>: {action[u'Заключение врача-офтальмолога']}
+    </div>
+
+    {if: action[u'Заключение врача-акушера-гинеколога'].value}
+      <div>
+        <b>Врач-акушер-гинеколог</b>: {action[u'Заключение врача-акушера-гинеколога']}
+      </div>
+    {end:}
+
+    <div>
+      <b>Данные инструментальных исследований</b>: {action[u'Вид инструментального исследования']}
+    </div>
+  </div>
+
+  <div>
+    <b>Заключение о профессиональной пригодности</b>: {action[u'Заключение о профессиональной пригодности']}
+  </div>
+
+  {if: action[u'Дата выдачи'].value}
+    <div>
+      <b>Дата выдачи справки</b>: {action[u'Дата выдачи']}
+    </div>
+  {end:}
+
+
+  <br>
+
+  <section>
+<!-- @formatter:off -->
+{:
+from library.Utils import forceString
+from PyQt4 import QtGui
+db = QtGui.qApp.db
+
+signRef = None
+flag_sgn = False
+
+if action.id:
+  signRef = db.getRecordEx(stmt="""
+    select
+        certSerial as certificate,
+        certOwner as name,
+        ownerOrganisation as organisation,
+        notValidBefore as beg_valid_date,
+        notValidAfter as end_valid_date
+    from SignedIEMKDocument
+    where sign_date is not null
+      and sign_path is not null
+      and action_id = {actionId}
+      and person_id != 0
+      and template_id = 1936
+      and deleted = 0
+    limit 1;
+  """.format(actionId=action.id))
+
+if signRef:
+  flag_sgn = True
+  certificate = forceString(signRef.value('certificate'))
+  name = forceString(signRef.value('name'))
+  organisation = forceString(signRef.value('organisation'))
+  beg_valid_date = forceString(signRef.value('beg_valid_date'))
+  end_valid_date = forceString(signRef.value('end_valid_date'))
+}
+
+<!-- @formatter:on -->
+
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="50%">
+      <div class="white-wrap">{action.person.post}&nbsp;</div>
+      <div class="white-wrap">{action.person.fullName}&nbsp;</div>
+    </td>
+
+    <td align="right" width="50%">
+      {if: flag_sgn}
+        <table border="1" cellpadding="3" cellspacing="0">
+            <tr>
+                <td>
+                    <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                        <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                        <tr><td>Сертификат: {certificate}</td></tr>
+                        <tr><td>Владелец: {name}</td></tr>
+                        {if: organisation}
+                            <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                        {else:}
+                            <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                        {end:}
+                        <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+      {end:}
+    </td>
+  </tr>
+</table>
+</section>
+
+  <br>
+
+  <div>Медицинская справка действительна в течение 6 месяцев со дня выдачи.</div>
+
+</div>
+</body>
+</html>

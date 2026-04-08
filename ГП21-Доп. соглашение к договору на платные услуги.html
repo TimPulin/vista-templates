@@ -1,0 +1,154 @@
+<!-- доп соглашение -->
+<!--Начальная дата разработки 07.04.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: f0001 -->
+<!--Задача: SUP-56266 Добавить в тип обращения «Платные услуги» в меню кнопки «Печать» следующие формы документов -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>доп соглашение</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt, forceDouble }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+service_ref_list = db.getRecordList(stmt=u"""
+  SELECT at.code  as service_code,
+         at.name  as service_name,
+         ct.price as price,
+         a.amount as amount
+  FROM Action a
+           JOIN ActionType at ON a.actionType_id = at.id and a.deleted= 0
+           JOIN ActionType_Service ats ON at.id = ats.master_id and at.deleted = 0
+           JOIN Contract_Tariff ct ON ats.service_id = ct.service_id and ct.deleted = 0
+           JOIN Contract c ON ct.master_id = c.id AND c.finance_id = 4 and c.deleted = 0
+  WHERE a.event_id = {event_id};
+""".format(event_id=event.id))
+
+total_sum = 0.0
+if service_ref_list:
+	for ref in service_ref_list:
+		price = forceDouble(ref.value(u'price'))
+		amount = forceDouble(ref.value(u'amount'))
+		total_sum += price * amount
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Дополнительное соглашение<br>к Договору на предоставление платных медицинских услуг</div>
+  <br>
+  <div>
+    <b>{client.fullName}</b>, именуемый/ая в дальнейшем «Потребитель/Заказчик», и СПб ГБУЗ «Городская поликлиника №21», именуемое в дальнейшем «Исполнитель», в лице главного врача Никитина А.И., действующего на основании Устава, с другой стороны, совместно именуемые «Стороны», заключили настоящее
+    Дополнительное соглашение к Договору на предоставление платных медицинских услуг от «____» ______ 20____г.,
+    далее «Договор», «Дополнительное соглашение», о нижеследующем:
+  </div>
+  <br>
+  <div>
+    1. Потребитель/Заказчик оплачивает, а Исполнитель берет на себя обязательства оказать следующие платные медицинские услуги Потребителю/ Заказчику:
+  </div>
+  <br>
+
+    <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <td width="1%" class="white-wrap">Код услуги&nbsp;</td>
+      <td align="center">Наименование медицинской услуги</td>
+      <td width="1%" class="white-wrap">Стоимость&nbsp;</td>
+      <td width="1%" class="white-wrap">Кол&nbsp;-&nbsp;во&nbsp;</td>
+      <td width="1%" class="white-wrap">Сумма&nbsp;</td>
+    </tr>
+    {if: service_ref_list}
+      {for: index, ref in enumerate(service_ref_list, 1)}
+        {: cost = price * amount}
+        <tr>
+          <td>{forceString(ref.value(u'service_code'))}&nbsp;</td>
+          <td>{forceString(ref.value(u'service_name'))}&nbsp;</td>
+          <td>{forceString(ref.value(u'price'))}&nbsp;</td>
+          <td>{forceString(ref.value(u'amount'))}&nbsp;</td>
+          <td>{cost}&nbsp;</td>
+        </tr>
+      {end:}
+    {else:}
+      <tr>
+        <td>&nbsp;</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    {end:}
+  </table>
+  <br>
+
+  <div>
+    2. Оплата медицинских услуг по Дополнительному соглашению осуществляется «Потребителем» (Заказчиком) в форме предоплаты, т.е. до начала их оказания (наличными денежными средствами, безналичным расчетом) в кассе Исполнителя, либо путем перечисления денежных средств на расчетный счет «Исполнителя» в валюте Российской Федерации (рубли).
+  </div>
+  <br>
+  <div>
+    3. Настоящее дополнительное соглашение является неотъемлемой частью Договора, вступает в силу с момента подписания сторонами.
+  </div>
+  <br>
+  <div>
+    4. Во всем остальном, что не предусмотрено настоящим Дополнительным соглашением, Стороны руководствуются положениями Договора.
+  </div>
+  <br>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="50%" valign="top">
+        <div>Исполнитель</div>
+      </td>
+      <td align="center" width="50%" valign="top">
+        <div>Потребитель/Заказчик</div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!--Начальная дата разработки 10.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: epic_universal -->
+<!--Задача: DEV_TEMP-6416 Просьба создать универсальный протокол Эпикриза на ВК и разместить его в шаблонах Амбулатории -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Эпикриз на ВК</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.p {
+  margin-bottom: 10px;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Эпикриз на ВК</div>
+
+  <div class="p">
+    Врач: <b>{action[u'Врач']}</b>
+  </div>
+
+  <div class="p">
+    Дата: <b>{action[u'Дата ВК']}</b>
+  </div>
+
+  <div class="p">
+    ФИО пациента: <b>{action[u'ФИО пациента']}</b>
+  </div>
+
+  <div class="p">
+    Цель: <b>{action[u'Цель']}</b>
+  </div>
+
+  <div class="p">
+    Жалобы: <b>{action[u'Жалобы']}</b>
+  </div>
+
+  <div class="p">
+    Объективные данные: <b>{action[u'Объективные данные']}</b>
+  </div>
+
+  <div class="p">
+    Данные лабораторного обследования: <b>{action[u'Данные лабораторного обследования']}</b>
+  </div>
+
+  <div class="p">
+    Данные рентгенологического обследования: <b>{action[u'Данные рентгенологического обследования']}</b>
+  </div>
+
+  <div class="p">
+    Данные инструментального обследования: <b>{action[u'Данные инструментального обследования']}</b>
+  </div>
+
+  <div class="p">
+    Обоснование представления на ВК: <b>{action[u'Обоснование представления на ВК']}</b>
+  </div>
+
+  <div class="p">
+    код по МКБ: <b>{action[u'код по МКБ']}</b>
+
+    Диагноз на день представления: <b>{action[u'Диагноз на день представления']}</b>
+  </div>
+
+  <div class="p">
+    Решение ВК: <b>{action[u'Решение ВК']}</b>
+    №: <b>{action[u'№']}</b>
+    Дата: <b>{action[u'Дата решения']}</b>
+  </div>
+
+  <div class="p">
+    Рекомендации: <b>{action[u'Рекомендации']}</b>
+  </div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="p">
+        <div>
+          Председатель ВК: <b>{action[u'Председатель ВК']}</b>
+        </div>
+      </td>
+      <td>
+        <div align="center">{'_' * 20}</div>
+        <div align="center"><sup>(подпись)</sup></div>
+      </td>
+    </tr>
+
+    <tr>
+      <td colspan="2">
+        <div>
+          Члены ВК:
+        </div>
+      </td>
+    </tr>
+
+
+    {for: item in action[u'Члены ВК'].value}
+      <tr>
+        <td class="p"><b>{item}</b></td>
+        <td>
+          <div align="center">{'_' * 20}</div>
+          <div align="center"><sup>(подпись)</sup></div>
+        </td>
+      </tr>
+    {end:}
+  </table>
+
+</div>
+
+</body>
+</html>

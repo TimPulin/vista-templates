@@ -1,9 +1,9 @@
-<Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
-    <Header/>
-    <Body>
-        <Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
-            <Header>
-                <wsse:Security actor="http://eln.fss.ru/actor/fss/ca/1027739443236">
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+    <SOAP-ENV:Header/>
+    <SOAP-ENV:Body>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <soap:Header>
+                <wsse:Security soap:actor="http://eln.fss.ru/actor/fss/ca/1027739443236">
                     <wsse:BinarySecurityToken EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary" ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" wsu:Id="http://eln.fss.ru/actor/fss/ca/1027739443236">MIIJETCCCL6gAwIBAgIRAN3B53lC6QIQAwyhHZ8wJp0wCgYIKoUDBwEBAwIwggFr
                         MSAwHgYJKoZIhvcNAQkBFhF1Y19ma0Byb3NrYXpuYS5ydTEYMBYGA1UECAwPNzcg
                         0JzQvtGB0LrQstCwMRUwEwYFKoUDZAQSCjc3MTA1Njg3NjAxGDAWBgUqhQNkARIN
@@ -63,10 +63,10 @@
                                     <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
                                 </ds:Transforms>
                                 <ds:DigestMethod Algorithm="urn:ietf:params:xml:ns:cpxmlsec:algorithms:gostr34112012-256"/>
-                                <ds:DigestValue>WqVb/rwL5UnPQVvNvqUp6E13zOVoN+sXF1y3hiEOcwg=</ds:DigestValue>
+                                <ds:DigestValue>xnvxVDgKRqf1rCZ/Y7bNMYQ2pxkH8ihuybjDM6v7G34=</ds:DigestValue>
                             </ds:Reference>
                         </ds:SignedInfo>
-                        <ds:SignatureValue>mWeTOLJcL9lW8TJOq/8u5LVFa7cL+n3oKuOnyfyT0B3bpE5tjE8o5nZMiGXA+Q/awL62g6tdBtgf772y8CDieQ==</ds:SignatureValue>
+                        <ds:SignatureValue>8TBatDXOfR9ITycVrynCnHPoxbZalbGv5fx0eE75j9/w6TftkWXU3pgllxcQJ8LkTqu/wI+sKxs9+8h5YSTS4A==</ds:SignatureValue>
                         <ds:KeyInfo>
                             <wsse:SecurityTokenReference>
                                 <wsse:Reference URI="#http://eln.fss.ru/actor/fss/ca/1027739443236"/>
@@ -77,33 +77,37 @@
                 <X509Certificate xmlns="http://www.w3.org/2000/09/xmldsig#">
                     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
                 </X509Certificate>
-            </Header>
-            <Body wsu:Id="OGRN_1027739443236">
-                <ns7:prParseFilelnlpuResponse xmlns:ns7="http://www.fss.ru/integration/types/eln/mo/v01" xmlns:ns10="http://www.fss.ru/integration/types/person/v01" xmlns:ns11="http://www.fss.ru/integration/types/dic/TreatmentTypes/v01" xmlns:ns12="http://www.fss.ru/integration/types/sedo/v01" xmlns:ns2="http://www.fss.ru/integration/types/eln/v01" xmlns:ns3="http://www.fss.ru/integration/types/eln/mse/v01" xmlns:ns4="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns5="http://www.fss.ru/integration/types/fault/v01" xmlns:ns6="http://www.fss.ru/integration/types/identityDocument/v01" xmlns:ns8="http://www.fss.ru/integration/types/common/v01" xmlns:ns9="http://www.fss.ru/integration/types/organization/v01">
-                    <requestId>2cd9d07d-4519-411e-904f-a44ebcf86183</requestId>
-                    <status>0</status>
-                    <mess>Найдены ошибки при выполнении форматно-логических проверок</mess>
-                    <info>
-                        <infoRowset>
-                            <infoRow>
-                                <rowNo>1</rowNo>
-                                <lnCode>910323997255</lnCode>
-                                <status>0</status>
-                                <errors>
-                                    <error>
-                                        <errCode>ELR_576</errCode>
-                                        <errMess>Поле "Выдан ЛН (продолжение) №" обязательно при выборе в поле "Иное" значения "31" или "37".</errMess>
-                                    </error>
-                                    <error>
-                                        <errCode>ERR_SIGN</errCode>
-                                        <errMess>Отсутствует подпись председателя ВК к 1 периоду ЭЛН</errMess>
-                                    </error>
-                                </errors>
-                            </infoRow>
-                        </infoRowset>
-                    </info>
+            </soap:Header>
+            <soap:Body wsu:Id="OGRN_1027739443236">
+                <ns7:prParseFilelnlpuResponse xmlns:ns7="http://www.fss.ru/integration/types/eln/mo/v01" xmlns:ns10="http://www.fss.ru/integration/types/organization/v01" xmlns:ns11="http://www.fss.ru/integration/types/dic/TreatmentTypes/v01" xmlns:ns12="http://www.fss.ru/integration/types/sedo/v01" xmlns:ns2="http://www.fss.ru/integration/types/eln/v01" xmlns:ns3="http://www.fss.ru/integration/types/eln/mse/v01" xmlns:ns4="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns5="http://www.fss.ru/integration/types/fault/v01" xmlns:ns6="http://www.fss.ru/integration/types/common/v01" xmlns:ns8="http://www.fss.ru/integration/types/person/v01" xmlns:ns9="http://www.fss.ru/integration/types/identityDocument/v01">
+                    <ns2:requestId>b0b1ee7c-b25a-4065-bab0-30c1ff3f6756</ns2:requestId>
+                    <ns2:status>0</ns2:status>
+                    <ns2:mess>Найдены ошибки при выполнении форматно-логических проверок</ns2:mess>
+                    <ns2:info>
+                        <ns2:infoRowset>
+                            <ns2:infoRow>
+                                <ns2:rowNo>1</ns2:rowNo>
+                                <ns2:lnCode>910318716008</ns2:lnCode>
+                                <ns2:status>0</ns2:status>
+                                <ns2:errors>
+                                    <ns2:error>
+                                        <ns2:errCode>ERR_014</ns2:errCode>
+                                        <ns2:errMess>Значение поля Имя застрахованного отличается от существующего значения</ns2:errMess>
+                                    </ns2:error>
+                                    <ns2:error>
+                                        <ns2:errCode>ERR_014</ns2:errCode>
+                                        <ns2:errMess>Значение поля Отчество застрахованного отличается от существующего значения</ns2:errMess>
+                                    </ns2:error>
+                                    <ns2:error>
+                                        <ns2:errCode>ERR_014</ns2:errCode>
+                                        <ns2:errMess>Значение поля Фамилия застрахованного отличается от существующего значения</ns2:errMess>
+                                    </ns2:error>
+                                </ns2:errors>
+                            </ns2:infoRow>
+                        </ns2:infoRowset>
+                    </ns2:info>
                 </ns7:prParseFilelnlpuResponse>
-            </Body>
-        </Envelope>
-    </Body>
-</Envelope>
+            </soap:Body>
+        </soap:Envelope>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

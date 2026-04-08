@@ -75,8 +75,7 @@ def render_line(str, base_length = 95):
       <tr>
         <td width="1%" valign="top">
           <div class="white-wrap xs">
-            Наименование и адрес медицинской организации <br>
-            (фамилия, имя, отчество (при наличии) <br> индивидуального предпринимателя и адрес <br> осуществления медицинской деятельности)
+            Наименование и адрес медицинской организации
           </div>
           <div>
             <b>{currentOrganisation.title}</b>
@@ -85,8 +84,7 @@ def render_line(str, base_length = 95):
             <b>{currentOrganisation.address}</b>
           </div>
           <div class="white-wrap xs">
-            Основной государственный регистрационный номер <br> (Основной государственный регистрационный <br>
-            номер индивидуального предпринимателя)
+            Основной государственный регистрационный номер
           </div>
           <div>
             <b>{currentOrganisation.OGRN}</b>
@@ -318,15 +316,41 @@ def getDiagName(mkb_id):
         <td valign="top"><b>{current if current != u'' else u'______'}&nbsp;</b></td>
       </tr>
 
-      <tr>
-        {: current = action[u'Осложнения основного заболевания'].value}
-        <td>
-          Осложнения основного заболевания&nbsp;
-          <b>{getDiagName(current)}</b>
-        </td>
-        <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
-        <td valign="top"><b>{current if current != u'' else u'______'}&nbsp;</b></td>
-      </tr>
+
+
+        {: current = action[u'Осложнения основного заболевания']}
+
+        {if: current.value}
+          {if: isinstance(current.value, list)}
+            {for: index, item in enumerate(current)}
+              <tr>
+                <td>
+                  {u'Осложнения основного заболевания:' if index==0 else u''}
+                  <b>{getDiagName(item[u'Диагноз'])}</b>
+                </td>
+                <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
+                <td valign="top"><b>{item[u'Диагноз'].value if item[u'Код заболевания'].value != u'' else u'______'}&nbsp;</b></td>
+              </tr>
+            {end:}
+          {else:}
+            <tr>
+              <td>
+                Осложнения основного заболевания:
+                <b>{getDiagName(current)}</b>
+              </td>
+              <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
+              <td valign="top"><b>{current if current != u'' else u'______'}&nbsp;</b></td>
+            </tr>
+          {end:}
+        {else:}
+          <tr>
+            <td>
+              Осложнения основного заболевания:
+            </td>
+            <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
+            <td valign="top"><b>______&nbsp;</b></td>
+          </tr>
+        {end:}
 
       <tr>
         {: current = action[u'Внешняя причина при травмах, отравлениях'].value}
@@ -341,25 +365,35 @@ def getDiagName(mkb_id):
       <!-- todo -->
         {: current = action[u'Сопутствующие заболевания']}
 
-        {if: isinstance(current.value, list)}
-          {for: index, item in enumerate(current)}
+        {if: current.value}
+          {if: isinstance(current.value, list)}
+            {for: index, item in enumerate(current)}
+              <tr>
+                <td>
+                  {u'Сопутствующие заболевания:' if index==0 else u''}
+                  <b>{getDiagName(item[u'Диагноз'])}</b>
+                </td>
+                <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
+                <td valign="top"><b>{item[u'Диагноз'].value if item[u'Код заболевания'].value != u'' else u'______'}&nbsp;</b></td>
+              </tr>
+            {end:}
+          {else:}
             <tr>
               <td>
-                {u'Сопутствующие заболевания:' if index==0 else u''}
-                <b>{getDiagName(item[u'Диагноз'])}</b>
+                Сопутствующие заболевания:
+                <b>{getDiagName(current)}</b>
               </td>
               <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
-              <td valign="top"><b>{item[u'Диагноз'].value if item[u'Код заболевания'].value != u'' else u'______'}&nbsp;</b></td>
+              <td valign="top"><b>{current if current != u'' else u'______'}&nbsp;</b></td>
             </tr>
           {end:}
         {else:}
           <tr>
             <td>
               Сопутствующие заболевания:
-              <b>{getDiagName(current)}</b>
             </td>
             <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
-            <td valign="top"><b>{current if current != u'' else u'______'}&nbsp;</b></td>
+            <td valign="top"><b>______&nbsp;</b></td>
           </tr>
         {end:}
 

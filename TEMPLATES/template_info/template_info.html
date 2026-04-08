@@ -1,0 +1,30 @@
+{: import re}
+
+{:
+write('''
+<style>
+  .barcode--custom {
+    font-family: 'monospace';
+    font-size: 10px;
+    line-height: 10px;
+  }
+</style>
+''')}
+
+
+
+<div>
+  <!-- note print_template_info -->
+  {:
+  TEMPLATE_ID = forceString(templateId) if templateId else u'0'
+  EVENT_ID = forceString(event.id) if event else u'0'
+  ACTION_ID = forceString(action.id) if action else u'0'
+  SEPARATOR = u'$'
+
+  data = u'T' + TEMPLATE_ID + u'E' + EVENT_ID + u'A' + ACTION_ID
+  }
+
+  <div>
+    <span class="barcode--custom">{data}</span>
+  </div>
+</div>

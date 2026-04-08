@@ -1,3 +1,4 @@
+{: import re}
 {:
 def format_phone(value):
   if value:
@@ -23,6 +24,7 @@ contact_ref_list = db.getRecordList(stmt=u"""
   select cc.contact
   from ClientContact cc
   where cc.deleted = 0
+    and cc.contactType_id in (1, 2, 3)
     and cc.client_id = {clientId}
   order by id desc;
 """.format(clientId=client.id))

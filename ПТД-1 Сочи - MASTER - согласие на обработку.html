@@ -1,0 +1,315 @@
+<!-- Представитель СОГЛАСИЕ -->
+<!-- изменил Пулин дата 18.02.2026 задача  -->
+<!-- изменил Пулин дата 13.02.2026 задача  -->
+<!-- изменил Пулин дата 13.02.2026 задача  -->
+<!-- изменил Пулин дата 12.02.2026 задача  -->
+<!--Начальная дата разработки 09.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: token -->
+<!--Задача: DEV_TEMP-6408 Добавить по 2 шаблона печати для Платных -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>СОГЛАСИЕ</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: from PyQt4.QtCore import QDate}
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.p {
+  margin-bottom: 10px;
+  text-align: justify;
+}
+
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+payer_ref_list = db.getRecordList(stmt=u"""
+  select CONCAT_WS(' ', cp.lastName, cp.firstName, cp.patrName) as fio,
+         DATE_FORMAT(cp.birthDate, '%d.%m.%Y')                  as birthDate,
+         rbDT.name                                              as doc_type,
+         concat(cp.serialLeft, cp.serialRight)                  as doc_serial,
+         cp.number                                              as doc_number,
+         cp.issuedBy                                            as doc_issuedBy,
+         cp.regAddress,
+         cp.phoneNumber
+  from Client_Payers cp
+           join rbDocumentType rbDT on cp.document_id = rbDT.id
+  where cp.client_id = {clientId};
+  """.format(clientId=client.id))
+}
+
+
+{:
+def parse_multi_line(data):
+  str_list = data.split(u';')
+  if len(str_list) == 2:
+    return str_list
+  else:
+    return [data, u'']
+
+}
+
+{:
+payer_fio_list = []
+if payer_ref_list:
+  for ref in payer_ref_list:
+    fio_loc = forceString(ref.value(u'fio'))
+    payer_fio_list.append(fio_loc)
+  payer_index = dialogs.dialList(u'Выберите плательщика', payer_fio_list, 0).getVar()
+  payer_ref = payer_ref_list[payer_index]
+
+  fio = forceString(payer_ref.value(u'fio'))
+  birthDate_str = forceString(payer_ref.value(u'birthDate'))
+  birthDate = QDate.fromString(birthDate_str, 'dd.MM.yyyy')
+
+  doc_type = forceString(payer_ref.value(u'doc_type'))
+  doc_serial = forceString(payer_ref.value(u'doc_serial'))
+  doc_number = forceString(payer_ref.value(u'doc_number'))
+
+
+  doc_issuedBy_raw = forceString(payer_ref.value(u'doc_issuedBy'))
+  doc_issueBy, issuedDate_str = parse_multi_line(doc_issuedBy_raw)
+  if issuedDate_str != u'':
+    issuedDate = QDate.fromString(issuedDate_str.strip(), 'dd.MM.yyyy')
+  else:
+    issuedDate = None
+
+  regAddress_raw = forceString(payer_ref.value(u'regAddress'))
+  regAddress, locAddress = parse_multi_line(regAddress_raw)
+
+  phoneNumber = forceString(payer_ref.value(u'phoneNumber'))
+
+else:
+  payer_ref = None
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">СОГЛАСИЕ<br/>на обработку персональных данных</div>
+
+  <div class="line">
+    <span>Я,</span>
+    {if: payer_ref}
+        <b>{fio}</b>,
+    {else:}
+      {render_line(u'Я,')},
+    {end:}
+  </div>
+
+  <div align="center">
+    <sup>(Ф.И.О. полностью)</sup>
+  </div>
+
+  <div>
+    {if: birthDate and birthDate.isValid()}
+        <b>«{forceString(birthDate.toString('dd'))}» {forceString(month[birthDate.month()])} {forceString(birthDate.year())} г.</b> рождения,
+    {else:}
+        «____» ______ 20____г. рождения,
+    {end:}
+  </div>
+
+  <div>
+    {if: doc_type}
+      {doc_type}
+    {else:}
+      Паспорт
+    {end:}
+
+    серия
+    {if: doc_serial}
+      <b>{doc_serial}</b>
+    {else:}
+      {u'_' * 5}
+    {end:}
+
+    номер
+    {if: doc_number}
+      <b>{doc_number}</b>
+    {else:}
+      {u'_' * 10}
+    {end:}
+
+    кем выдан
+    {if: doc_issueBy}
+      <b>{doc_issueBy}</b>
+    {else:}
+      {u'_' * 20}
+    {end:}
+
+
+    дата выдачи
+    {if: issuedDate and issuedDate.isValid()}
+      <b>«{issuedDate.toString('dd')}» {forceString(month[issuedDate.month()])} {forceString(issuedDate.year())} г.</b>
+    {else:}
+      «____» ______ 20____г.,
+    {end:}
+
+  </div>
+
+  <div>
+    Зарегистрированный (ая) по адресу:
+    {if: regAddress}
+      <b>{regAddress}</b>
+    {else:}
+      {render_line(u'Зарегистрированный (ая) по адресу')},
+    {end:}
+
+  </div>
+
+  <div>
+    Фактическое место проживания:
+    {if: locAddress and locAddress != u''}
+      <b>{locAddress}</b>
+    {else:}
+      {render_line(u'Фактическое место проживания')},
+    {end:}
+  </div>
+
+  <div>
+    Телефон:
+    {if: phoneNumber}
+      {phoneNumber}
+    {else:}
+      {render_line(u'Телефон')},
+    {end:}
+  </div>
+
+  <div>
+    &#10004; являющийся(щаяся) родителем/законным представителем (далее – Представитель потребителя)
+    несовершеннолетнего, либо недееспособного, либо ограниченно дееспособного лица (далее – Потребитель)
+  </div>
+
+  <div align="center"><b>{client.fullName}</b></div>
+
+  <div align="center">
+    <sup>ФИО несовершеннолетнего, либо недееспособного, либо ограниченно дееспособного лица</sup>
+  </div>
+
+
+  <div align="justify">
+    в соответствии с требованиями статьи 9 Федерального закона "О персональных данных" от 27.07.2006 N152-ФЗ,
+    статьи 13 Федерального закона от 21.11.2011 N 323-ФЗ "Об основах охраны здоровья граждан в РФ"
+    подтверждаю свое согласие на обработку <b>Государственному бюджетному учреждению здравоохранения «Противотуберкулезный диспансер № 1» министерства здравоохранения Краснодарского края,</b>,
+    расположенному по адресу: Краснодарский край, г. Сочи, Центральный район, ул. Дагомысская, 44,
+    (далее - Оператор) персональных данных, включающих: фамилию, имя, отчество, пол, дату и место рождения,
+    адрес места жительства, контактные телефоны, реквизиты паспорта (документа, удостоверяющего личность),
+    реквизиты полиса ОМС (ДМС), страховой номер индивидуального лицевого счета в Фонде пенсионного и социального
+    страхования Российской Федерации (СНИЛС), место работы, данные о состоянии здоровья, заболеваниях,
+    случаях обращения за медицинской помощью и другую информацию - в медико-профилактических целях,
+    в <b>целях</b> установления медицинского диагноза и оказания медицинских услуг по договору,
+    осуществление иных, связанных с этим мероприятий, а также в целях организации внутреннего учета Оператора,
+    при условии сохранения врачебной тайны.
+
+    В процессе оказания Оператором мне (представляемому мной лицу) медицинских услуг я предоставляю право
+    медицинским работникам передавать мои персональные данные (персональные данные представляемого мной лица),
+    в том числе составляющие врачебную тайну, другим должностным лицам Оператора в интересах обследования,
+    лечения и внутреннего учета Оператора.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Предоставляю Оператору право осуществлять все действия (операции) с персональными данными, включая сбор,
+    систематизацию, накопление, хранение, обновление, изменение, использование, передачу
+    (в страховую медицинскую организацию, организацию - заказчика медицинских услуг в рамках заключенных договоров),
+    обезличивание, блокирование, уничтожение.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Оператор вправе осуществлять обработку персональных данных смешанным способом: на бумажных носителях
+    и в информационных системах персональных данных, а именно без использования и с использованием средств автоматизации.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Оператор вправе обрабатывать персональные данные посредством внесения их в электронную базу данных,
+    включения в списки (реестры) и отчетные формы, предусмотренные документами, регламентирующими предоставление отчетных данных.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Передача персональных данных иным лицам или иное их разглашение может осуществляться только
+    с моего письменного согласия на обработку персональных данных, разрешенных субъектом персональных данных для распространения.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Я оставляю за собой право отозвать свое согласие посредством составления соответствующего письменного документа,
+    который может быть направлен мной в адрес Оператора по почте заказным письмом с уведомлением о вручении
+    либо вручен лично под расписку представителю Оператора.
+    В случае получения моего письменного заявления об отзыве настоящего согласия на обработку персональных данных,
+    Оператор обязан прекратить их обработку в течение периода времени, необходимого для завершения взаиморасчетов
+    по оплате, оказанной мне до этого медицинской помощи.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Срок хранения персональных данных после оказания медицинской услуги соответствует сроку хранения
+    первичных бухгалтерских документов и составляет пять лет.
+  </div>
+
+  <div class="red-line p" align="justify">
+    Настоящее согласие на обработку персональных данных дается мной свободно,
+    своей волей и в своем интересе
+  </div>
+
+  <div><b>«{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.</b></div>
+
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="top" width="1%" class="white-wrap">Представитель потребителя&nbsp;</td>
+      <td>
+        <div align="center">{fio if fio else'_' * 20}&nbsp;</div>
+        <div align="center"><sup>(подпись)&nbsp;</sup></div>
+      </td>
+      <td width="1%" class="white-wrap">
+        <div align="center">
+          / {'_' * 30} /&nbsp;
+        </div>
+        <div align="center"><sup>(фамилия, инициалы)&nbsp;</sup></div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+</body>
+</html>

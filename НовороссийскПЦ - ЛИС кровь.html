@@ -1,0 +1,415 @@
+<!-- ВСЕ РЕЗУЛЬТАТЫ -->
+<!-- изменил Пулин дата 25.02.2026 задача  -->
+<!-- изменил Пулин дата 16.02.2026 задача  -->
+<!--Начальная дата разработки 13.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ЛИС</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.big {
+  font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+
+
+
+.tbl-header td {
+  padding-bottom: 5px;
+}
+
+.tbl-result {
+  border-collapse: collapse;
+}
+
+.tbl-result th:first-child,
+.tbl-result td:first-child {
+  width: 45%;
+}
+.tbl-result th:nth-child(2),
+.tbl-result td:nth-child(2),
+.tbl-result th:nth-child(3),
+.tbl-result td:nth-child(3) {
+  width: 10%;
+}
+.tbl-result th:nth-child(4),
+.tbl-result td:nth-child(4) {
+  width: 35%;
+  background-color: #CC0000;
+}
+
+.mb {
+  margin-bottom: 5px;
+}
+.background {
+  background-color: #f0f0f0
+}
+
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{: from library.Utils import forceString }
+{: import base64}
+
+<!-- note code 128-->
+{:
+CODE128_B = [
+    "11011001100", "11001101100", "11001100110", "10010011000",
+    "10010001100", "10001001100", "10011001000", "10011000100",
+    "10001100100", "11001001000", "11001000100", "11000100100",
+    "10110011100", "10011011100", "10011001110", "10111001100",
+    "10011101100", "10011100110", "11001110010", "11001011100",
+    "11001001110", "11011100100", "11001110100", "11101101110",
+    "11101001100", "11100101100", "11100100110", "11101100100",
+    "11100110100", "11100110010", "11011011000", "11011000110",
+    "11000110110", "10100011000", "10001011000", "10001000110",
+    "10110001000", "10001101000", "10001100010", "11010001000",
+    "11000101000", "11000100010", "10110111000", "10110001110",
+    "10001101110", "10111011000", "10111000110", "10001110110",
+    "11101110110", "11010001110", "11000101110", "11011101000",
+    "11011100010", "11011101110", "11101011000", "11101000110",
+    "11100010110", "11101101000", "11101100010", "11100011010",
+    "11101111010", "11001000010", "11110001010", "10100110000",
+    "10100001100", "10010110000", "10010000110", "10000101100",
+    "10000100110", "10110010000", "10110000100", "10011010000",
+    "10011000010", "10000110100", "10000110010", "11000010010",
+    "11001010000", "11110111010", "11000010100", "10001111010",
+    "10100111100", "10010111100", "10010011110", "10111100100",
+    "10011110100", "10011110010", "11110100100", "11110010100",
+    "11110010010", "11011011110", "11011110110", "11110110110",
+    "10101111000", "10100011110", "10001011110", "10111101000",
+    "10111100010", "11110101000", "11110100010", "10111011110",
+    "10111101110", "11101011110", "11110101110", "11010000100",
+    "11010010000", "11010011100", "1100011101011"  # STOP
+]
+}
+
+{:
+def code128_encode(text):
+    start_code = 104
+    checksum = start_code
+    encoded = CODE128_B[start_code]
+
+    for i, char in enumerate(text):
+        code = ord(char) - 32
+        if code < 0 or code > 95:
+            raise ValueError("Поддерживаются только ASCII 32–127")
+
+        checksum += code * (i + 1)
+        encoded += CODE128_B[code]
+
+    checksum %= 103
+    encoded += CODE128_B[checksum]
+
+    # Stop code
+    encoded += CODE128_B[106]
+
+    return encoded
+}
+
+{:
+def barcode_svg(bits,
+                module_width=2,
+                height=100,
+                quiet_zone=10):
+
+    width = (len(bits) + quiet_zone * 2) * module_width
+    x = quiet_zone * module_width
+    rects = []
+
+    for bit in bits:
+        if bit == "1":
+            rects.append(
+                '<rect x="{x}" y="0" width="{w}" height="{h}" fill="black"/>'.format(
+                    x=x,
+                    w=module_width,
+                    h=height
+                )
+            )
+        x += module_width
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<svg xmlns="http://www.w3.org/2000/svg"\n'
+        '     width="{width}"\n'
+        '     height="{height}"\n'
+        '     viewBox="0 0 {width} {height}">\n'
+        '<rect width="100%" height="100%" fill="white"/>\n'
+        '{rects}\n'
+        '</svg>'
+    ).format(
+        width=width,
+        height=height,
+        rects=''.join(rects)
+    )
+}
+{:
+def svg_to_base64(svg):
+    return base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+}
+{:
+def create_src(text):
+    bit = code128_encode(forceString(text))
+    svg = barcode_svg(bit)
+    b64 = svg_to_base64(svg)
+    return "data:image/svg+xml;base64,{b64}".format(b64=b64)
+}
+<!-- note END code 128-->
+
+
+
+{: stop_name_list = [u'Код услуги заявки', u'Номерок']}
+
+{:
+def propCondition(prop):
+  return prop.name not in stop_name_list and prop.value
+}
+{:
+def isActHasValue(act):
+  for prop in act:
+    if propCondition(prop):
+      return True
+  return False
+}
+
+{:
+def actCondition(act):
+  return act.class_ == 1 and act.status == 2 and isActHasValue(act) and act.takenTissueJournal.id is not None
+}
+
+
+{:
+def getBackgroundClass(index):
+    return u'background' if index % 2 != 0 else u''
+}
+
+<!-- note main diag-->
+{:
+main_diag_ref = db.getRecordEx(stmt=u"""
+  select ds.MKB       as diag_id,
+         mkb.DiagName as diag_name
+  from Diagnosis ds
+           left join MKB mkb on ds.MKB = mkb.DiagID
+  where ds.id = (select getEventDiagnosis({event_id}))
+""".format(event_id=event.id))
+
+if main_diag_ref:
+  main_diag_id = forceString(main_diag_ref.value(u'diag_id'))
+  main_diag_name = forceString(main_diag_ref.value(u'diag_name'))
+else:
+  main_diag_id = u''
+  main_diag_name = u''
+}
+
+{:
+def createIdForGrouping(act):
+  return forceString(act.takenTissueJournal.id)
+}
+
+{:
+class ResultAnal:
+  def __init__(self, title, act):
+    self.takenTissueJournal_id = act.takenTissueJournal.id
+    self.title = title
+    self.setPerson = act.setPerson
+    self.execPerson = act.person
+    self.begDate = act.begDate
+    self.endDate = act.endDate
+    self.actList = []
+    self.idForGrouping = createIdForGrouping(act)
+
+  def addAct(self, act):
+    self.actList.append(act)
+}
+{:
+def createNewReferralAnal(refList, title, act):
+  newInstance = ResultAnal(title, act)
+  newInstance.addAct(act)
+  refList.append(newInstance)
+}
+
+
+{:
+MAIN_RESULT_LIST = []
+for act in event.actions:
+  if actCondition(act):
+    idForGrouping = createIdForGrouping(act)
+    filteredRefList = filter(lambda x: x.idForGrouping == idForGrouping, MAIN_RESULT_LIST)
+    filteredRef = filteredRefList[0] if len(filteredRefList) > 0 else None
+    if filteredRef:
+      filteredRef.addAct(act)
+    else:
+      if act.group.id == 199223:
+        title = u'Биохимия'
+      else:
+        title = act.name
+      createNewReferralAnal(MAIN_RESULT_LIST, title, act)
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+
+<div class="main">
+  {for: result in MAIN_RESULT_LIST}
+    <div> <!-- section START-->
+      <div align="center" class="h1">{currentOrganisation.title}</div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" class="tbl-header mb">
+        <tr>
+          <td width="1%"></td>
+          <td width="97%"></td>
+          <td width="1%"></td>
+          <td width="1%"></td>
+        </tr>
+
+        <tr>
+          <td colspan="2" class="big">
+            {client.fullName.upper()}
+            {u'Муж' if client.sex == u'М' else u'Жен'}
+          </td>
+
+          <td align="right" class="white-wrap">
+            №&nbsp;карты:&nbsp;
+          </td>
+          <td class="white-wrap">
+            {client.id}&nbsp;
+          </td>
+        </tr>
+
+        <tr>
+          <td width="1%" class="white-wrap">
+            Дата&nbsp;рождения&nbsp;
+          </td>
+          <td colspan="3">
+            {client.birthDate}
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="4" class="big">
+            Заказ № {result.takenTissueJournal_id}
+          </td>
+        </tr>
+
+        <tr>
+          <td class="white-wrap">Заказчик:&nbsp;</td>
+          <td colspan="3">{currentOrganisation.title}</td>
+        </tr>
+
+        <tr>
+          <td class="white-wrap">
+            Врач:&nbsp;
+          </td>
+          <td colspan="3">
+            {result.setPerson.fullName}
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="2" class="white-wrap big">{result.title}&nbsp;</td>
+          <td rowspan="3" align="right" valign="middle" class="white-wrap">IDs:&nbsp;</td>
+          <td rowspan="3">
+            <img height="50" src="{create_src(act.takenTissueJournal.id)}">
+            <div align="center">{result.takenTissueJournal_id}</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="white-wrap">Дата&nbsp;взятия:&nbsp;</td>
+          <td>{result.begDate.toString(u'dd.MM.yyyy')}</td>
+        </tr>
+
+        <tr>
+          <td class="white-wrap">Выполнено:&nbsp;</td>
+          <td>{result.endDate.toString(u'dd.MM.yyyy')}</td>
+        </tr>
+      </table>
+
+
+
+            <table width="100%" cellpadding="3" cellspacing="0" class="tbl-result" border="1">
+              <tr>
+                <th  align="left" class="small">Показатель</th>
+                <th  align="right" class="white-wrap small">Результат&nbsp;</th>
+                <th  align="left" class="small white-wrap">Единицы&nbsp;</th>
+                <th  align="left" class="small">Референсные значения</th>
+              </tr>
+
+              <tr>
+                <td align="center" colspan="4"><b>{act.name}</b></td>
+              </tr>
+
+              {for: act_index, act in enumerate(result.actList)}
+                {for: prop_index, prop in enumerate(act)}
+                  {if: prop.name not in stop_name_list and prop.value} <!--  -->
+                    {: background_class = getBackgroundClass(prop_index + act_index)}
+                    <tr>
+                      <td class="{background_class}">
+                        {prop.shortName if prop.shortName else prop.name}
+                      </td>
+                      <td align="right" class="{background_class}">{prop.value}</td>
+                      <td class="{background_class}">{prop.unit}</td>
+                      <td class="{background_class}">{prop.norm}</td>
+                    </tr>
+                  {end:}
+                {end:}
+              {end:}
+
+
+      </table>
+      <div>
+        Исполнители: {result.execPerson.fullName}
+      </div>
+      <br>
+    </div> <!-- section END-->
+  {end:}
+
+</div>
+</body>
+</html>

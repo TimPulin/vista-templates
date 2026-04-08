@@ -1,0 +1,289 @@
+<!-- изменил Пулин дата 11.03.2026 задача DEV_TEMP-6515 В шаблоне ШКАЛА КИМ не верно считает баллы -->
+<!--Начальная дата разработки 18.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Шкала</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 13pt;
+}
+table td {
+    font-size: 10pt;
+}
+.highlight {
+    font-weight: 900;
+    font-style: italic;
+}
+
+
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+def is_current_value(value, current_value):
+    if value and current_value:
+        return value.lower() == current_value.lower()
+    return False
+}
+
+{:
+def get_highlight_class(flag):
+    return u'highlight' if flag else u''
+}
+{:
+def is_current_result(min, max, current_value):
+    return current_value >= min and current_value <= max
+}
+
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Шкала оценки дисфагии ООО «КИМ» {action.begDate.toString(u'dd.MM.yyyy')}</div>
+    <br>
+
+
+{: data = [
+    [u"Положение мягкого неба", [
+        u"Подвижно",
+        u"Провисает, но при стимуляции активно поднимается",
+        u"Провисает, но при стимуляции слабо поднимается",
+        u"Значительно провисает, при стимуляции неподвижно / не оценить"
+    ]],
+
+    [u"Глоточный рефлекс", [
+        u"Вызывается",
+        u"Снижен, но при надавливании на корень языка вызывается / повышен",
+        u"Резко снижен / не вызывается / не оценить"
+    ]],
+
+    [
+        u"Состояние тонуса мышц органов артикуляции", [
+            [u"Тонус губ", [
+                u"нормотонус",
+                u"изменение тонуса (повышен / понижен)"
+            ]],
+            [u"Тонус языка", [
+                u"нормотонус",
+                u"изменение тонуса (повышен / понижен)"
+            ]],
+            [u"Тонус жевательной мускулатуры", [
+                u"нормотонус",
+                u"изменение тонуса (повышен / понижен)",
+                u"тризм"
+            ]]
+        ]
+    ],
+
+    [u"Кашлевой рефлекс", [
+        u"Адекватный",
+        u"Ослаблен",
+        u"Отсутствует"
+    ]],
+
+    [u"Тест Трех глотков", [
+        u"Пенетрация отсутствует",
+        u"Пенетрация на 90 мл жидкости",
+        u"Пенетрация на 60 мл жидкости",
+        u"Пенетрация на 30 мл жидкости",
+        u"Пенетрация на 10 мл жидкости"
+    ]],
+
+    [u"Оральная и орально-трансферная фазы", [
+        u"Без патологии",
+        u"Незначительные затруднения, задержка >5сек",
+        u"Затруднения при формировании болюса, остатки болюса на языке / небе, периодическое вытекание болюса из ротовой полости, задержка >10сек",
+        u"Нет произвольного открывания рта, жевательные движения отсутствуют, болюс не формируется"
+    ]],
+
+    [u"Произвольный кашель", [
+        u"Без патологии",
+        u"Умеренные затруднения",
+        u"Выраженные затруднения",
+        u"Отсутствует / не оценить"
+    ]],
+
+    [u"Голос", [
+        u"Без патологии",
+        u"Легкая дисфония (охриплость, осиплость)",
+        u"Умеренная дисфония (хриплый, назализованный, влажный голос)",
+        u"Афония / не оценить"
+    ]],
+
+    [u"Трахеостома", [
+        u"Отсутствует",
+        u"Сдутая манжета ТСТ / голосовой клапан",
+        u"Периодическое сдувание манжеты",
+        u"Постоянно раздутая манжета"
+    ]],
+
+    [u"Фарингеальная фаза", [
+        u"Без патологии",
+        u"Поперхивание, добавочные глотки",
+        u"Частые поперхивания, отсроченное глотание, влажный голос, сложности глотания слюны",
+        u"Глотания нет / не оценить"
+    ]],
+
+    [u"После завершения акта глотания", [
+        u"Без патологии",
+        u"Редкие поперхивания",
+        u"Частые поперхивания, влажный голос, учащение дыхательного паттерна, назофарингеальная регургитация, рефлюкс",
+        u"Аспирация (при наличии ТСТ) / не оценить"
+    ]]
+]}
+
+<table border="1" cellpadding="3" cellspacing="0" width="100%" style="border-collapse:collapse; font-family:Arial,sans-serif;">
+    <tr>
+        <th align="center" width="1%" class="white-wrap">№п/п&nbsp;</th>
+        <th colspan="2" align="center">ПРИЗНАКИ</th>
+        <th align="center" width="1%" class="white-wrap">БАЛЛ&nbsp;</th>
+    </tr>
+
+
+{: total_scores = 0}
+{for: section_idx, section in enumerate(data, 1)}
+    {: title, content = section}
+
+
+    <!-- Простая секция: список строк -->
+    {if: content and isinstance(content[0], unicode)}
+        {: current_value = action[title].value}
+        <tr>
+            <td align="center"  rowspan="{len(content) + 1}">{section_idx}</td>
+            <td colspan="3" align="center"><strong>{title}</strong></td>
+        </tr>
+
+        {for: index, item in enumerate(content)}
+            {: is_current = is_current_value(item, current_value)}
+            {: total_scores += index if is_current else 0}
+            {: css_class = get_highlight_class(is_current)}
+            <tr>
+                <td colspan="2" class="{css_class}">{item}</td>
+                <td align="center" class="{css_class}">{index}</td>
+            </tr>
+        {end:}
+
+    <!-- Сложная секция: список списков -->
+    {else:}
+        {: row_span = 0}
+        {for: sub_title, sub_content in content}
+            {: row_span += len(sub_content)}
+        {end:}
+        <tr>
+            <td align="center"  rowspan="{row_span + 1}">{section_idx}</td>
+            <td colspan="3" align="center"><strong>{title}</strong></td>
+        </tr>
+        {for: sub_title, sub_content in content}
+            {: current_value = action[sub_title].value}
+            {for: sub_index, item in enumerate(sub_content)}
+                {: is_current = is_current_value(item, current_value)}
+                {: total_scores += sub_index if is_current else 0}
+                {: css_class = get_highlight_class(is_current)}
+                <tr>
+                    {if: sub_index == 0}
+                        <td rowspan="{len(sub_content)}">{sub_title}</td>
+                    {end:}
+                    <td class="{css_class}">{item}</td>
+                    <td align="center" class="{css_class}">{sub_index}</td>
+                </tr>
+            {end:}
+
+        {end:}
+    {end:}
+{end:}
+</table>
+
+
+
+<br><br>
+
+
+    
+<div align="center" class="h1">Оценка результатов:</div>
+    <table border="1" cellpadding="3" cellspacing="0" width="100%" style="border-collapse:collapse; font-family:Arial,sans-serif;">
+    <tr>
+        <th width="15%" align="center">Балл</th>
+        <th width="25%" align="center">Степень тяжести</th>
+        <th width="60%" align="center">Рекомендации</th>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(0, 1, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">0-1</td>
+        <td class="{get_highlight_class(is_current_r)}">Дисфагии нет</td>
+        <td>диета без ограничений</td>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(2, 6, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">2-6</td>
+        <td class="{get_highlight_class(is_current_r)}">Легкая</td>
+        <td>диета с правильным позиционированием при питье</td>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(7, 13, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">7-13</td>
+        <td class="{get_highlight_class(is_current_r)}">Средне-легкая</td>
+        <td>диета с ограничением (мягкая пища, кисель для основного питья), правильное позиционирование при приеме пищи и жидкости</td>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(14, 19, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">14-19</td>
+        <td class="{get_highlight_class(is_current_r)}">Средняя</td>
+        <td>диета с ограничением (протертая пища, кисель для основного питья), правильное позиционирование при приеме пищи и жидкости</td>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(20, 25, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">20-25</td>
+        <td class="{get_highlight_class(is_current_r)}" >Средне-тяжелая</td>
+        <td>зондовое питание, тренировочное «разглатывание» пищевыми болюсами с индивидуально подобранным уровнем вязкости. Рекомендуется фиброларингоскопическое исследование</td>
+    </tr>
+    <tr>
+        {: is_current_r = is_current_result(26, 33, total_scores)}
+        <td class="{get_highlight_class(is_current_r)}" align="center">26-33</td>
+        <td class="{get_highlight_class(is_current_r)}">Тяжелая</td>
+        <td>зондовое питание / гастростома. Рекомендуется фиброларингоскопическое исследование</td>
+    </tr>
+</table>
+
+</div>
+</body>
+</html>

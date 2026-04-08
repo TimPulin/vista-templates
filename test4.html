@@ -1,0 +1,60 @@
+<html>
+{setPageSize('A4')} {setOrientation('L')} {setLeftMargin(5)} {setTopMargin(10)} {setBottomMargin(5)} {setRightMargin(5)}
+
+<h3>Умерло</h3>
+c {filter.begDate} по {if: filter.endDate}{filter.endDate}{else:}{currentDate}{end:}<br>
+
+{if: filter.finance}
+Вид оплаты: {filter.finance}
+{end:}
+{:i=0}
+<table border=1 width=100%>
+<tr>
+<td><b><center>№ п/п</center></b></td>
+<td><b><center>С</center></b></td>
+{if: not filter.finance}
+<td><b><center>И</center></b></td>
+{end:}
+<td><b><center>Д</center></b></td>
+<td><b><center>Номер</center></b></td>
+<td><b><center>Карта</center></b></td>
+<td><b><center>ФИО</center></b></td>
+<td><b><center>Пол</center></b></td>
+<td><b><center>Дата Рождения</center></b></td>
+<td><b><center>Госпитализирован</center></b></td>
+<td><b><center>Выбыл</center></b></td>
+<td><b><center>Подразделение</center></b></td>
+<td><b><center>Ответственный</center></b></td>
+<td><b><center>МКБ</center></b></td>
+
+</tr>
+
+{for: event, ext in rows}
+<tr>
+<td>{:i=i+1}{i}</td>
+<td>{ext.observationCode}</td>
+{if: not filter.finance}
+<td>{event.finance}</td>
+{end:}
+<td>{ext.contract}</td>
+<td>{event.client.id}</td>
+<td>{event.externalId}</td>
+<td>{event.client.fullName}</td>
+<td>{event.client.sex}</td>
+<td>{event.client.birthDate} <br>({event.client.age})</td>
+<td>{ext.begDate}</td>
+<td>{ext.endDate}</td>
+<td>{ext.orgStructure}</td>
+<td>{event.execPerson}</td>
+<td>{for: diagnos in event.diagnosises}
+	{if: diagnos.type.code=='1'}
+	{diagnos.MKB}
+	{end:}
+	{end:}</td>
+
+
+</tr>
+
+{end:}
+</table>
+</html>

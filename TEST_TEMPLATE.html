@@ -9,12 +9,6 @@
   <meta charset="UTF-8">
   <title>TEMPLATES_TEST</title>
 <!-- @formatter:off -->
-{: setPageSize('A4')}
-{: setOrientation('P')}
-{: setTopMargin(5)}
-{: setBottomMargin(5)}
-{: setRightMargin(17)}
-{: setLeftMargin(17)}
 
 {: from library.Utils import forceString }
 {: from library.Utils import forceInt }
@@ -24,13 +18,22 @@
 {: from library.Utils import smartDict }
 {:
 from Events.EventInfo import CEventInfo
-from library.PrintInfo import CInfoContext
+from library.PrintInfo import CInfoContext, CInfo
 from Registry.Utils import CClientInfo
 from Events.ActionInfo import CActionInfo
-from library.PrintTemplates import compileAndExecTemplate, getTemplate
+from library.PrintTemplates import CTemplateContext, CTemplateParser
+
+from Reports.ReportView import CPageFormat
+import StringIO
+import sys
+
+from multiprocessing import Process, Queue
+
+import csv
+import os
 }
 
-{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
 
 {:
 write('''
@@ -47,13 +50,97 @@ write('''
 }
 </style>
 ''')}
-
+<!--
+6201304
+6201305
+6201306
+6201307
+w
+-->
 {:
 def print_text(text):
   write("""<h2>{text}</h2>""".format(text=text))
 }
 </head>
 <body>
+<!-- note запись в файл -->
+{:
+CSV_FILE = "/home/user/DOCS/templates_report.csv"
+
+CSV_HEADERS = [
+    u'template_id',
+    u'context',
+    u'template_name',
+    u'event_id',
+    u'client_id',
+    u'action_id',
+    u'status',
+    u'text_error',
+]
+}
+
+{:
+def init_csv(file_path):
+#  if os.path.exists(file_path):
+#      os.remove(file_path)
+
+  with open(file_path, u"ab") as f:
+      writer = csv.writer(f)
+      writer.writerow([h.encode(u'utf-8') for h in CSV_HEADERS])
+}
+
+{:
+test = 0
+# init_csv(CSV_FILE)
+}
+
+{:
+def append_row_to_csv(file_path, data):
+    with open(file_path, "ab") as f:
+        writer = csv.writer(f)
+
+        row = []
+        for key in CSV_HEADERS:
+            value = data.get(key, u'')
+            if value is None:
+                value = u''
+            row.append(unicode(value).encode('utf-8'))
+
+        writer.writerow(row)
+}
+<!-- note END запись в файл -->
+
+{:
+def execTemplate(code, data):
+  pageFormat = CPageFormat(pageSize=CPageFormat.A4, orientation=CPageFormat.Portrait, leftMargin=5, topMargin=5, rightMargin=5,  bottomMargin=5)
+
+  infoContext = None
+  for item in data.itervalues():
+    if isinstance(item, CInfo):
+      infoContext = item.context
+      if infoContext:
+        break
+  if not infoContext:
+    infoContext = CInfoContext()
+
+  stream = StringIO.StringIO()
+  execContext = CTemplateContext(data, infoContext, stream, pageFormat)
+
+  canvases = smartDict()
+  sys.stdout = stream
+
+  exec code[0] in execContext.locals, execContext
+  canvases = execContext.getCanvases()
+}
+
+
+
+{:
+def compileTemplate(template):
+  parser = CTemplateParser(template)
+  return parser.compileToCode()
+}
+
 {:
 def get_event(context):
   ref = db.getRecordEx(stmt=u"""
@@ -62,8 +149,9 @@ def get_event(context):
     from Event e
              join EventType et on e.eventType_id = et.id and e.deleted = 0 and et.deleted = 0
              join Client c on e.client_id = c.id and c.deleted = 0
+             join ClientPolicy cp on c.id = cp.client_id and cp.deleted = 0
+             join ClientAddress ca on c.id = ca.client_id and ca.deleted = 0
     where et.context = '{context}'
-    order by e.id desc
     limit 1;
   """.format(context=context))
 
@@ -72,22 +160,23 @@ def get_event(context):
     client_id = forceInt(ref.value(u'client_id'))
     return [event_id, client_id]
   else:
-    return None
+    return [None, None]
 }
 
 {:
 def get_action(context):
   ref = db.getRecordEx(stmt=u"""
-  select e.id        as event_id,
-         e.client_id as client_id,
-         a.id        as action_id
-  from Event e
-           join Client c on e.client_id = c.id and c.deleted = 0
-           join Action a on e.id = a.event_id and e.deleted = 0 and a.deleted = 0
-           join ActionType at on a.actionType_id = at.id and at.deleted = 0
-  where at.context = '{context}'
-  order by e.id desc
-  limit 1;
+    select e.id        as event_id,
+           e.client_id as client_id,
+           a.id        as action_id
+    from Event e
+             join Client c on e.client_id = c.id and c.deleted = 0
+             join ClientPolicy cp on c.id = cp.client_id and cp.deleted = 0
+             join ClientAddress ca on c.id = ca.client_id and ca.deleted = 0
+             join Action a on e.id = a.event_id and e.deleted = 0 and a.deleted = 0
+             join ActionType at on a.actionType_id = at.id and at.deleted = 0
+    where at.context = '{context}'
+    limit 1;
   """.format(context=context))
 
   if ref:
@@ -96,7 +185,7 @@ def get_action(context):
     action_id = forceInt(ref.value(u'action_id'))
     return [event_id, client_id, action_id]
   else:
-    return None
+    return [None, None, None]
 }
 
 {:
@@ -105,8 +194,9 @@ def get_client():
     select e.id        as event_id,
            e.client_id as client_id
     from Event e
-             join Client c on e.client_id = c.id and c.deleted = 0 and e.deleted = 0
-    order by e.id desc
+             join Client c on e.client_id = c.id and c.deleted = 0 and e.deleted = 0 and c.SNILS != ''
+             join ClientPolicy cp on c.id = cp.client_id and cp.deleted = 0
+             join ClientAddress ca on c.id = ca.client_id and ca.deleted = 0
     limit 1;
   """)
 
@@ -115,39 +205,49 @@ def get_client():
     client_id = forceInt(ref.value(u'client_id'))
     return [event_id, client_id]
   else:
-    return None
+    return [None, None]
 }
 
 {:
-def get_template(params):
-    template_id, event_id, client_id, action_id = params
+def get_html(id):
+  ref = None
+  if id:
+    ref = db.getRecordEx(stmt=u"""
+      select rbPT.`default` as html
+      from rbPrintTemplate rbPT
+      where rbPT.id = {id}
+    """.format(id=id))
+  if ref:
+    return forceString(ref.value(u'html'))
+  else:
+    return None
+}
 
-    eventContextData = dict()
+
+{:
+def get_contextData(params):
+    event_id, client_id, action_id = params
+
+    contextData = smartDict()
 
     if event_id:
       try:
-          eventContextData['event'] = CEventInfo(CInfoContext(), event.id)
+          contextData['event'] = CEventInfo(CInfoContext(), event_id)
       except:
           pass
 
     if action_id:
       try:
-          eventContextData['action'] = CActionInfo(CInfoContext(), action.id)
+          contextData['action'] = CActionInfo(CInfoContext(), action_id)
       except:
           pass
 
     if client_id:
       try:
-          eventContextData['client'] = CClientInfo(CInfoContext(), int(client.id))
+          contextData['client'] = CClientInfo(CInfoContext(), int(client_id))
       except:
           pass
-
-    tname, template, tt = getTemplate(template_id) # 288 - id template
-
-    res = compileAndExecTemplate(template, eventContextData)
-    html = res[0]
-
-    return html
+    return contextData
 }
 
 
@@ -159,50 +259,107 @@ templates_ref = db.getRecordList(stmt=u"""
          `default`
   from rbPrintTemplate rbP
   where rbP.deleted = 0
-    and context = 'token'
-    and `default` not regexp 'dialogs'
-  order by context;
+    and rbP.context not in ('token', 'CDA')
+    AND (rbP.`default` NOT REGEXP 'dialogs' and rbP.`default` NOT LIKE '%?xml%')
+    and rbP.name regexp 'самсон'
+    and rbP.id not in (  6201394, 6201521, 6201288, 6201289, 6201290, 6201299, 6201579, 6201411, 6201440, 6201444, 6201479, 6201359, 6201455, 6201456, 6201457, 6201458, 6201486, 6201323, 6201331, 6201466, 6201468, 6201481, 6201498, 6201499, 6201500, 6201501, 6201502, 6201503, 6201504, 6201505, 6201506, 6201507, 6201508, 6201509, 6201510, 6201511, 6201512, 6201513, 6201516, 6201517, 6201519, 6201523, 6201524, 6201525, 6201526, 6201528, 6201531, 6201533, 6201537, 6201539, 6201563, 6201564, 6201582, 6201583, 6201584, 6201587, 6201588, 6201590, 6201591, 6201545, 6201546, 6201547, 6201548, 6201549, 6201550, 6201551, 6201552, 6201553, 6201554, 6201555, 6201556, 6201557, 6201558, 6201559, 6201560, 6201561, 6201562, 6201585, 6201570, 6201571, 6201575, 6201497, 6201496, 6201488, 6201576, 6201491, 6201484, 6201489, 6201581, 6201301, 6201302, 6201483, 6201308, 6201309, 6201351, 6201400, 6201407, 6201421, 6201527, 6201295, 6201594, 6201463, 6201476, 6201404, 6201399, 6201586, 6201417, 6201418, 6201423, 6201514, 6201324,
+  6201332, 6201373, 6201374, 6201375, 6201432, 6201298, 6201320, 6201328, 6201376, 6201538, 6201592, 6201492, 6201363, 6201420, 6201353, 6201364, 6201419, 6201431, 6201350, 6201365, 6201402, 6201352, 6201354, 6201356, 6201366, 6201381, 6201385, 6201325, 6201333, 6201377, 6201379, 6201380, 6201384, 6201321, 6201329, 6201326, 6201334, 6201322, 6201330, 6201346, 6201335, 6201343, 6201378, 6201382, 6201383, 6201284, 6201285, 6201572, 6201573, 6201574, 6201319, 6201327, 6201306, 6201307, 6201362, 6201361, 6201482, 6201406, 6201593, 6201415, 6201544, 6201317, 6201461, 6201318, 6201314, 6201311, 6201310, 6201315, 6201312, 6201316, 6201368, 6201422, 6201401, 6201477, 6201478, 6201405, 6201313, 6201518, 6201495, 6201487, 6201480, 6201566, 6201372, 6201471, 6201287, 6201300, 6201475, 6201349, 6201589, 6201341, 6201542, 6201438, 6201389, 6201465, 6201520, 6201412, 6201408, 6201296, 6201434, 6201439, 6201441, 6201442, 6201493, 6201425, 6201494, 6201485, 6201530, 6201409, 6201304, 6201305, 6201395,
+  6201534, 6201452, 6201446, 6201437, 6201467, 6201426, 6201472, 6201543, 6201429, 6201449, 6201445, 6201445, 6201445, 6201515, 6201535, 6201532, 6201522, 6201529, 6201427)
+  order by rbP.context
+  limit 30;
 """)
+}
 
+{:
+DATA_LIST = []
 if templates_ref:
   for item in templates_ref:
+    data = smartDict()
+
     context = forceString(item.value(u'context'))
     template_id = forceInt(item.value(u'template_id'))
     template_name = forceString(item.value(u'template_name'))
-    print_text(forceString(template_id) + template_name)
 
-    client_response = get_client()
-    if client_response:
-      event_id, client_id = client_response
-      print_text(u'event_id: ' + forceString(event_id) + u'; ' + u'client_id: ' + forceString(client_id) )
-      try:
-        get_template([template_id, event_id,  client_id, None])
-        print_text('тест пройден')
-      except Exception as e:
-        print_text('тест провален')
-        pass
+    data.setdefault(u'template_id', template_id)
+    data.setdefault(u'context', context)
+    data.setdefault(u'template_name', template_name)
+    data.setdefault(u'event_id', 0)
+    data.setdefault(u'client_id', 0)
+    data.setdefault(u'action_id', 0)
+
+    data.setdefault(u'status', u'OK')
+    data.setdefault(u'text_error', u'no error')
 
 
-    if False:
 
-      event_response = get_event(context)
-      if event_response:
-        event_id, client_id = event_response
+    event_id, client_id, action_id = get_action(context)
+    if event_id and client_id and action_id:
+        data[u'event_id'] = event_id
+        data[u'client_id'] = client_id
+        data[u'action_id'] = action_id
+    else:
+        event_id, client_id = get_event(context)
+        if event_id and client_id:
+            data[u'event_id'] = event_id
+            data[u'client_id'] = client_id
+        else:
+            event_id, client_id = get_client()
+            if event_id and client_id:
+                data[u'event_id'] = event_id
+                data[u'client_id'] = client_id
 
-      action_response = get_action(context)
-      if action_response:
-        event_id, client_id, action_id = action_response
+    html = get_html(template_id)
+    contextData = get_contextData([data[u'event_id'],  data[u'client_id'], data[u'action_id']])
+    print_text(contextData)
 
-      client_response = get_client()
-      if client_response:
-        event_id, client_id = client_response
+
+    try:
+        compiled_code = compileTemplate(html)
+        execTemplate(compiled_code, contextData)
+
+        data[u'status'] = u'OK'
+        data[u'text_error'] = u'no error'
+
+    except Exception as e:
+        data[u'status'] = u'FALSE'
+        data[u'text_error'] = forceString(e)
+
+
+    # DATA_LIST.append(data)
+    append_row_to_csv(CSV_FILE, data)
 }
 
 <!-- @formatter:on -->
 
 
 <div class="main">
-  <div align="center" class="h1">test</div>
+  <div align="center" class="h1">DATA_LIST</div>
+  
+  <table width="100%" cellpadding="3" cellspacing="0" border="1">
+    <tr>
+      <th>template</th>
+      <th>template_name</th>
+      <th>client_id</th>
+      <th>event_id</th>
+      <th>action_id</th>
+      <th>status</th>
+      <th>text_error</th>
+    </tr>
+    {for: data in DATA_LIST}
+      <tr>
+        <td>
+          <div>{data.get(u'template_id')}</div>
+          <div>{data.get(u'context')}</div>
+        </td>
+        <td>{data.get(u'template_name')}</td>
+        <td>{data.get(u'client_id')}</td>
+        <td>{data.get(u'event_id')}</td>
+        <td>{data.get(u'action_id')}</td>
+        <td>{data.get(u'status')}</td>
+        <td>{data.get(u'text_error')}</td>
+      </tr>
+    {end:}
+  </table>
 
 
 </div>

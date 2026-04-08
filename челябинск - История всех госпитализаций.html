@@ -1,0 +1,158 @@
+<!--Начальная дата разработки 25.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>История трансфузий по всем госпитализациям</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+
+
+
+{:
+def get_event_transfusions(event_id):
+  ref = []
+  if event_id:
+    ref = db.getRecordList(stmt="""
+       select date(a.begDate)             as d,
+             a.assistant_id              as sid,
+             a.person_id                 as pid,
+             GROUP_CONCAT(apt.name, ':', CASE
+                                             when apt.typeName in ('String', 'Constructor', 'BloodPacket') then aps.value
+                                             when apt.typeName = 'Time' then apt2.value
+                                             when apt.typeName = 'Date' then apd.value end
+                          SEPARATOR ';') as dt
+
+      from Event e
+               left join Action a on a.event_id = e.id
+               Left join ActionProperty ap on ap.action_id = a.id and ap.type_id = 161660
+               Left join ActionProperty_Action apa on ap.id = apa.id
+               Left Join ActionProperty ap2 on ap2.action_id = apa.value
+               Left join ActionPropertyType apt on ap2.type_id = apt.id
+               Left join ActionProperty_String aps on ap2.id = aps.id
+               Left join ActionProperty_Date apd on ap2.id = apd.id
+               Left join ActionProperty_Time apt2 on ap2.id = apt2.id
+
+      where a.actionType_id = 21306
+        and a.deleted = 0
+        and apt.id in (161632, 161633, 161634, 161635, 161636)
+      GROUP BY apa.value
+      order by a.begDate
+    """.format(eid=event_id))
+  return ref
+}
+
+{:
+def get_palata(event_id):
+  ref = None
+  if event_id:
+    ref = db.getRecordEx(stmt="""
+      select ashb.name as p
+      from Action a
+               join ActionProperty ap on a.id = ap.action_id
+               join ActionProperty_HospitalBed aphb on ap.id = aphb.id
+               join ActionPropertyType apt on ap.type_id = apt.id
+               join OrgStructure_HospitalBed ashb on aphb.value = ashb.id
+      where apt.id = 2004
+        and a.id = (select max(id) from Action a2 where a2.event_id = {eid} and a2.actionType_id = 8921)
+    """.format(eid=event_id))
+  if ref:
+    return forceString(ref.value(u'p'))
+  else:
+    return u''
+}
+
+{:
+event_ref_list = db.getRecordList(stmt=u"""
+  select e.id as event_id,
+         e.externalId as externalId
+  from Event e
+  where
+    e.deleted = 0
+    and e.client_id = {clientId}
+""".format(clientId=client.id))
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <p align = "center"><b>ИСТОРИЯ ТРАНСФУЗИЙ (ПЕРЕЛИВАНИЙ) ДОНОРСКОЙ КРОВИ И (ИЛИ) ЕЕ КОМПОНЕНТОВ</b></p>
+
+  <br>
+
+  {if: event_ref_list}
+      {for: ref in event_ref_list}
+        {: event_id = forceInt(ref.value(u'event_id'))}
+        {: externalId = forceString(ref.value(u'externalId'))}
+
+        <h2>{externalId}</h2>
+        {: transfusions = get_event_transfusions(event_id)}
+        {for: row in transfusions}
+          {: blood_packet_data = forceString(row.value('dt')).split(';')}
+          {: env_id_list = blood_packet_data[0].split(':')}
+          {if: len(env_id_list) > 1}
+            {: env_id =  env_id_list[1]}
+            {: env_ref = db.getRecordEx(stmt="""select cc.name as n from opk.catalogs_catalogitem cc
+                                            join opk.pharmacy_storeitem ps on cc.id = ps.catalog_item_id
+                                            where ps.id={srid}""".format(srid=env_id))}
+            {: env = forceString(env_ref.value('n')) if env_ref else u''}
+          {end:}
+
+          <div>{env}</div>
+        {end:}
+
+      {end:} <!--  note END event-->
+  {end:}
+
+
+
+</div>
+</body>
+</html>

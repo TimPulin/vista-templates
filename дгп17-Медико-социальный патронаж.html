@@ -1,0 +1,235 @@
+<!--Начальная дата разработки 20.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: DEV_TEMP-6540 Добавить на вкладке "Картотека" по кнопке "Печать" шаблон печати "Медико-социальный патронаж" -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+<header>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="99%">
+        <div align="center">СПб ГБУЗ « Детская городская поликлиника №17 »</div>
+        <div align="center">кабинет медико-социальной помощи</div>
+      </td>
+      <td>
+      </td>
+    </tr>
+  </table>
+</header>
+  <br>
+<div class="main">
+  <div align="center" class="h1">Медико-социальный патронаж</div>
+
+{:
+client_info_ref = db.getRecordEx(stmt=u"""
+  select os.name as orgstructure_name
+  from ClientAttach ca
+           join OrgStructure os on ca.orgStructure_id = os.id
+  where ca.client_id = {clientId}
+""".format(clientId=client.id))
+
+if client_info_ref:
+  orgstructure_name = forceString(client_info_ref.value(u'orgstructure_name'))
+else:
+  orgstructure_name = u''
+}
+
+
+  <div>
+    Дата <b>«{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.</b>
+    Участок <b>{orgstructure_name}</b>
+  </div>
+
+  <div>1. ФИО ребенка <b>{client.fullName}</b></div>
+  <div>2. Дата рождения <b>{client.birthDate}</b></div>
+  <div>3. Адрес регистрации <b>{client.regAddress}</b></div>
+  <div>4. Адрес проживания, телефон <b>{client.locAddress}</b>, <b>{client.phones}</b></div>
+  <div>5. С кем проживает {render_line(u'5. С кем проживает')}</div>
+
+  <div>ФИО матери, место работы, должность, образование {render_line(u'ФИО матери, место работы, должность, образование')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>ФИО отца, место работы, должность, образование {render_line(u'ФИО отца, место работы, должность, образование')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>ФИО опекуна, место работы, должность, образование {render_line(u'ФИО опекуна, место работы, должность, образование')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>ФИО другого взрослого лица, место работы, должность, образование {render_line(u'ФИО другого взрослого лица, место работы, должность, образование')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>6. Категория семьи: (подчеркнуть) </div>
+  <div>- социального неблагополучия (алкоголизм, наркомания, проституция, в заключении, из заключения , беженцы, временные переселенцы, безработные…)</div>
+  <div>- плохие материально-бытовые условия (в т.ч . доход ниже прожиточного минимума)</div>
+  <div>- демографического риска (неполная семья, многодетная, юная мать)</div>
+  <div>- жестокого обращения с детьми</div>
+  <div>- ориентация семьи на альтернативные и (или) нетрадиционные методы лечения ребенка</div>
+  <div>Другие причины: {render_line(u'Другие причины:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+
+
+  <div>7. Посещает ли ОУ, работает: {render_line(u'7. Посещает ли ОУ, работает:')}</div>
+  <div>8. Вредные привычки {render_line(u'8. Вредные привычки')}</div>
+  <div>{render_line(u'')}</div>
+  <div align="center">
+    <sup>(Асоциальный образ жизни, наркотики, курение, негативное поведение при беседе, психические отклонения)</sup>
+  </div>
+
+  <div>9. Контактность при патронаже у ребенка и взрослых: {render_line(u'9. Контактность при патронаже у ребенка и взрослых:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>10. Состояние здоровья ребенка {render_line(u'10. Состояние здоровья ребенка')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div align="center">
+    <sup>(жалобы, обращения за мед. помощью, прф . осмотры, последствия заболевания, оценка питания, вредные привычки, результаты осмотра психотропного развития)</sup>
+  </div>
+
+
+  <div>11. Жилищно-бытовые условия:</div>
+  <div>- наличие чужих людей в квартире {render_line(u'- наличие чужих людей в квартире')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>- питания {render_line(u'- питания')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>- одежда {render_line(u'- одежда')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>- предметы ухода за ребенком {render_line(u'- предметы ухода за ребенком')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>- наличие игрушек, индивидуального места ребенка {render_line(u'- наличие игрушек, индивидуального места ребенка')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>12. Изменения с прошлого патронажа: {render_line(u'12. Изменения с прошлого патронажа:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>13. Посещения семьи отдела полиции (дата, кем): {render_line(u'13. Посещения семьи отдела полиции (дата, кем):')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>14. Посещения семьи органами социальной защиты (дата, кем): {render_line(u'14. Посещения семьи органами социальной защиты (дата, кем):')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>15. Беседа м/сестры на тему: {render_line(u'15. Беседа м/сестры на тему:')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>Реакция на беседу: {render_line(u'Реакция на беседу:')}</div>
+
+  <div>16. Рекомендации {render_line(u'16. Рекомендации')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>17. Дополнительная информация {render_line(u'17. Дополнительная информация')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>18. Куда переданы докладные о патронаже и о проблема ребенка: {render_line(u'18. Куда переданы докладные о патронаже и о проблема ребенка:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+
+
+  <div>19. Дата следующего патронажа: {render_line(u'19. Дата следующего патронажа:')}</div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <div>Врач кабинета медико-социальной помощи: {render_line(u'Врач кабинета медико-социальной помощи:')}</div>
+      </td>
+      <td>
+        <div>/{'_' * 20}/</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div>Участковый врач педиатр: {render_line(u'Участковый врач педиатр:')}</div>
+      </td>
+      <td>
+        <div>/{'_' * 20}/</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div>Медицинская сестра: {render_line(u'Медицинская сестра:')}</div>
+      </td>
+      <td>
+        <div>/{'_' * 20}/</div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+
+</div>
+</body>
+</html>

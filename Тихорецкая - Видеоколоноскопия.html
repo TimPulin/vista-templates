@@ -1,0 +1,118 @@
+<!--Начальная дата разработки 02.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: colonoscopy -->
+<!--Задача: DEV_TEMP-6386 Добавление нового шаблона Исследование видеоколоноскопия  -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Видеоколоноскопия</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+.padding {
+  padding: 10px 20px;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+<header>
+  <div align="center">
+    {currentOrganisation.title}
+  </div>
+  <div align="center">
+    Отделение функциональной диагностики
+  </div>
+  <div align="center">
+    Эндоскопический кабинет (131)
+  </div>
+  <div align="center"><sup>{currentOrganisation.address}</sup></div>
+</header>
+
+<div class="main">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%" class="white-wrap">
+        <div align="center"><b>Дата:</b>&nbsp;</div>
+        <div align="center">{action.begDate.toString(u'dd.MM.yyyy')}&nbsp;</div>
+      </td>
+      <td width="1%" class="white-wrap">
+        <div align="center"><b>Возраст:</b>&nbsp;</div>
+        <div align="center">{client.birthDate}&nbsp;</div>
+      </td>
+      <td align="center" valign="middle">
+        {client.fullName}
+      </td>
+{: hospital_eventtype_ids = [53, 60, 87, 138, 148, 153, 175, 176, 221, 222, 229, 230, 233, 234, 236, 239, 240, 243, 263, 284, 285, 286, 289, 304, 376, 380, 423]}
+      <td width="1%" class="white-wrap padding" align="center" valign="middle">
+        {if: event.getEventTypeId() in hospital_eventtype_ids}
+            стац.
+        {else:}
+            амб.
+        {end:}
+      </td>
+    </tr>
+  </table>
+
+  <div align="center" class="h1">Видеоколоноскопия № {action[u'Номер исследования']}</div>
+
+  {for: prop in action}
+    {if: prop.name != u'Номер исследования' }
+      <div>
+        <b>{prop.name}</b>: {prop.value:n}
+      </div>
+    {end:}
+  {end:}
+
+  <br>
+
+  <div>
+    Врач: {'_' * 20} {action.person.fullName}
+  </div>
+
+
+</div>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!--Начальная дата разработки 24.12.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: kon_dn3 -->
+<!--Задача: SUP-54738 Настройка новых платных услуг -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Акт сдачи-приемки медицинских услуг</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+contract_info_ref = db.getRecordEx(stmt=u"""
+	select DATE_FORMAT(dateContract, '%d.%m.%Y')                  as contract_start_date,
+				 el.lastName                                            as payer_lastName,
+				 el.firstName                                           as payer_firstName,
+				 el.patrName                                            as payer_patrName,
+				 CONCAT_WS(' ', el.lastName, el.firstName, el.patrName) as payer_fio,
+				 DATE_FORMAT(el.birthDate, '%d.%m.%Y')                  as payer_birthdate,
+				 CONCAT(el.serialLeft, el.serialRight)                  as payer_doc_serial,
+				 el.number                                              as payer_doc_number,
+				 rbDT.name                                              as payer_doc_type,
+				 el.issuedBy                                            as payer_doc_issue,
+				 el.regAddress                                          as payer_regAddress,
+				 el.phoneNumber                                         as payer_phone,
+         el.numberContract
+	from Event_LocalContract el
+					 left join rbDocumentType rbDT on el.documentType_id = rbDT.id
+	where el.master_id = {event_id};
+""".format(event_id=event.id))
+
+if contract_info_ref:
+	contract_start_date = forceString(contract_info_ref.value(u'contract_start_date'))
+	payer_lastName = forceString(contract_info_ref.value(u'payer_lastName'))
+	payer_firstName = forceString(contract_info_ref.value(u'payer_firstName'))
+	payer_patrName = forceString(contract_info_ref.value(u'payer_patrName'))
+	payer_fio = forceString(contract_info_ref.value(u'payer_fio'))
+	payer_birthdate = forceString(contract_info_ref.value(u'payer_birthdate'))
+	payer_doc_serial = forceString(contract_info_ref.value(u'payer_doc_serial'))
+	payer_doc_number = forceString(contract_info_ref.value(u'payer_doc_number'))
+	payer_doc_type = forceString(contract_info_ref.value(u'payer_doc_type'))
+	payer_doc_issue = forceString(contract_info_ref.value(u'payer_doc_issue'))
+	payer_regAddress = forceString(contract_info_ref.value(u'payer_regAddress'))
+	payer_phone = forceString(contract_info_ref.value(u'payer_phone'))
+	numberContract = forceString(contract_info_ref.value(u'numberContract'))
+else:
+	contract_start_date = u'«____» ______ 20____'
+	payer_lastName = u''
+	payer_firstName = u''
+	payer_patrName = u''
+	payer_fio = u''
+	payer_birthdate = u''
+	payer_doc_serial = u''
+	payer_doc_number = u''
+	payer_doc_type = u''
+	payer_doc_issue = u''
+	payer_regAddress = u''
+	payer_phone = u''
+	numberContract = u''
+}
+
+{:
+service_ref_list = db.getRecordList(stmt=u"""
+  SELECT at.code  as service_code,
+         at.name  as service_name,
+         ct.price as price,
+         a.amount as amount
+  FROM Action a
+           JOIN ActionType at ON a.actionType_id = at.id
+           JOIN ActionType_Service ats ON at.id = ats.master_id
+           JOIN Contract_Tariff ct ON ats.service_id = ct.service_id
+           JOIN Contract c ON ct.master_id = c.id AND c.finance_id = 4
+  WHERE a.event_id = {event_id};
+""".format(event_id=event.id))
+
+total_sum = 0.0
+if service_ref_list:
+	for ref in service_ref_list:
+		price = forceDouble(ref.value(u'price'))
+		total_sum += price
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+		<!-- note Акт сдачи -->
+		<section>
+			<div align="center" class="h1">
+				Акт сдачи-приемки медицинских услуг
+			</div>
+
+			<div align="justify">
+				Мы, нижеподписавшиеся, <b>ГБУЗ ПТД № 1</b>, в лице главного врача <b>Майдан Валентины Вартавасовны</b>, действующей на основании устава, именуемый «Исполнитель», с одной стороны и
+				<b>{client.fullName}</b>
+
+				именуемый «Пациент» с другой стороны, составили настоящий акт в том, что согласно договору
+				№ <b>{numberContract}</b> от <b>{contract_start_date}</b>г.,
+				Исполнитель оказал услуги в полном объеме на сумму
+				<b>{total_sum}</b>
+			</div>
+			<br>
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td width="1%" class="white-wrap">
+						<div>ИСПОЛНИТЕЛЬ&nbsp;</div>
+					</td>
+					<td>{'_' * 30}</td>
+					<td width="1%" class="white-wrap">Майдан Валентина Вартавасовна&nbsp;</td>
+				</tr>
+				<tr>
+					<td width="1%" class="white-wrap"><div>М.П.&nbsp;</div></td>
+					<td></td>
+					<td></td>
+				</tr>
+
+				<tr>
+					<td colspan="3">&nbsp;</td>
+				</tr>
+
+				<tr>
+					<td width="1%" class="white-wrap">
+						<div>ПАЦИЕНТ&nbsp;</div>
+					</td>
+					<td>{'_' * 30}</td>
+					<td width="1%" class="white-wrap">{client.fullName}&nbsp;</td>
+				</tr>
+			</table>
+		</section>
+		<!-- note END Акт сдачи -->
+
+
+</div>
+</body>
+</html>

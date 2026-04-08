@@ -1,0 +1,205 @@
+<!--Начальная дата разработки 25.12.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: neviks -->
+<!--Задача: DEV_TEMP-6293 Шаблоны печати для Регистратуры НЭВИКСа -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Анкета</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+.client-info {
+    margin-left: 15px;
+    margin-bottom: 10px;
+}
+.client-info div {
+    margin-bottom: 3px;
+}
+.tbl-form {
+    margin-bottom: 10px;
+    border-collapse: collapse;
+}
+.tbl-form th,
+.tbl-form td {
+    font-size: 12pt;
+    border: 1px solid #000;
+}
+.client-sign td {
+    border: none;
+    padding-top: 10px;
+    padding-left: 15px;
+}
+</style>
+''')}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">Анкета для опроса пациентов</div>
+
+  <div class="client-info">
+    <div>
+      Ф.И.О. пациента <b>{client.fullName}</b>
+    </div>
+    <div>
+      Дата рождения <b>{client.birthDate}</b>
+    </div>
+  </div>
+
+  <table width="100%" cellpadding="3" cellspacing="0" class="tbl-form">
+    <thead>
+      <tr>
+        <th width="60%">Вопрос анкеты</th>
+        <th width="50%">Развернутый ответ/ да/ нет</th>
+      </tr>
+    </thead>
+
+      <tr>
+        <td>
+          1.По поводу каких заболеваний Вы обращались за медицинской помощью за последний год?
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          2.Болезни органов пищеварения (болезни зубов и полости рта, пищевода,гастрит,дуоденит,энтерит,колит,холецистит,желчно-каменная болезнь ,панкреатит, гепатит, цирроз печени, язвенная болезнь, грыжа и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          3.Болезни сердца и сосудов (ИБС, гипертоническая болезнь, стенокардия, инфаркт миокарда, атеросклероз, аритмия, тахикардия, ревматизм, порок сердца, инсульта, варикозное расширение вен, тромбофлебиты и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          5.Болезни органов дыхания (бронхиальная астма, бронхит, пневмония, эмфизема, пневмосклероз, аллергические и вазомоторные риниты, назофарингит, синусит, грипп, ОРВИ и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          6.Эндокринные заболевания (диабет, болезни щитовидной железы, гормональные нарушения и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          7.Болезни мочеполовой системы (гинекологические заболевания, аденома предстательной железы простатит мочекаменная болезнь, пиелонефрит, гломерулонефрит, гематурия, цистит и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          8.Болезни нервной системы (паркинсонизм, тремор, эпилепсия, рассеянный  склероз, мигрень и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          9. Болезни уха (отит болезни слухового нерва и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          10. Болезни глаз (катаракта, глаукома, болезнь сетчатки и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          11.Онкологические заболевания
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          12.Кожные болезни (дерматит, псориаз, лишай, крапивница, болезни ногтей и др.)
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          13.Расстройства психики и поведения
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          14.Болезни крови и иммунодефициты
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          15.Травмы, ожоги, обморожения, отравления и их последствия
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>
+          16. Страдаете ли Вы хроническими заболеваниями?
+        </td>
+        <td></td>
+      </tr>
+
+      <tr class="client-sign">
+        <td width="60%">
+          Подпись пациента _____________
+        </td>
+        <td width="50%">
+          Дата <b>{currentDate}</b>
+        </td>
+      </tr>
+  </table>
+
+
+
+
+</div>
+</body>
+</html>

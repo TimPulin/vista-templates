@@ -1,0 +1,18 @@
+<!-- note создание qr-code -->
+{:
+import base64
+import qrcode
+from io import BytesIO
+}
+
+{:
+SEPARATOR = u';'
+codeString = u''
+
+img = qrcode.make(codeString)
+buffered = BytesIO()
+img.save(buffered, format="PNG")
+img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+}
+
+<img src="data:image/png;base64,{img_str}" width="100" alt="qr">

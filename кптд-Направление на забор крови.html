@@ -1,0 +1,89 @@
+<!--Начальная дата разработки 16.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: f030 -->
+<!--Задача: KPTD-1448 Создать кабинеты забора крови и направления на забор крови  (Детское) и  (Взрослое) -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Направление на забор крови</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+
+.block-solid {
+    break-inside: avoid;
+}
+
+.small {
+  font-size: 8pt;
+}
+</style>
+''')}
+
+{:
+ANAL_LIST = []
+for act in event.actions:
+    if act.deleted ==0 and act.typeId in (34946, 34945):
+        ANAL_LIST.append(act)
+}
+
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+
+{for: act in ANAL_LIST}
+    <table BORDER=1 WIDTH="100%" cellpadding="3" cellspacing="0" class="block-solid">
+        <tr>
+            <td align="center" COLSPAN=4><b>{currentOrgStructure.organisation.fullName}</b></td>
+        </tr>
+        <tr>
+            <td align="center" COLSPAN=4><b>Направление на забор крови</b></td>
+        </tr>
+        <tr class="small">
+            <td colspan="4">
+                ФИО: <font SIZE=+2>{client.fullName}</font><br>
+                Дата рожд. {client.birthDate} ({client.age} лет),&nbsp;Амб. карта <b>{client.id}</b><br>
+                Документ: <b>{client.document.serial} {client.document.number}</b><br>
+                Полис: <b>{client.policy}</b><br>
+                Регистрация: <b>{client.regAddress}</b><br>
+                Проживание: <b>{client.locAddress}</b><br>
+                Снилс: <b>{client.SNILS}</b>
+            </td>
+        </tr>
+        <tr class="small">
+            {: ticket = act[u'номерок'].value}
+            <td valign="top" width="15%">Дата: <font size=+1><b>{ticket.datetime.toString(u"dd.MM.yyyy")}</b></font></td>
+            <td valign="top" width="10%">Время: <font size=+1><b>{ticket.datetime.toString(u"hh:mm")}</b></font></td>
+            <td valign="top" width="10%">Номер: <font size=+1><b></b>{forceInt(ticket.idx) + 1}</font></td>
+            <td valign="top" width="45%">Место: <font size=+1><b>{ticket.orgStructure}</b></font></td>
+        </tr>
+    </table>
+{end:}
+
+</div>
+</body>
+</html>

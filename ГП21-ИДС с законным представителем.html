@@ -1,0 +1,192 @@
+<!-- ИДС с законным представителем -->
+<!--Начальная дата разработки 07.04.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: f0001 -->
+<!--Задача: SUP-56266 Добавить в тип обращения «Платные услуги» в меню кнопки «Печать» следующие формы документов -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1"></div>
+
+<div class="main">
+  <div align="center" class="h1">Информированное добровольное согласие на получение платных медицинских услуг</div>
+  <div>Настоящее информированное добровольное согласие составлено в соответствии с Федеральным законом от 21.11.2011 №323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации»,</div>
+  <br>
+  <div>Я, {render_line(u'Я')}</div>
+  <div align="center"><sup>(Ф.И.О. законного представителя недееспособного пациента))</sup></div>
+  <div>«____» ______ 20____г. рождения, зарегистрированный по адресу:</div>
+  <div>{render_line(u'')}</div>
+  <div align="center"><sup>(адрес проживания)</sup></div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="top" width="1%" class="white-wrap"><div>в отношении&nbsp;</div></td>
+      <td>
+        <div><b>{client.fullName}</b></div>
+        <div align="center"><sup>фамилия, имя, отчество пациента при подписании согласия законным представителем</sup></div>
+      </td>
+    </tr>
+  </table>
+
+  <div>
+    «{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.
+    рождения, проживающего по адресу:
+  </div>
+
+  <div>
+    <b>{client.regAddress}</b>
+  </div>
+  <div align="center"><sup>адрес регистрации и фактического проживания пациента</sup></div>
+
+
+  <div>даю информированное добровольное согласие (ИДС) на следующие виды медицинских вмешательств:</div>
+
+{:
+service_list = db.getRecordList(stmt=u"""
+select at.name,
+       at.code
+from Event e
+         join Action a on e.id = a.event_id and !a.deleted and !e.deleted
+         join ActionType at on a.actionType_id = at.id and !at.deleted
+where e.id = {event_id};
+""".format(event_id=event.id))
+}
+
+  {for: service in service_list}
+    <div class="bold">
+      {forceString(service.value(u'name'))}
+      {forceString(service.value(u'code'))}
+    </div>
+  {end:}
+
+
+  <div align="center"><sup>вид вмешательства/услуги, код по номенклатуре</sup></div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="white-wrap" valign="top" width="1%">Медицинским работником&nbsp;</td>
+      <td>
+        <div>{'_' * 40}</div>
+        <div align="center"><sup>(должность, Ф.И.О. медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+
+
+
+  <div align="justify">в доступной для меня форме мне разъяснены цели, методы оказания медицинской помощи, связанный с ними риск, возможные варианты медицинских вмешательств, их последствия, в том числе вероятность развития осложнений, а также предполагаемые результаты оказания медицинской помощи.</div>
+  <div>Противопоказаниями к вмешательству являются: {render_line(u'Противопоказаниями к вмешательству являются:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>Своей подписью я подтверждаю, что не имею вышеуказанных противопоказаний.</div>
+  <div>Сообщаю, что имею следующие хронические заболевания: {render_line(u'Сообщаю, что имею следующие хронические заболевания:')}</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div>Имею аллергические реакции на {render_line(u'Имею аллергические реакции на (или указать - не имею)')} (или указать - не имею)</div>
+
+  <div>Одновременно прохожу лечение в {render_line(u'Одновременно прохожу лечение в')} </div>
+  <div>принимаю следующие лекарственные препараты и средства</div>
+  <div>{render_line(u'')}</div>
+  <div>{render_line(u'')}</div>
+
+  <div align="justify">Мне разъяснено, что курс лечения проводится в несколько сеансов, количество которых зависит от индивидуальной реакции организма на процедуру и степени выраженности изменений, которые необходимо устранить. Для получения желаемого результата может потребоваться повтор процедуры. Мне разъяснено, что процедуру сопровождает болезненность в местах введения препарата. После процедуры возможны такие изменения как: покраснение, локальный отёк, зуд, подкожные кровоизлияния, папулы. Все последствия являются временными с индивидуальным сроком разрешения, при условии выполнения данных рекомендаций к дальнейшему уходу за кожей после вмешательства. Мне разъяснено, что я имею право отказаться от одного или нескольких видов медицинских вмешательств или потребовать их прекращения.</div>
+  <div align="justify">Я понимаю, что несообщение о наличии у меня противопоказаний, аллергических реакций, хронических заболеваний, принимаемых лекарственных средств и препаратов а так же несоблюдение рекомендаций, могут повлечь осложнения и привести к дополнительным хирургическим, лечебным, диагностическим процедурам, что может потребовать от меня денежных и временных затрат, возможного освобождения от работы, и СПб ГБУЗ «Городская поликлиника №21» не несет ответственности в случае возникновения осложнений, если я не сообщил(а) или не знал(а) о своих противопоказаниях, но дал/а свое согласие на медицинское вмешательство. Мне была предоставлена возможность задать интересующие меня вопросы по поводу целей, методов, рисков, возможных вариантов и предполагаемых результатов медицинского вмешательства. Медицинским работником даны ответы на дополнительно возникшие у меня вопросы.</div>
+  <div align="justify">Я удостоверяю, что ознакомилась (ознакомился) с приведённой выше информацией, что полученные мной объяснения меня полностью удовлетворяют, и я подтверждаю своё согласие на медицинское вмешательство.</div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="1%">
+        <div class="white-wrap" align="center">{'_' * 20}</div>
+        <div class="white-wrap" align="center"><sup>(подпись)</sup></div>
+      </td>
+      <td>
+        <div align="center">{'_' * 40}</div>
+        <div align="center"><sup>(Ф.И.О. пациента- заполняется пациентом собственноручно)</sup></div>
+      </td>
+    </tr>
+
+    <tr>
+      <td width="1%">
+        <div class="white-wrap" align="center">{'_' * 20}</div>
+        <div class="white-wrap" align="center"><sup>(подпись)</sup></div>
+      </td>
+      <td>
+        <div align="center">{'_' * 40}</div>
+        <div align="center"><sup>(Ф.И.О. медицинского работника)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+<table cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <div>«{forceString(event.setDate.toString('dd'))}» {forceString(month[event.setDate.date.month()])} {forceString(event.setDate.date.year())} г.</div>
+      <div align="center"><sup>(дата оформления)</sup></div>
+    </td>
+  </tr>
+</table>
+</div>
+
+</div>
+</body>
+</html>

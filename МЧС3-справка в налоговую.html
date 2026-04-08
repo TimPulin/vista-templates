@@ -1,3 +1,16 @@
+{:
+def svg_to_base64(svg):
+    b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return "data:image/svg+xml;base64,{b64}".format(b64=b64)
+}
+{:
+def create_data(text):
+    bit = code128_encode(forceString(text))
+    svg = barcode_svg(bit)
+    b64 = svg_to_base64(svg)
+    return "data:image/svg+xml;base64,{b64}".format(b64=b64)
+}
+
 <!-- изменил Пулин дата 24.02.2025 задача  -->
 <!-- изменил Пулин дата 10.02.2025 задача  -->
 <!-- изменил Пулин дата 24.01.2025 задача  -->

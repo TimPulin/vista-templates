@@ -66,7 +66,7 @@ def render_line(str, base_length = 80):
 <!-- @formatter:on -->
 </head>
 <body>
-<h2>{event.policlinicReferral.number}</h2>
+
 <div class="main">
 
   <header class="header">
@@ -74,8 +74,7 @@ def render_line(str, base_length = 80):
       <tr>
         <td width="1%" valign="top">
           <div class="white-wrap xs">
-            Наименование и адрес медицинской организации <br>
-            (фамилия, имя, отчество (при наличии) <br> индивидуального предпринимателя и адрес <br> осуществления медицинской деятельности)
+            Наименование и адрес медицинской организации
           </div>
           <div>
             <b>{currentOrganisation.title}</b>
@@ -84,8 +83,7 @@ def render_line(str, base_length = 80):
             <b>{currentOrganisation.address}</b>
           </div>
           <div class="white-wrap xs">
-            Основной государственный регистрационный номер <br> (Основной государственный регистрационный <br>
-            номер индивидуального предпринимателя)
+            Основной государственный регистрационный номер
           </div>
           <div>
             <b>{currentOrganisation.OGRN}</b>

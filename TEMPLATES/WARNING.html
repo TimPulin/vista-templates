@@ -1,0 +1,27 @@
+{: from PyQt4.QtGui import QMessageBox as mb}
+{mb.critical(None, u'Проверка заполнения данных', u'<b>ВНИМАНИЕ!</b><br><br>' + error_log, mb.Ok, mb.Ok)}
+{exit(0)}
+
+{:
+from PyQt4.QtGui import QMessageBox as mb
+def show_warning(error_log):
+  mb.critical(None, u'Проверка заполнения данных', u'<b>ВНИМАНИЕ!</b><br><br>' + error_log, mb.Ok, mb.Ok)
+  mb.exec(0)
+}
+
+<!--
+note Пример
+
+QMessageBox msgBox;  //www.itmathrepetitor.ru
+msgBox.setText("Внимательно прочтите!");
+msgBox.setInformativeText("Ок - процесс пошел\nCancel - замести следы");
+msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+msgBox.setIcon(QMessageBox::Information);
+msgBox.setDefaultButton(QMessageBox::Ok);
+int res = msgBox.exec();
+if (res == QMessageBox::Ok) //нажата кнопка Ok
+        doSomething();
+else //отмена
+        stopSomething(); //  отмена
+
+-->

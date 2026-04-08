@@ -1,0 +1,193 @@
+<!--Начальная дата разработки 09.02.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: token -->
+<!--Задача: DEV_TEMP-6420 Добавить новый шаблон "Направление на КТ и МРТ" в шаблоны -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Форма направления На проведение магнитно-резонансной, рентгеновской компьютерной томографии</title>
+
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.mb {
+  margin-bottom: 10px;
+}
+.highlight {
+  font-weight: 900;
+  text-decoration: underline;
+}
+.small {
+  font-size: 8pt;
+}
+
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+<header>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="99%"></td>
+      <td width="1%" class="white-wrap small">
+        <div>Приложение №&nbsp;</div>
+        <div>К распоряжению администрации&nbsp;</div>
+        <div>Выборгского района Санкт-Петербурга&nbsp;</div>
+        <div>От «___» _______________2023 №___&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+      </td>
+    </tr>
+  </table>
+</header>
+
+<div class="main">
+  <div class="mb">
+    <div align="center" class="h1">
+      Форма направления<br/>
+      На проведение магнитно-резонансной, рентгеновской компьютерной томографии №
+    </div>
+  
+    <div align="center"><sup>(нужное подчеркнуть)</sup></div>
+    <div align="center">Дата направления «____» ______ 20____г.</div>
+  </div>
+
+  <br>
+
+  <div class="mb">
+    <div align="center">{currentOrganisation.title}</div>
+    <div align="center"><sup>(наименование медицинской организации, выдавшей направление)</sup></div>    
+  </div>
+
+  <div class="mb">
+    <div align="center">{render_line()}</div>
+    <div align="center"><sup>(наименование медицинской организации, где будет проводиться исследование)</sup></div>
+  </div>
+
+  <div>Ф.И.О. больного <b>{client.fullName}</b></div>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        Пол (<span class="{highlight if client.sex.lower() == u'м' else u''}">м</span>,
+        <span class="{highlight if client.sex.lower() == u'ж' else u''}">ж</span>),
+        дата рождения <b>{client.birthDate}</b>
+      </td>
+      <td>
+        № истории болезни (амб. карты) <b>{client.id}</b>
+      </td>
+    </tr>
+  </table>
+
+
+  <div>Домашний адрес, телефон <b>{client.regAddress}</b>, <b>{client.phones}</b></div>
+
+  <div>Анамнез заболевания и клинические симптомы</div>
+  <div>{render_line()}</div>
+  <div>{render_line()}</div>
+  <div>{render_line()}</div>
+
+  <br>
+
+  <div>Данные ранее проводимых рентгенологических и инструментальных методов исследования</div>
+  <div>{render_line()}</div>
+  <div>{render_line()}</div>
+  <div>{render_line()}</div>
+
+
+  <div>Диагноз: {render_line(u'Диагноз:')}</div>
+
+  <div>Код по МКБ-10: {render_line(u'Код по МКБ-10:')}</div>
+
+  <div>Цель исследования: определение дальнейшей тактики ведения {render_line(u'Цель исследования определение дальнейшей тактики ведения')}</div>
+
+  <div>
+    <i>(подозрение на онкологическое заболевание/наблюдение пациента с онкологическим заболеванием/диспансерное наблюдение пациента, перенесшего онкологическое заболевание/исследование в рамках диспансеризации/иная цель)</i>
+  </div>
+
+  <br>
+
+  <div>Наименование исследования</div>
+    <div>{render_line()}</div>
+  <div>{render_line()}</div>
+  <div style="margin-bottom: 5px">{render_line()}</div>
+
+  <div align="center" style=" line-height: 12px;">
+    <sup>(указывается наименование исследования в соответствии с Номенклатурой медицинских услуг, утвержденной приказом Минздрава России от 13.10.2017 №804н)</sup>
+  </div>
+
+  <br>
+
+  <div>
+    Необходимость премедикации или анестезиологического обеспечение исследования
+    {render_line(u'Необходимость премедикации или анестезиологического обеспечение исследования')}
+  </div>
+  <div>{render_line()}</div>
+
+  <div>
+    Данные о переносимости йодсодержащих рентгеноконтрастных препаратов
+    {render_line(u'Данные о переносимости йодсодержащих рентгеноконтрастных препаратов')}
+  </div>
+  <div>{render_line()}</div>
+
+  <br>
+
+  <div>Лечащий врач медицинской организации, выдавшей направление</div>
+  <div>{render_line()}</div>
+  <div align="center"><sup>(телефон, подпись)</sup></div>
+
+
+
+  <div>Дата проведения врачебной (отборочной) комиссии «____» ______ 20____г.</div>
+
+  <div>Гл. врач (руководитель подразделения) {render_line(u'Гл. врач (руководитель подразделения)')}</div>
+
+  <div>Дата исследования «____» ______ 20____г.</div>
+</div>
+
+
+
+</div>
+</body>
+</html>

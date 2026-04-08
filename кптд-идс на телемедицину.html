@@ -1,0 +1,314 @@
+<!--Начальная дата разработки 20.03.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача: KPTD-1454 Добавить согласие на проведение телемедицинской консультации в МАХ -->
+
+<!--
+note Внимание! Шаблоны-близнецы
+ МЕНЯЕШЬ ОДНИ - МЕНЯЙ ВСЕ
+select * from rbPrintTemplate where id in (1879, 1880, 1881, 1882, 1883);
+
+-->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ИДС на проведение телемедицинской консультации</title>
+  <!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.underline-text {
+    margin-top: 0;
+    line-height: 9pt;
+    font-size: 9pt;
+    vertical-align: top;
+    text-align: center;
+}
+
+.counter {
+    counter-reset: point 0;
+}
+
+.counter__point {
+    counter-increment: point 1;
+    position: relative;
+    padding-left: 10px;
+}
+.counter__point:before {
+    content: counter(point)'.';
+    position: absolute;
+    top: 0;
+    left: 0;
+    text-align: right;
+}
+
+.line {
+    display: flex;
+    align-items: flex-end;
+}
+.line__item {
+    flex: 1 1 0;
+    align-content: baseline;
+    margin-left: 5px;
+    width: 100%;
+    height: 1em;
+    border-bottom: 1px solid #000 ;
+}
+
+
+.tbl-sign td {
+  vertical-align: top;
+}
+
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main counter">
+  <div class="h1">
+    ИНФОРМИРОВАННОЕ ДОБРОВОЛЬНОЕ СОГЛАСИЕ <br>
+    на проведение телемедицинской консультации, в т.ч. по закрытию ЭЛН <br>
+    и записи на прием к врачу через национальный мессенджер МАХ
+  </div>
+
+  <div class="counter__point">
+    <div>
+      Я, нижеподписавшийся (аяся), {client.patient_fio}
+    </div>
+    <div class="underline-text">
+      <sup>(Ф.И.О. пациента/законного представителя (родители, усыновители, опекуны)</sup>
+    </div>
+
+    <div>
+      настоящим подтверждаю, что в соответствии со ст. 19 Федерального закона от 21.11.2011 № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации», согласно моей воле, в доступной для меня форме, проинформирован(а) о необходимости проведения телемедицинской консультации в т.ч. через национальный мессенджер МАХ по поводу:
+    </div>
+
+    <div class="line">
+      <span>а) моей болезни</span>
+      <div class="line__item">&nbsp;</div>
+    </div>
+
+    <div class="line">
+      <span>б) закрытия листа нетрудоспособности</span>
+      <div class="line__item">&nbsp;</div>
+    </div>
+
+    <div class="line">
+      <span>в) болезни</span>
+      <div class="line__item">&nbsp;</div>
+    </div>
+    <div class="underline-text">
+      <sup>(Ф.И.О. несовершеннолетнего до 15 лет, недееспособного)</sup>
+    </div>
+
+    <div class="line">
+      <span>Представляемого мной на основании</span>
+      <div class="line__item">&nbsp;</div>
+    </div>
+    <div class="line">
+      <div class="line__item">&nbsp;</div>
+    </div>
+    <div class="underline-text">
+      <sup>(наименование и реквизиты правоустанавливающего документа, кем, когда выдан)</sup>
+    </div>
+  </div>
+
+  <div class="counter__point">
+    Я получил(а) полные и всесторонние разъяснения, включая исчерпывающие ответы на заданные мной вопросы об условиях, целях и задачах проведения телемедицинской консультации в т.ч. через национальный мессенджер МАХ
+  </div>
+
+  <div class="counter__point">
+    Я добровольно в соответствии со ст. 20 Федерального закона от 21.11.2011 № 323-ФЗ «Об основах охраны здоровья граждан в Российской Федерации» даю свое согласие на проведение мне (представляемому мной лицу) телемедицинской консультации специалиста ГБУЗ КПТД, в т.ч. через национальный мессенджер МАХ
+  </div>
+
+  <div class="counter__point">
+    Я понимаю необходимость проведения телемедицинской консультации, осознаю риск связанный с возможной утечкой информации.
+  </div>
+
+  <div class="counter__point">
+    Я осознаю, что полученные в результате телемедицинской консультации заключения будут иметь рекомендательный характер, и что дальнейшее ведение случая моей болезни будет осуществляться по решениям моего лечащего врача.
+  </div>
+
+  <div class="counter__point">
+    Я не возражаю против передачи данных о моей болезни, записи телемедицинской консультации в т.ч. через национальный мессенджер МАХ на электронные носители и демонстрации лицам с медицинским образованием – исключительно в медицинских, научных или обучающих целях с учетом сохранения врачебной тайны.
+  </div>
+
+  <div class="counter__point">
+    Я удостоверяю, что текст моего информированного согласия на телемедицинскую консультацию мною прочитан, мне понятно назначение данного документа, полученные разъяснения понятны и меня удовлетворяют.
+  </div>
+
+  <div class="counter__point">
+    Я подтверждаю, то я информирован о возможности осуществления записи меня на прием к врачу ГБУЗ КПТД через мессенджер MAX.
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0" class="tbl-sign">
+    <tr>
+      <td>
+        «{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.
+      </td>
+      <td>
+        <div align="center">
+          {client.fullName}
+        </div>
+        <div class="underline-text">
+          <sup>(подпись пациента или его законного представителя)</sup>
+        </div>
+      </td>
+      <td>
+        <div align="center">
+          /_________________________/
+        </div>
+
+        <div class="underline-text">
+          <sup>(расшифровка подписи)</sup>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+
+
+  <div>
+    Настоящий документ оформлен
+  </div>
+
+  <div>
+    {currentPerson.fullName}
+  </div>
+  <div class="underline-text">
+    <sup>(лечащий врач, заведующий отделением ЛПУ, другой специалист, Принимающий непосредственное участие в обследовании и лечении)</sup>
+  </div>
+
+  <div>
+    по результатам предварительного информирования пациента (законного представителя) о состоянии его здоровья (здоровья представляемого)
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0" class="tbl-sign">
+    <tr>
+      <td>
+        «{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.
+      </td>
+      <td>
+        <div align="center">
+          _________________________
+        </div>
+        <div class="underline-text">
+          <sup>(подпись)</sup>
+        </div>
+      </td>
+      <td>
+        <div align="center">
+          /_________________________/
+        </div>
+
+        <div class="underline-text">
+          <sup>(расшифровка подписи)</sup>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <br>
+
+  <div>
+    Если пациент по каким-либо причинам не может собственноручно подписать данный документ, настоящий документ заверяется двумя подписями медицинских работников ЛПУ.
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" class="tbl-sign">
+    <tr>
+      <td>
+        «{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.
+      </td>
+      <td>
+        <div align="center">
+          _________________________
+        </div>
+        <div class="underline-text">
+          <sup>(подпись)</sup>
+        </div>
+      </td>
+      <td>
+        <div align="center">
+          /_________________________/
+        </div>
+
+        <div class="underline-text">
+          <sup>(расшифровка подписи)</sup>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        «{currentDate.date.toString('dd')}» {forceString(month[currentDate.month])} {forceString(currentDate.year)} г.
+      </td>
+      <td>
+        <div align="center">
+          _________________________
+        </div>
+        <div class="underline-text">
+          <sup>(подпись)</sup>
+        </div>
+      </td>
+      <td>
+        <div align="center">
+          /_________________________/
+        </div>
+
+        <div class="underline-text">
+          <sup>(расшифровка подписи)</sup>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+
+
+</div>
+
+</body>
+</html>

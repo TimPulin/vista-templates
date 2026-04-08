@@ -1,0 +1,509 @@
+<!-- изменил Пулин дата 26.01.2026 задача DEV_TEMP-6355 Добавить  шаблон печати направления 057 -->
+<!-- изменил Шахбанов дата 24.11.2025 задача  -->
+<!-- изменил Шахбанов дата 29.10.2025 задача  -->
+<!--Начальная дата разработки 20.10.2025 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати:  -->
+<!--Задача:  -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Направление для оказания медицинской помощи</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import smartDict }
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+
+{: from PyQt4 import QtCore} <!--Подключаем модуль QtCore для работы с датами, подключаем модуль QtGui для работы с БД-->
+{: from library.dbfpy.dbf import *} <!--Модуль для работы с dbf-->
+{: from library.DialogBase import CDialogBase} <!--Модуль для работы с диалогами-->
+{: from types import *} <!--Модуль для работы с типами данных-->
+{: f = 0}
+{: referralnumber = ''}
+
+{: db = QtGui.qApp.db} <!--Подключаемся к базе-->
+<!--текст запроса-->
+{: ref = db.getRecordList(stmt="""
+  SELECT number
+  FROM Referral
+  WHERE deleted = 0
+    AND client_id = {clientId}
+  HAVING number
+  ORDER BY id DESC
+""".format(clientId=event.client.id)) }
+{: numlist = [] }
+{for: baldej in ref }
+{: numlist.append(forceString(baldej.value('number'))) }
+{end:}
+
+{: dialogNumbers = dialogs.dialMultiList(u"Выберите направление:", numlist)}
+{: periodNumbers = dialogNumbers.getVar()}
+
+
+{:f=periodNumbers[0]}
+{: referralnumber = numlist[f]}
+
+{: ref1 = db.getRecordEx(stmt="""
+  SELECT r.MKB,
+         r.notes,
+         r.patientCondition,
+         r.rationale,
+         o.title,
+         o.fullName,
+         o1.fullName             AS 'ZI',
+         IF(r.type = 1,
+            CASE
+                WHEN r.clinicType = 1 THEN 3
+                WHEN r.clinicType = 2 THEN 2
+                END,
+            1)       as clinicType,
+         osp.name,
+         r.type,
+         r.netrica_id,
+         r.ticketNumber,
+         rbRT.name               as ref_type,
+         rbMAP.name              as med_profile_type,
+         CASE
+             WHEN r.hospitalisationType = 0 THEN 1
+             WHEN r.hospitalisationType = 1 THEN 3
+             ELSE 3 END as hospitalisationType
+  FROM Referral r
+           LEFT JOIN rbOrgStructureProfile osp ON r.orgStructure = osp.id
+           LEFT JOIN Organisation o ON r.relegateOrgTo_id = o.id
+           LEFT JOIN Organisation o1 ON r.relegateOrg_id = o1.id
+           left JOIN rbReferralType rbRT on r.type = rbRT.id
+           left JOIN rbMedicalAidProfile rbMAP on r.medprofile_id = rbMAP.id
+  WHERE r.deleted = 0
+    AND r.client_id = {cid}
+    AND r.number = '{referralnumber}'
+""".format(cid=event.client.id, referralnumber=referralnumber)) }
+
+{:
+if ref1:
+  MKB = forceString(ref1.value('MKB'))
+  notes = forceString(ref1.value('notes'))
+  rationale = forceString(ref1.value('rationale'))
+  title = forceString(ref1.value('title'))
+  fullName = forceString(ref1.value('fullName'))
+  ZI = forceString(ref1.value('ZI'))
+  name = forceString(ref1.value('name'))
+  type = forceString(ref1.value('type'))
+  netrica_id = forceString(ref1.value('netrica_id'))
+  ticketNumber = forceString(ref1.value('ticketNumber'))
+  clinicType = forceString(ref1.value('clinicType'))
+  patientCondition = forceString(ref1.value('patientCondition'))
+  med_profile_type = forceString(ref1.value('med_profile_type'))
+  ref_type = forceString(ref1.value('ref_type'))
+  hospitalisationType = forceString(ref1.value('hospitalisationType'))
+else:
+  MKB = u''
+  notes = u''
+  rationale = u''
+  title = u''
+  fullName = u''
+  ZI = u''
+  name = u''
+  type = u''
+  netrica_id = u''
+  ticketNumber = u''
+  clinicType = u''
+  patientCondition = u''
+  medprofile_id = u''
+  ref_type = u''
+  hospitalisationType = u''
+}
+
+{if: fullName}
+  {: OrgName = fullName}
+{elif: ZI}
+  {: OrgName = u''}
+{end:}
+
+
+
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 12pt;
+}
+.small {
+  font-size: 8pt;
+}
+
+.xs {
+  font-size: 8pt;
+}
+
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+
+</style>
+''')}
+
+
+{:
+def render_line(str, base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+<h2>test</h2>
+<div class="main">
+
+  <header class="header">
+    <table width="100%" cellpadding="3"  cellspacing="0">
+      <tr>
+        <td width="50%" valign="top" align="center" class="white-wrap small">
+          <div >
+            Наименование и адрес медицинской организации
+          </div>
+          <div>
+            <b>{currentOrganisation.title}</b>
+          </div>
+          <div>
+            <b>{currentOrganisation.address}</b>
+          </div>
+          <div>
+            Основной государственный регистрационный номер
+          </div>
+          <div>
+            <b>{currentOrganisation.OGRN}</b>
+          </div>
+        </td>
+        <td width="20%"></td>
+        <td width="30%" valign="top" align="center" class="small">
+          <div class="white-wrap">Медицинская документация</div>
+          <div class="white-wrap">Учетная форма № 057/у</div>
+          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
+          <div class="white-wrap">от 2 сентября 2025 г. № 519н</div>
+        </td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td WIDTH="30%" align="center" class="small">
+          Направление для оказания медицинской помощи №{ referralnumber }
+
+        </td>
+      </tr>
+    </table>
+  </header>
+
+  <br>
+
+  <div align="center" class="h1">Номер для записи на прием {netrica_id}</div>
+
+  <div align="center">
+    {if: OrgName}
+      {OrgName} <br>
+    {else:}
+      {'_' * 72} <br>
+    {end:}
+    <span class="xs">(наименование медицинской организации, куда направлен пациент)</span>
+
+  </div>
+
+  <div>
+    Дата заполнения направления:
+    {if: event}
+      «{event.setDate.toString('dd')}» {forceString(month[event.setDate.month])} {forceString(event.setDate.year)} г.
+    {else:}
+      «____» ______ 20____г.
+    {end:}
+
+  </div>
+
+    <div>
+      Полис обязательного медицинского страхования
+      серия <b>{client.policy.serial}</b>
+      № <b>{client.policy.number}</b>
+    </div>
+
+    <div>
+      дата выдачи полиса обязательного медицинского страхования:
+      {if: client.policy.begDate}
+          <b>«{forceString(client.policy.begDate.toString('dd'))}» {forceString(month[client.policy.begDate.date.month()])} {forceString(client.policy.begDate.date.year())} г.</b>
+      {else:}
+        «____» ______ 20____г.
+      {end:}
+    </div>
+
+    <div>
+      данные о страховой медицинской организации, выбранной застрахованным лицом или определенной застрахованному лицу:
+      <b>{client.compulsoryPolicy.insurer}</b>
+    </div>
+
+    <div>
+      Фамилия, имя, отчество (при наличии) пациента <b>{client.fullName}</b>
+    </div>
+
+    <div>
+      Дата рождения:
+      <b>«{forceString(client.birthDate.toString('dd'))}» {forceString(month[client.birthDate.date.month()])} {forceString(client.birthDate.date.year())} г.</b>
+      Пол: <span class="xs">муж. – 1, жен. – 2</span>  <b>{1 if client.sex == u'М' else 2}</b>
+    </div>
+
+
+
+<!-- note Регистрация по месту -->
+<section>
+{:
+def check_city(city):
+  return (city and city.socr and (city.socr.strip() == "г." or city.socr.strip() == "г"))
+}
+
+{:
+def get_district(district):
+  if district:
+    dst = district.strip()
+    if dst.endswith('р-н'):
+      return dst[:-3]
+    elif dst.endswith('р-н.'):
+      return dst[:-4]
+  return None
+}
+
+{:
+def get_region(region):
+  prefix = u''
+  postfix = u''
+  if u'г' in region.socr:
+    prefix = region.socr
+
+  if u'кра' in region.socr:
+    postfix = region.socr
+
+  return postfix + ' ' + region.name + ' ' + postfix
+}
+
+  <div>
+    Регистрация по месту жительства:
+    {if: client.regAddress.region}
+        субъект Российской Федерации
+        <b>{client.regAddress.region}</b>
+    {end:}
+  </div>
+  <div>
+    {: isToRenderAddrString = True}
+    <div>
+      {: dst = get_district(client.regAddress.district)}
+      {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+      {if: check_city(client.regAddress.parentCity)} город <b>{client.regAddress.parentCity.name}</b> {: isToRenderAddrString = False}{end:}
+      {if: client.regAddress.city}населенный пункт <b>{client.regAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    </div>
+
+    <div>
+      {if: client.regAddress.street} {client.regAddress.street.socr} <b>{client.regAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.regAddress.number} дом <b>{client.regAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.regAddress.corpus} корпус <b>{client.regAddress.corpus}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.regAddress.flat} квартира <b>{client.regAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+    </div>
+
+    <!-- note на случай, если адрес введен в виде строки, а не с использованием КЛАДР -->
+    {if: isToRenderAddrString}
+        <b>{client.regAddress}</b>
+    {end:}
+  </div>
+
+  <div>
+    Регистрация по месту пребывания:
+    {if: client.locAddress.region}
+        субъект Российской Федерации
+        <b>{client.locAddress.region}</b>
+    {end:}
+  </div>
+  <div>
+    {: isToRenderAddrString = True}
+    <div>
+      {: dst = get_district(client.locAddress.district)}
+      {if: dst} район <b>{dst}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False} {end:}
+      {if: check_city(client.locAddress.parentCity)} город <b>{client.locAddress.parentCity.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  {: isToRenderAddrString = False}{end:}
+      {if: client.locAddress.corpus} корпус <b>{client.locAddress.corpus}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.locAddress.city}населенный пункт <b>{client.locAddress.city.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+    </div>
+
+    <div>
+      {if: client.locAddress.street} {client.locAddress.street.socr} <b>{client.locAddress.street.name}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.locAddress.number} дом <b>{client.locAddress.number}</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {: isToRenderAddrString = False}{end:}
+      {if: client.locAddress.flat} квартира <b>{client.locAddress.flat}</b> {: isToRenderAddrString = False}{end:}
+    </div>
+    {if: isToRenderAddrString}
+        <b>{client.locAddress}</b>
+    {end:}
+  </div>
+</section>
+<!-- note END Регистрация по месту -->
+
+<div>
+  Местность
+  {:incity = (str(client.regAddress.KLADRCode)[8:11] == '000')}
+  {if: incity} <b>городская</b> {else:} <b>сельская</b> {end:}
+</div>
+
+
+{:
+workStatus = 'прочие'
+workStatusCodeList = [u'1', u'2', u'с05', u'5', u'6', u'7']
+
+workStatusDic = smartDict()
+workStatusDic[u'1'] = u'прочие'
+workStatusDic[u'6'] = u'пенсионер(ка)'
+workStatusDic[u'5'] = u'не работает'
+workStatusDic[u'2'] = u'студент(ка)'
+workStatusDic[u'с05'] = u'работает'
+workStatusDic[u'7'] = u'проходит военную службу или приравненную к ней службу'
+
+for stat in client.socStatuses:
+    if stat.code in workStatusCodeList:
+      if stat.code == u'2':
+        age = forceInt(forceString(client.age).split(' ', 1)[0])
+        if age > 17:
+          workStatus = workStatusDic[stat.code]
+        else:
+          workStatus = workStatusDic[u'1']
+      else:
+        workStatus = workStatusDic[stat.code]
+}
+
+
+<div>
+  Занятость: <span class="xs">работает – 1, проходит военную и приравненную к ней службу – 2; пенсионер – 3, обучающийся – 4, не работает – 5, прочее – 6</span>
+  <b>{workStatus}</b>
+</div>
+
+
+
+
+<div>
+  Код по Международной статистической классификации болезней и проблем, связанных со здоровьем:
+  <b>{MKB}</b>
+</div>
+
+<div>
+  Направляется для оказания медицинской помощи: <b>{ref_type}</b> ({med_profile_type})
+</div>
+
+{:
+hospital_form = smartDict()
+hospital_form[u'1'] = u'экстренная'
+hospital_form[u'2'] = u'неотложная'
+hospital_form[u'3'] = u'плановая'
+
+}
+
+<div>
+  форма: <span class="xs">экстренная — 1, неотложная — 2, плановая — 3;</span>
+  <b>{hospital_form[hospitalisationType]}</b>
+</div>
+
+{: kind_medicine_dialog = dialogs.dialList(u'Выберите вид помощи', [u'первичная медико-санитарная помощь, в том числе специализированная',u'специализированная, в том числе высокотехнологичная медицинская помощь',u'паллиативная медицинская помощь',u'скорая специализированная медицинская помощь'], 0) }
+{: kind_medicine = kind_medicine_dialog.getListValue()}
+
+<div>
+  вид:
+  <span class="xs">
+    первичная медико-санитарная помощь, в том числе специализированная — 1, специализированная, в том числе высокотехнологичная медицинская помощь — 2, паллиативная медицинская помощь — 3; скорая специализированная медицинская помощь - 4;
+  </span>
+  <b>{kind_medicine}</b>
+</div>
+
+{:
+clinic_type_dict = smartDict()
+clinic_type_dict[u'1'] = u'амбулаторно'
+clinic_type_dict[u'2'] = u'в дневном стационаре'
+clinic_type_dict[u'3'] = u'стационарно'
+}
+
+<div>
+  условия:
+  <span class="xs">амбулаторно — 1; в дневном стационаре — 2; стационарно — 3.</span>
+  <b>{clinic_type_dict[clinicType]}</b>
+</div>
+
+
+<div>
+  Обоснование (показания) направления с указанием числа назначаемых курсов (циклов) лечения
+  {if: rationale}
+    {rationale}
+  {else:}
+    {render_line(u'Обоснование (показания) направления с указанием числа назначаемых курсов (циклов) лечения')}
+  {end:}
+
+  {if: patientCondition}
+    {patientCondition}
+  {else:}
+    <div>{render_line(u'')}</div>
+  {end:}
+  <div>{render_line(u'')}</div>
+</div>
+
+
+  {:address = ''}
+  {:hospdate = ''}
+  {if: ticketNumber}
+      {:commissionDateStr = ticketNumber.encode()}
+      {:commissionDateStr = ' '.join(commissionDateStr.split())}
+      {:commissionDateDict = json.loads(commissionDateStr)}
+      {:hospdate = commissionDateDict.date}
+      {:address = commissionDateDict.address}
+  {end:}
+
+
+<div>
+  Должность, специальность медицинского работника, направившего пациента
+  {event.execPerson.post}
+  <div>{render_line(u'')}</div>
+</div>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="98%"></td>
+    <td align="center" width="1%">
+      <div class="white-wrap">{'_' * 20}&nbsp;</div>
+      <div class="white-wrap"><sup>(подпись)</sup>&nbsp;</div>
+    </td>
+    <td align="center" width="1%">
+      <div class="white-wrap">{event.execPerson.longName}&nbsp;</div>
+      <div class="white-wrap"><sup>Фамилия, имя, отчество (при наличии)</sup>&nbsp;</div>
+    </td>
+  </tr>
+</table>
+
+  <br>
+
+  <div> М.П. (при наличии)</div>
+
+</div>
+</body>
+</html>
