@@ -1,0 +1,111 @@
+{
+  "syntax": {
+    "variables": "Primary interpolation uses single braces (`{expression}`), with observed modified output form (`{expression:n}`); a secondary interpolation form (`{{expression}}`) is also present in a limited subset.",
+    "loops": "Loops are declared as `{for: item in collection}` (including enumerate/range forms) and closed by `{end:}`.",
+    "conditions": "Conditionals use `{if: condition}`, optional `{elif: condition}`, optional `{else:}`, and are always terminated by `{end:}`.",
+    "custom": [
+      "Python execution blocks use `{: ...}` for inline statements and multiline `{:` blocks closed by `}`.",
+      "Render/page setup calls are embedded as brace expressions (for page size, orientation, margins).",
+      "Inline output modifier suffix `:n` appears in expression placeholders."
+    ]
+  },
+  "components": [
+    {
+      "name": "DocumentShell",
+      "inputs": [
+        "Page parameters (size, orientation, margins)",
+        "Document metadata values (titles, organisation labels, dates)"
+      ],
+      "structure": "Root HTML skeleton (`<html>`, `<head>`, `<body>`) with print-oriented style blocks, document headers, and inline dynamic placeholders.",
+      "conditions": [
+        "Optional header fragments rendered only when source values exist"
+      ]
+    },
+    {
+      "name": "DataBootstrap",
+      "inputs": [
+        "Runtime context objects (event/action/client/context)",
+        "Database handles and query results",
+        "Derived temporary variables"
+      ],
+      "structure": "Early template section with embedded Python imports, assignments, query execution, and normalization of values used later in HTML.",
+      "conditions": [
+        "Query result checks before value extraction",
+        "Fallback assignments for absent data"
+      ]
+    },
+    {
+      "name": "ConditionalContentBlock",
+      "inputs": [
+        "Boolean conditions from runtime context",
+        "Primary and fallback text/value variants"
+      ],
+      "structure": "Inline and multiline branching segments embedded in HTML using `if`/`elif`/`else` to choose labels, fragments, and values.",
+      "conditions": [
+        "Business-status checks",
+        "Existence checks for optional properties",
+        "Type/value checks for alternative render branches"
+      ]
+    },
+    {
+      "name": "RepeatingTableRows",
+      "inputs": [
+        "Collection variables (lists, query-derived rows, action sets)",
+        "Per-item fields used in cells"
+      ],
+      "structure": "Table wrappers (`<table>`, `<thead>`, `<tbody>`) with row templates repeated inside `{for: ...}` blocks and cell-level placeholders.",
+      "conditions": [
+        "Optional row sections controlled by nested conditions",
+        "Empty-value fallbacks within repeated rows"
+      ]
+    },
+    {
+      "name": "CardAndSignatureBlock",
+      "inputs": [
+        "Person names, posts, dates, and contact data",
+        "Optional signature-related fields"
+      ],
+      "structure": "Bordered/card-like containers for highlighted instructions or summaries plus footer/signature rows with dynamic identity fields.",
+      "conditions": [
+        "Signature role selection when multiple sources are possible",
+        "Conditional display of optional sign-off lines"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "Card pattern",
+      "description": "Visually separated bordered container used to emphasize instruction or summary content.",
+      "usage": "Applied in informational and final sections to group key text and lists."
+    },
+    {
+      "name": "Table pattern",
+      "description": "Fixed-column tabular layout for structured medical or administrative data.",
+      "usage": "Used for registers, lists, and records with explicit widths and print-oriented formatting."
+    },
+    {
+      "name": "Repeated row pattern",
+      "description": "Collection-driven rendering of row fragments within tabular structures.",
+      "usage": "Implemented by `for` blocks generating `<tr>` sequences with per-item placeholder binding."
+    },
+    {
+      "name": "Conditional fallback pattern",
+      "description": "Branch-based selection between actual values, placeholders, and alternate wording.",
+      "usage": "Implemented through `if`/`elif`/`else` chains for optional fields and state-dependent text."
+    },
+    {
+      "name": "Bootstrap-then-render pattern",
+      "description": "Data preparation phase separated from final markup rendering phase.",
+      "usage": "Python blocks initialize and transform variables before downstream HTML consumption."
+    }
+  ],
+  "rules": {
+    "naming": "Temporary variables are predominantly snake_case; context fields use dotted access (`object.field`) and indexed property access (`object[u'Field']`).",
+    "structure": "Control blocks are explicitly closed with `{end:}`; data preparation usually precedes dependent HTML; nested conditions and loops are embedded directly in markup.",
+    "formatting": "Templates are print-centric, use explicit geometry in tables, and place dynamic placeholders close to human-readable labels.",
+    "other": [
+      "A primary single-brace directive grammar is reused across many independent templates.",
+      "Secondary `{{...}}` interpolation appears in a limited subset and coexists with the primary syntax without replacing it."
+    ]
+  }
+}

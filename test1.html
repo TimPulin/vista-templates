@@ -1,0 +1,472 @@
+<!-- изменил Пулин дата 14.04.2026 задача  -->
+<!-- изменил Пулин дата 09.04.2026 задача  -->
+<!-- изменил Пулин дата 06.04.2026 задача  -->
+<!--Начальная дата разработки 16.03.2026 г.-->
+<!--Разработка: Пулин  -->
+<!--Контекст печати:  -->
+<!--Задача: Chel-815 Печатная форма для протоколов переливания -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Протокол трансфузии</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+
+.txt-l {
+  text-align: left;
+}
+
+.tbl-trans-info td {
+  text-align: center;
+}
+
+
+.small {
+  font-size: 7pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+def get_blood_env(env_id):
+  ref = None
+  if env_id:
+    ref = db.getRecordEx(stmt=u"""
+    select cc.name as blood_env
+    from opk.catalogs_catalogitem cc
+             join opk.pharmacy_storeitem ps on cc.id = ps.catalog_item_id
+    where ps.id = {env_id};
+    """.format(env_id=env_id))
+
+  if ref:
+    return forceString(ref.value(u'blood_env'))
+  else:
+    return u''
+}
+
+
+{:
+blood_action_list = filter(lambda act: act.name == u"Определение группы крови и резус-фактора", event.actions)
+blood_act = blood_action_list[0] if len(blood_action_list) > 0 else None
+if blood_act:
+	crov = blood_act[u'Группа крови']
+	rezus = blood_act[u'Резус фактор']
+	fenotip = blood_act[u'Фенотип']
+	antitela = blood_act[u'Антитела обнаружены']
+	kell = blood_act[u'KELL']
+else:
+	crov = u''
+	rezus = u''
+	fenotip = u''
+	antitela = u''
+	kell = u''
+}
+
+{:
+parent_action_id_ref = db.getRecordEx(stmt=u"""
+	SELECT a.id
+	FROM Action a
+					 INNER JOIN ActionProperty ap ON a.id = ap.action_id AND ap.type_id = 161660 AND ap.deleted = 0
+					 INNER JOIN ActionProperty_Action apa ON ap.id = apa.id
+	WHERE apa.value = {action_id}
+	UNION
+	SELECT a.id
+	FROM Action a
+	WHERE a.event_id IS NOT NULL
+		AND a.id = {action_id};
+""".format(action_id=action.id))
+
+if parent_action_id_ref:
+	parent_action_id = forceInt(parent_action_id_ref.value(u'id'))
+else:
+	parent_action_id = None
+}
+{:
+PARENT_ACT = None
+if parent_action_id:
+	for act in event.actions:
+		if act.id == parent_action_id:
+			PARENT_ACT = act
+
+}
+<!-- @formatter:on -->
+</head>
+<body>
+{if: PARENT_ACT}
+
+	{if: PARENT_ACT[u"Запись трансфузиолога"].value}
+		<div>
+			<b>Запись трансфузиолога: </b> {PARENT_ACT[u"Запись трансфузиолога"].value} <br>
+			Врач трансфузиолог: (подпись)_________________ {PARENT_ACT.person}
+		</div>
+	{end:}
+
+	<br>
+
+{:
+orgstructure_ref = db.getRecordEx(stmt="""
+	select o.code as otd
+	from Event e
+					 join Action a on e.id = a.event_id and actionType_id = 8922 and a.deleted = 0
+					 join ActionProperty ap on a.id = ap.action_id and type_id = 151714 and ap.deleted = 0
+					 join ActionProperty_OrgStructure apo on ap.id = apo.id
+					 join OrgStructure o on apo.value = o.id
+	where e.externalId = '{eId}';
+""".format(eId=event.externalId))
+}
+
+	<div class="main">
+		<div align="center" class="h1">Протокол трансфузии</div>
+
+		<table width="100%" cellpadding="3" cellspacing="0" border="1">
+			<tr>
+				<td>Пациент <b>{event.client.fullName}</b></td>
+				<td>Дата рождения <b>{event.client.birthDate}</b></td>
+				<td>Номер и.б. <b>{event.client.id}</b></td>
+				<td>
+					Отделение
+					{if: orgstructure_ref}
+							<b>{forceString(orgstructure_ref.value(u'otd'))}</b>
+					{end:}
+				</td>
+				<td>
+					Дата трансфузии <b>{PARENT_ACT.begDate.toString(u'dd.MM.yyyy')}</b>
+				</td>
+			</tr>
+
+
+
+
+
+
+
+			<tr>
+				<td>
+					Группа крови <b>{crov}</b>
+				</td>
+				<td>
+					Фенотип <b>{fenotip}</b>
+				</td>
+				<td>
+					Антитела <b>{antitela}</b>
+				</td>
+				<td>
+					KELL <b>{kell}</b>
+				</td>
+				<td>
+					Вид трансфузии <b>{PARENT_ACT[u'Вид']}</b>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Трансфузионный анамнез <b>{event.client._transAnamnesis}</b>
+				</td>
+				<td>
+					Акушерский анамнез <b>{event.client._obsAnamnesis} </b>
+				</td>
+				<td>
+					Подтверждение определения: в лаборатории
+				</td>
+				<td>
+					Показания к переливанию <b>{PARENT_ACT[u'Показания к переливанию']}</b>
+				</td>
+				<td>
+					Способ переливания <b>{PARENT_ACT[u'Способ переливания']}</b>
+				</td>
+			</tr>
+		</table>
+		<!-- note end client info-->
+
+		<br>
+
+		<table width="100%" cellpadding="2" cellspacing="0" border="1" class="tbl-trans-info small">
+			<tr>
+				<td>
+					Используемые реактивы
+				</td>
+				<td colspan="18">
+					{PARENT_ACT[u'Реактивы']}
+				</td>
+			</tr>
+
+
+			<tr>
+				<td class="txt-l" colspan="2">Перед переливанием определены</td>
+				<td class="txt-l" colspan="10">
+					группа и резус крови реципиента
+					<b>{PARENT_ACT[u'Группа крови реципиента']}</b>
+				</td>
+				<td class="txt-l" colspan="7">
+					группа и резус крови донора
+					<b>{PARENT_ACT[u'Группа крови донора']}</b>
+				</td>
+			</tr>
+
+
+			<tr>
+				<td colspan="13" align="center">
+					данные с этикетки&nbsp;
+				</td>
+				<td colspan="2" align="center">
+					проба на индивидуальную&nbsp; <br> совместимость&nbsp;
+				</td>
+				<td rowspan="3" align="center">
+					биологическая проба&nbsp;
+				</td>
+				<td colspan="2" align="center">
+					осложнения и реакции&nbsp;
+				</td>
+				<td rowspan="3" align="center">
+					примечания&nbsp;
+				</td>
+			</tr>
+
+
+			<tr>
+				<td rowspan="2">
+					среда&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					кол-во&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					группа&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					резус&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					фенотип&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					№ этикетки&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					№ кровоотдачи&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					поставщик&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					дата&nbsp; <br>
+					заготовки&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					срок&nbsp; <br>
+					годности&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					донор&nbsp;
+				</td>
+				<td colspan="2" align="center">
+					время&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					проба на&nbsp; <br> плоскости&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					проба в&nbsp; <br> гелевой&nbsp; <br> среде&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					вид&nbsp;
+				</td>
+				<td rowspan="2" align="center">
+					степень&nbsp;
+				</td>
+			</tr>
+			<tr>
+				<td align="center">начала&nbsp;</td>
+				<td align="center">окончания&nbsp;</td>
+			</tr>
+
+			{for: idx, bloodBacket in enumerate(PARENT_ACT[u'Пакеты крови'])}
+				<tr>
+					<!-- note среда-->
+					<td>
+						{get_blood_env(bloodBacket[u'среда'].value)}&nbsp;
+					</td>
+					<!-- note кол-во-->
+					<td>{bloodBacket[u'кол-во']}&nbsp;</td>
+					<!-- note группа-->
+					<td>{bloodBacket[u'группа']}&nbsp;</td>
+					<!-- note резус-->
+					<td>{bloodBacket[u'резус']}&nbsp;</td>
+					<!-- note фенотип-->
+					<td>{bloodBacket[u'фенотип']}&nbsp;</td>
+					<!-- note № этикетки-->
+					<td>{bloodBacket[u'№ марки']}&nbsp;</td>
+					<!-- note № кровоотдачи-->
+					<td>{bloodBacket[u'№ кроводачи']}&nbsp;</td>
+					<!-- note поставщик-->
+					<td>{bloodBacket[u'поставщик']}&nbsp;</td>
+					<!-- note дата заготовки-->
+					<td>{bloodBacket[u'дата заготовки']}&nbsp;</td>
+					<!-- note срок годности-->
+					<td>{bloodBacket[u'срок годности']}&nbsp;</td>
+					<!-- note донор-->
+					<td>{bloodBacket[u'донор']}&nbsp;</td>
+
+
+					<!-- note время начала-->
+					<td>{bloodBacket[u'Время начала']}&nbsp;</td>
+					<!-- note время окончания-->
+					<td>{bloodBacket[u'Время окончания']}&nbsp;</td>
+					<!-- note проба на плоскости-->
+					<td>{bloodBacket[u'на плоскости']}&nbsp;</td>
+					<!-- note проба в тепловой среде-->
+					<td>{bloodBacket[u'В гелевой среде']}&nbsp;</td>
+
+
+					<!-- note биологическая-->
+					<td>{bloodBacket[u'Биологическая']}&nbsp;</td>
+					<!-- note вид-->
+					<td>{bloodBacket[u'Осложнения/реакция']}&nbsp;</td>
+					<!-- note степень-->
+					<td>{bloodBacket[u'Степень осложнения/реакции']}&nbsp;</td>
+					<!-- note примечания-->
+					<td>
+						{PARENT_ACT[u'Примечание']}
+					</td>
+				</tr>
+			{end:}
+
+		</table>
+	<!-- note end trans -->
+
+
+
+	{:preADS, preADD, preRR, prePLS, preTemp, firstADS, firstADD, firstRR, firstPLS, firstTemp = '', '', '', '', '', '', '', '', '', ''}
+	{:firstDiuresis, secondADD, secondADS, secondRR, secondPLS, secondTemp, secondDiuresis = '', '', '', '', '', '', ''}
+
+	{if: PARENT_ACT[u"Перед переливанием ADD"].value }{:preADD = PARENT_ACT[u"Перед переливанием ADD"].value }{end:}
+	{if: PARENT_ACT[u"Перед переливанием ADS"].value }{:preADS = PARENT_ACT[u"Перед переливанием ADS"].value }{end:}
+	{if: PARENT_ACT[u"Перед переливанием пульс"].value }{:prePLS = PARENT_ACT[u"Перед переливанием пульс"].value }{end:}
+	{if: PARENT_ACT[u"Перед переливанием ЧДД"].value }{:preRR = PARENT_ACT[u"Перед переливанием ЧДД"].value }{end:}
+	{if: PARENT_ACT[u"Температура перед переливанием"].value }{:preTemp = PARENT_ACT[u"Температура перед переливанием"].value }{end:}
+	{if: PARENT_ACT[u"Через 1 час ADS"].value }{:firstADS = PARENT_ACT[u"Через 1 час ADS"].value }{end:}
+	{if: PARENT_ACT[u"Через 1 час ADD"].value }{:firstADD = PARENT_ACT[u"Перед переливанием ADD"].value }{end:}
+	{if: PARENT_ACT[u"Через 1 час ЧДД"].value }{:firstRR = PARENT_ACT[u"Через 1 час ЧДД"].value }{end:}
+
+	{if: PARENT_ACT[u"Через 1 час Пульс"].value }{:firstPLS = PARENT_ACT[u"Через 1 час Пульс"].value }{end:}
+	{if: PARENT_ACT[u"Через 1 час Температура"].value }{:firstTemp = PARENT_ACT[u"Через 1 час Температура"].value }{end:}
+	{if: PARENT_ACT[u"Через 1 час Диурез"].value }{:firstDiuresis= PARENT_ACT[u"Через 1 час Диурез"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа ADS"].value }{:secondADS = PARENT_ACT[u"Через 2 часа ADS"].value  }{end:}
+	{if: PARENT_ACT[u"Через 2 часа ADD"].value }{:secondADD = PARENT_ACT[u"Через 2 часа ADD"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа ADD"].value }{:secondADD = PARENT_ACT[u"Через 2 часа ADD"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа ЧДД"].value }{:secondRR = PARENT_ACT[u"Через 2 часа ЧДД"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа Пульс"].value }{:secondPLS = PARENT_ACT[u"Через 2 часа Пульс"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа Температура"].value }{:secondTemp = PARENT_ACT[u"Через 2 часа Температура"].value }{end:}
+	{if: PARENT_ACT[u"Через 2 часа Диурез"].value }{:secondDiuresis = PARENT_ACT[u"Через 2 часа Диурез"].value }{end:}
+
+		<br>
+
+					<table  width="70%" border="1" cellpadding="2" cellspacing="0">
+						<tr>
+							<td align="left" width="22%"></td>
+							<td align="left" width="9%">ЧДД</td>
+							<td align="left" width="9%">ADS</td>
+							<td align="left" width="9%">ADD</td>
+							<td align="left" width="10%">Пульс</td>
+							<td align="left" width="15%">Температура</td>
+							<td align="left" width="11%">Диурез</td>
+							<td align="left" width="24%">Цвет</td>
+						</tr>
+						<tr>
+							<td align="left" width="28%">До переливания</td>
+							<td align="left" width="10%">{preADS}</td>
+							<td align="left" width="10%">{preADD}</td>
+							<td align="left" width="10%">{preRR}</td>
+							<td align="left" width="10%">{prePLS}</td>
+							<td align="left" width="10%">{preTemp}</td>
+							<td align="left" width="10%"></td>
+							<td align="left" width="10%"></td>
+						</tr>
+						<tr>
+							<td colspan="7" align="left" width="14%">После переливания</td>
+						</tr>
+						<tr>
+							<td align="left" width="28%">через 1 час</td>
+							<td align="left" width="10%">{firstRR}</td>
+							<td align="left" width="10%">{firstADS}</td>
+							<td align="left" width="10%">{firstADD}</td>
+							<td align="left" width="10%">{firstPLS}</td>
+							<td align="left" width="10%">{firstTemp}</td>
+							<td align="left" width="10%">{firstDiuresis}</td>
+							<td align="left" width="10%">{PARENT_ACT[u"Через 1 час Цвет"].value}</td>
+						</tr>
+						<tr>
+							<td align="left" width="28%">через 2 часа</td>
+							<td align="left" width="10%">{secondRR}</td>
+							<td align="left" width="10%">{secondADS}</td>
+							<td align="left" width="10%">{secondADD}</td>
+							<td align="left" width="10%">{secondPLS}</td>
+							<td align="left" width="10%">{secondTemp}</td>
+							<td align="left" width="10%">{secondDiuresis}</td>
+							<td align="left" width="10%">{PARENT_ACT[u"Через 2 часа Цвет"].value}</td>
+						</tr>
+					</table>
+	<!-- note end after_trans -->
+
+
+		<br>
+
+	<table>
+		<tr>
+			<td>Врач трансфузиолог: (подпись)</td>
+			<td>_________________</td>
+			<td><b>{PARENT_ACT.person}</b></td>
+		</tr>
+	<br>
+		<tr>
+			<td>Медицинская сестра: (подпись)</td>
+			<td>_________________</td>
+			<td><b>{PARENT_ACT.assistant}</b></td>
+		</tr>
+	</table>
+
+	</div>
+{end:}
+</body>
+</html>
