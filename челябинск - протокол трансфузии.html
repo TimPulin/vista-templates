@@ -1,3 +1,4 @@
+<!-- изменил Пулин дата 09.04.2026 задача  -->
 <!-- изменил Пулин дата 06.04.2026 задача  -->
 <!--Начальная дата разработки 16.03.2026 г.-->
 <!--Разработка: Пулин  -->
@@ -11,7 +12,7 @@
   <title>Протокол трансфузии</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
-{: setOrientation('P')}
+{: setOrientation('L')}
 {: setTopMargin(5)}
 {: setBottomMargin(5)}
 {: setRightMargin(17)}
@@ -48,7 +49,7 @@ write('''
 
 
 .small {
-  font-size: 8pt;
+  font-size: 7pt;
 }
 .bold {
   font-weight: 900;
@@ -173,7 +174,7 @@ else:
         Акушерский анамнез <b>{client._obsAnamnesis} </b>
       </td>
       <td>
-        Подтверждение определения резус-принадлежности реципиента проводилось
+        Подтверждение определения: в лаборатории
       </td>
       <td>
         Показания к переливанию <b>{action[u'Показания к переливанию']}</b>
@@ -187,7 +188,7 @@ else:
 
   <br>
 
-  <table width="100%" cellpadding="2" cellspacing="0" border="1" class="tbl-trans-info">
+  <table width="100%" cellpadding="2" cellspacing="0" border="1" class="tbl-trans-info small">
     <tr>
       <td>
         Используемые реактивы

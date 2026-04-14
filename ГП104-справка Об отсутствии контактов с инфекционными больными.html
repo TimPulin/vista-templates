@@ -1,0 +1,109 @@
+<!-- изменил Пулин дата 14.04.2026 задача  -->
+<!--Начальная дата разработки 10.04.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: epid_contact -->
+<!--Задача: GP104-1294 Подправить шаблон -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Справка Об отсутствии контактов с инфекционными больными</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 11pt;
+    font-weight: 900;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">
+    СПРАВКА № {action[u'Номер справки']} <br>
+    Об отсутствии контактов с инфекционными больными
+  </div>
+
+  <div>
+    Выдана <b>{event.client.fullName}</b> <b>{event.client.birthDate}</b>
+  </div>
+
+  <div>
+    В том, что по адресу: <b>{event.client.regAddress}</b>
+  </div>
+
+  <div>
+    За последний 21 день инфекционных заболеваний, в том числе Covid-19 не зарегистрировано
+  </div>
+  
+  <div>
+    Справка дана для предоставления <b>{action[u'Наименование целевой организации']}</b>
+  </div>
+
+  <br>
+
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td valign="top">
+        {action.endDate.toString(u'dd.MM.yyyy')}
+      </td>
+      <td align="center">
+        <div>{'_' * 20}</div>
+        <div><sup>(подпись)</sup></div>
+      </td>
+      <td align="center" valign="top">
+        <div>{action.person.fullName}, {action.person.post}</div>
+        <div><sup>(фамилия, имя, отчество (при наличии), должность)</sup></div>
+      </td>
+    </tr>
+  </table>
+
+
+
+
+</div>
+</body>
+</html>

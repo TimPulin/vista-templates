@@ -1,0 +1,199 @@
+<!--Начальная дата разработки 10.04.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: 003у-17 -->
+<!--Задача: SUP-56198 Отсутствует Лист назначения в истории болезни согласно приказа 530н -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Лист назначений</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('P')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+{: from datetime import datetime, timedelta }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.small {
+  font-size: 8pt;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+DATETIME_FORMAT = u'%Y.%m.%d'
+MIN_DATE_STR = u'1900.01.01'
+MIN_DATETIME = datetime.strptime(MIN_DATE_STR, DATETIME_FORMAT)
+}
+
+{:
+def convert_to_datetime(date_string):
+  if date_string > MIN_DATE_STR:
+    return datetime.strptime(date_string, DATETIME_FORMAT)
+  else:
+    raise ValueError(u'В ОДНОМ ИЗ ПОЛЕЙ ДЛЯ ВВОДА ДАТЫ ВВЕДЕНА НЕКОРРЕКТНАЯ ДАТА. ПРОВЕРЬТЕ ДАТЫ')
+}
+
+{:
+def get_purpose_dateline(start_date, end_date):
+  purpose_dateline = []
+  current_date = start_date
+  while current_date <= end_date:
+    purpose_dateline.append(current_date)
+    current_date = current_date + timedelta(days=1)
+
+  return purpose_dateline
+}
+
+{:
+Q_DATE_CONVERT_FORMAT = u'yyyy.MM.dd'
+date_list = []
+act_list = []
+
+for act in event.actions:
+    if act.typeId == 82590:
+      act_list.append(act)
+      if act[u'Дата Назначения'].value:
+        date_list.append(convert_to_datetime(act[u'Дата Назначения'].value.toString(Q_DATE_CONVERT_FORMAT)))
+      if act[u'Дата Отмены'].value:
+        date_list.append(convert_to_datetime(act[u'Дата Отмены'].value.toString(Q_DATE_CONVERT_FORMAT)))
+
+if len(date_list) > 0:
+  start_date = min(date_list)
+  end_date = max(date_list)
+  purpose_dateline = get_purpose_dateline(start_date, end_date)
+else:
+  purpose_dateline = []
+}
+
+<!-- @formatter:on -->
+</head>
+<body>
+
+
+<div class="main">
+  <div align="center" class="h1">ЛИСТ НАЗНАЧЕНИЙ И ИХ ВЫПОЛНЕНИЕ</div>
+
+<div>Фамилия, имя, отчество (при наличии): <b>{client.fullName}</b></div>
+    <div>Дата рождения: <b>{client.birthDate}</b>, медицинская карта № ______, палата № ______</div>
+    <div>Диагноз (основное заболевание): <b>{action[u"Диагноз (основное заболевание):"].value}</b></div>
+    <div>Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и вида аллергической реакции:
+        <b>{action[u"Аллергические реакции на лекарственные препараты, пищевая аллергия или иные виды непереносимости в анамнезе, с указанием типа и "].value}</b></div>
+
+  <br>
+
+  <table border="1" cellspacing="0" cellpadding="3">
+        <tr class="small">
+            <th rowspan="2">
+                Лекарственный препарат (наименование, лекарственная форма, дозировка, способ введения (применения), лечебное питание, режим
+            </th>
+            <th rowspan="2">
+                Дата назначения; подпись лечащего врача (врача-специалиста), сделавшего назначение
+            </th>
+            <th rowspan="2">
+                Дата отменены; подпись лечащего врача (врача-специалиста), отменившего назначение
+            </th>
+            <th colspan="{len(purpose_dateline) + 1}">
+                Отметки об исполнении назначения лекарственного препарата,
+                лечебного питания, режима, (дата и время исполнения, подпись
+                медицинского работника, ответственного за исполнение)
+                (время, дата, подпись)
+            </th>
+        </tr>
+        <tr>
+            {for: date in purpose_dateline}
+                <td>{date.strftime('%d.%m')}&nbsp;</td>
+            {end:}
+            <td>
+                Сведения о
+                реакции на
+                применение
+                (при
+                наличии)
+            </td>
+        </tr>
+
+        {for: act in act_list}
+          <tr>
+            <td>{act[u'Назначено']}</td>
+            <td>{act[u'Дата Назначения']}</td>
+            <td>{act[u'Дата Отмены']}</td>
+            {for: _ in range(len(purpose_dateline))}
+                <td>&nbsp;</td>
+            {end:}
+          </tr>
+        {end:}
+
+        <tr>
+            <td colspan="3">
+                Подпись медицинского работника, ответственного
+                за контроль исполнения назначений
+            </td>
+            {for: _ in range(len(purpose_dateline))}
+                <td>&nbsp;</td>
+            {end:}
+            <td></td>
+        </tr>
+    </table>
+    <br>
+    <table border="1" cellspacing="0" cellpadding="3">
+        <tr>
+            <td>
+                Медицинское вмешательство
+            </td>
+            <td>
+                Дата назначения
+            </td>
+            <td>
+                Подпись лечащего врача (врача-специалиста), сделавшего назначение
+            </td>
+            <td>
+                Дата и время исполнения назначения
+            </td>
+            <td>
+                Фамилия, имя, отчество (при наличии) и подпись медицинского
+                работника, ответственного за исполнение назначения
+            </td>
+        </tr>
+        {for: _ in range(3)}
+          <tr>
+            {for: _ in range(5)}
+              <td>&nbsp;</td>
+            {end:}
+          </tr>
+        {end:}
+    </table>
+
+
+</div>
+</body>
+</html>

@@ -1,61 +1,22 @@
-  <header class="header">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="25%" valign="top">
-          <div class="white-wrap xs">
-            Наименование и адрес медицинской организации
-          </div>
-          <div>
-            <b>{currentOrganisation.title}</b>
-          </div>
-          <div>
-            <b>{currentOrganisation.address}</b>
-          </div>
-          <div class="white-wrap xs">
-            Основной государственный регистрационный номер
-          </div>
-          <div>
-            <b>{currentOrganisation.OGRN}</b>
-          </div>
-        </td>
-        <td width="74%"></td>
-        <td width="1%" valign="top" class="small">
-          <div class="white-wrap">Медицинская документация</div>
-          <div class="white-wrap">Учетная форма № 072/у</div>
-          <div class="white-wrap">Утверждена приказом Министерства <br> здравоохранения Российской Федерации</div>
-          <div class="white-wrap">от 13 мая 2025 г. № 274н</div>
-        </td>
-      </tr>
-    </table>
-  </header>
+Основной диагноз	action[u'Основной диагноз'].value
+Осложнения основного заболевания	action[u'Осложнения основного заболевания']
+Внешняя причина при травмах, отравлениях	action[u'Внешняя причина при травмах, отравлениях'].value
+Сопутствующие заболевания	action[u'Сопутствующие заболевания']
+Дополнительные сведения о заболевании	action[u'Дополнительные сведения о заболевании']
+Заболевание, явившееся причиной инвалидности	action[u'Заболевание, явившееся причиной инвалидности'].value
+Лечение	action[u'Лечение'].value
+Анамнез заболевания	action[u'Анамнез заболевания']
 
-  <header class="header">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="25%" valign="top">
-          <div class="white-wrap xs">
-            Наименование и адрес медицинской организации
-          </div>
-          <div>
-            <b>{currentOrganisation.title}</b>
-          </div>
-          <div>
-            <b>{currentOrganisation.address}</b>
-          </div>
-          <div class="white-wrap xs">
-            Основной государственный регистрационный номер
-          </div>
-          <div>
-            <b>{currentOrganisation.OGRN}</b>
-          </div>
-        </td>
-      </tr>
-    </table>
-  </header>
 
-    orgName = u''
-    orgCode = u''
 
-  {currentOrganisation.shortName}
+              <td>
+                {u'Осложнения основного заболевания:' if index==0 else u''}
+                <b>{getDiagName(item[u'Диагноз'].value)}</b>
+              </td>
+              <td valign="top" class="white-wrap">код по МКБ&nbsp;</td>
+              <td valign="top"><b>{item[u'Диагноз'].value if item[u'Код заболевания'].value != u'' else u'______'}&nbsp;</b></td>
 
-  <TD align="center" COLSPAN=4><FONT SIZE>{currentOrganisation.shortName}</FONT></TD>
+01.04.2026 16:39
+01.04.2026 12:49
+02.04.2026 15:23
+01.04.2026 12:49

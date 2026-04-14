@@ -1,0 +1,163 @@
+<!--Начальная дата разработки 09.04.2026 г.-->
+<!--Разработка: Пулин -->
+<!--Контекст печати: osmotr_dn -->
+<!--Задача: DEV_TEMP-6585 Настроить шаблон печати "Лист назначений и их выполнение" для ГП №42 -->
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Лист назначений</title>
+<!-- @formatter:off -->
+{: setPageSize('A4')}
+{: setOrientation('L')}
+{: setTopMargin(5)}
+{: setBottomMargin(5)}
+{: setRightMargin(17)}
+{: setLeftMargin(17)}
+
+{: from library.Utils import forceString }
+{: from library.Utils import forceInt }
+{: from PyQt4 import QtGui }
+{: db = QtGui.qApp.db }
+
+{: month = [u'a', u'января', u'февраля', u'марта', u'апрель', u'мая', u'июня', u'июля', u'августа', u'сентября', u'октября', u'ноября', u'декабря']}
+
+{:
+write('''
+<style>
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
+.h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 12pt;
+    font-weight: 900;
+}
+.small {
+  font-size: 8pt;
+}
+.bold {
+  font-weight: 900;
+}
+.red-line {
+  text-indent: 10px;
+}
+.white-wrap {
+  white-space: nowrap;
+}
+</style>
+''')}
+
+{:
+def render_line(str=u'', base_length = 80):
+  return u'_' * (base_length - len(str))
+}
+
+{:
+moveActList = filter(lambda x: x.flatCode==u'moving', event.actions)
+moveAct = moveActList[0] if len(moveActList) > 0 else None
+
+receiveActList = filter(lambda x: x.flatCode==u'received', event.actions)
+receiveAct = receiveActList[0] if len(receiveActList) > 0 else None
+}
+<!-- @formatter:on -->
+</head>
+<body>
+
+<div class="main">
+  <div align="center" class="h1">ЛИСТ НАЗНАЧЕНИЙ И ИХ ВЫПОЛНЕНИЕ</div>
+
+  <div>
+    Фамилия, имя, отчество <b>{client.fullName}</b>
+    <span class="white-wrap">Дата рождения <b>{client.birthDate}</b></span>
+    <span class="white-wrap">№ медицинской карты <b>{client.id}</b></span>
+    <span class="white-wrap">№ палаты {'_' * 10}</span>
+    <span class="white-wrap">
+      № койки
+      {if: moveAct}
+          <b>{moveAct[u'Койка']}</b>
+      {else:}
+        {'_' * 10}
+      {end:}
+    </span>
+  </div>
+
+  <div>
+    Аллергические реакции на лекарственные препараты, пищевая аллергии или иные виды непереносимости в анамнезе,
+	  с указанием типа и вида аллергической реакции:
+    {if: receiveAct}
+        <b>{receiveAct[u'Аллергические реакции']}</b>
+    {end:}
+  </div>
+
+  <br>
+
+  <table width="100%" cellpadding="3" cellspacing="0" border="1" class="small">
+    <tr>
+      <th rowspan="2" width="15%">
+        Лекарственный препарат <br>
+        (наименование, лекарственная <br>
+        форма, дозировка, способ введения <br>
+        (применения), лечебное питание, <br>
+        режим
+      </th>
+      <th rowspan="2">
+        Дата назначения; <br>
+        подпись лечащего <br>
+        врача (врача- <br>
+        специалиста), <br>
+        сделавшего <br>
+        назначение
+      </th>
+      <th rowspan="2">
+        Дата отмены; <br>
+        подпись лечащего <br>
+        врача (врача- <br>
+        специалиста), <br>
+        отменившего <br>
+        назначение
+
+      </th>
+      <th colspan="17">
+        Отметки об исполнении назначения лекарственного препарата, лечебного питания, режима, (дата и время исполнения) подпись медицинского работника, ответственного за исполнение (время, дата, подпись)
+      </th>
+    </tr>
+    <tr>
+      {for: _ in range(16)}
+        <th>&nbsp;</th>
+      {end:}
+      <th>
+        Сведения о <br>
+        реакции на <br>
+        применение <br>
+        (при наличии)
+      </th>
+    </tr>
+
+    {for: _ in range(10)}
+      <tr>
+        {for: _ in range(20)}
+          <td>&nbsp;</td>
+        {end:}
+      </tr>
+    {end:}
+
+    <tr>
+      <td colspan="3">
+        Подпись медицинского работника, ответственного за контроль <br>
+        исполнения назначений
+      </td>
+      {for: _ in range(17)}
+        <td>&nbsp;</td>
+      {end:}
+    </tr>
+  </table>
+
+
+</div>
+</body>
+</html>

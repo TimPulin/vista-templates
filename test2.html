@@ -1,0 +1,253 @@
+<html>
+<body style=" font-family:'Times New Roman'; font-size:11pt; font-weight:400; font-style:normal;">
+{setPageSize('A4')}
+{setOrientation('P')}
+{setLeftMargin(20)} {setTopMargin(5)} {setBottomMargin(2)} {setRightMargin(10)}
+
+<body>
+
+{: from PyQt4 import QtCore,QtGui }
+{: db = QtGui.qApp.db}
+{: from library.Utils import forceString }
+
+{: ref = db.getRecordEx(stmt=u"""SELECT IF(eventType_id in (13,60),"стационар - 1","дневной стационар - 2"), IF(eventType_id in (13,60),"в стационаре"," в дневном стационаре") FROM event WHERE id='{ev_id}'""".format(ev_id=event.id))}
+
+{if: ref}
+{:tip2=forceString(ref.value(0))}
+{:tip3=forceString(ref.value(1))}
+{end:}
+
+
+{: dop_sved = db.getRecordEx(stmt=u"""SELECT CONCAT('Полис ',o.fullName,' ',c.number, '. Направление на госпитализацию выдано ГБУЗ ОД №2 ',DATE_FORMAT(r.date,'%d.%m.%Y'),' № ',r.number)
+FROM event e
+LEFT JOIN clientpolicy c ON e.clientPolicy_id = c.id
+LEFT JOIN organisation o ON c.insurer_id = o.id
+LEFT JOIN referral r ON e.id=r.event_id AND r.deleted=0 AND r.type=1
+WHERE e.id='{ev_id}' LIMIT 1""".format(ev_id=event.id))}
+
+{if: dop_sved}
+{:dop_sved1=forceString(dop_sved.value(0))}
+{end:}
+
+
+{:ksg=None}
+{:shema=None}
+{:shema_luch=None}
+
+{: ref = db.getRecordEx(stmt="""SELECT CONCAT(m.code,' ',m.name) AS ksg, CONCAT(sds.DRUGS_CODE,' ',sds.DRUGS_NAME) AS shema, CONCAT(sds1.DRUGS_CODE,' ',sds1.DRUGS_NAME) as shema_luch FROM event
+left JOIN mes.mes m ON EVENT.MES_id=m.id
+LEFT JOIN znoinfo z ON event.id = z.event_id AND z.deleted=0
+LEFT JOIN znoinfo_donecure zd ON z.id = zd.master_id
+LEFT JOIN sprav_drugs_schemes sds ON zd.deTumorDrugs=sds.ID_DRUGS
+LEFT JOIN sprav_drugs_schemes sds1 ON zd.chemyDrugs=sds1.ID_DRUGS
+WHERE EVENT.id='{ev_id}'""".format(ev_id=event.id))}
+
+{if: ref}
+{:ksg= forceString(ref.value('ksg')) }
+{:shema= forceString(ref.value('shema')) }
+{:shema_luch= forceString(ref.value('shema_luch')) }
+{end:}
+
+
+{:curaction = action}
+{:death_dop = None}
+
+{for: action in event.actions}
+{if: (action.name == u"Онколог") and (action.deleted==0)}  {:status = action} {end:}
+{if: (action.name == u"Радиолог")  and (action.deleted==0)}  {:status = action} {end:}
+{if: (action.name == u"Гематолог")  and (action.deleted==0)}  {:status = action} {end:}
+{if: (action.name == u"Поступление") and (action.deleted==0)}  {:postupl = action} {end:}
+{if: (action.name == u"Обстоятельства смерти") and (action.deleted==0)}  {:death_dop = action} {end:}
+
+{end:}
+
+
+
+{:kodishibki=0}
+
+<!--
+note по задаче DEV_TEMP-6598 Врач не может напечатать выписной эпикриз
+поменял mis_check_vipiska_epicris на mis_check_vipiska_epicris_v2
+(в первой версии один из запросов возвращал больше одной строки. поставил limit 1
+
+-->
+{: ref1 = db.getRecordEx(stmt="""SELECT mis_check_vipiska_epicris_v2('{ev_id}')""".format(ev_id=event.id))}
+     {if: ref1}
+               {if:  forceString(ref1.value(0))<>''}
+                   {:kodishibki=1}
+                   {:tekstoshibki=forceString(ref1.value(0))}
+               {end:}
+     {end:}
+
+
+<!-- проверка на то что заполнена дата выписки ошибка продублированна в  mis_check_vipiska_epicris, тут оставляю на всякий случай-->
+{if: curaction.endDate}
+{else:}
+{:kodishibki=5}
+{:tekstoshibki='Не указана дата выполнения выписного эпикриза'}
+{end:}
+
+
+{: vipiska_kd = db.getRecordEx(stmt="""SELECT mis_get_history_kd_for_vipiska('{ev_id}','{act_id}')""".format(ev_id=event.id,act_id=curaction.id))}
+          {if: vipiska_kd}
+
+                   {:vipiska_kd1=forceString(vipiska_kd.value(0))}
+
+          {end:}
+
+
+{if: kodishibki==0}
+
+<div align="center">
+<b>{if: event.result.code==u"105" or event.result.code==u"205" or event.result.code==u"206"}ПОСМЕРТНЫЙ{else:}ВЫПИСНОЙ{end:} ЭПИКРИЗ </b>
+</div>
+<br>
+
+<div>
+<b>Наименование медицинской организации, ОГРН</b> <u>ГБУЗ "ОД №2" ОГРН {currentOrganisation.OGRN} </u>
+</div>
+
+<div>
+<b>Наименование отделения:</b> {postupl[u"Направлен в отделение"].value.code}
+</div>
+
+
+
+<div>
+Номер медицинской карты <u>{if: client}{client.id}{end:}</u> <br>
+Сведения о пациенте: <br>
+<b>Фамилия, имя, отчество (при наличии):<u> {if: client}{client.lastName} {client.firstName} {client.patrName}{end:}</u></b> <br>
+ Дата рождения: <u>{if: client}{client.birthDate}{end:}</u>    Пол: <u>{if: client}{client.sex}{end:}</u> <br>
+Регистрация по месту жительства: <u>{if: client}{client.regAddress}{end:}</u><br>
+Регистрация по месту пребывания: <u>{if: client}{client.locAddress}{end:}</u><br>
+<b>Поступил:</b> в {tip2} <br>
+<b>Период нахождения {tip3}:</b> c {event.setDate} по {curaction.endDate}  <br>
+Количество дней нахождения в медицинской организации: <u>{vipiska_kd1}</u><br>
+{if: event.result.code==u"105" or event.result.code==u"205" or event.result.code==u"206"}
+<b>Дата и время наступления смерти:</b><u>{if: death_dop}{death_dop[u"дата и время смерти"].value}{end:}</u><br>
+     {else:}
+          <b>Исход госпитализации:</b> <u>{event.result}</u><br>
+          <b>Результат госпитализации:</b>  {for: x in xrange(0,len(event.diagnosises),1)}  {if: event.diagnosises[x].type==u"заключительный"} <u>{event.diagnosises[x].result}</u> {end:}{end:} <br>
+     {end:}
+<b>Форма оказания медицинской помощи:</b> <u> Плановая </u> <br>
+Дополнительные сведения о пациенте и госпитализации: {dop_sved1}
+</div>
+<div>{ksg}</div>
+<div align="left">
+<b>Состояние при поступлении:</b>{status[u"Степень тяжести состояния пациента"].value}  <br>
+<b>Жалобы:</b> {status[u"Жалобы"].value:n}. <br>
+<b>Анамнез заболевания:</b> {status[u"Ан.morbi"].value:n}. <br>
+<b>Локальный статус:</b> {status[u"Локальный статус"].value:n}.
+{if: status[u"ПГИ"].value}<br><b>ПГИ:</b> {status[u"ПГИ"].value:n}.{end:}
+</div>
+
+<div align="left">
+<b>Заключительный клинический диагноз{if: event.result.code==u"105" or event.result.code==u"205" or event.result.code==u"206"}(посмертный) {end:}:</b>
+{if: len(event.diagnosises) > 1}{event.diagnosises[1].MKB}
+{else:}
+{event.diagnosises[0].MKB}
+{end:}
+
+ {curaction[u"Диагноз заключительный клинический"].value:n}
+</div>
+{if: curaction[u"Сопутствующий диагноз"].value}
+<div align="left">
+<b>Сопутствующий диагноз:</b> {curaction[u"Сопутствующий диагноз"].value:n}
+</div>
+{end:}
+{if: curaction[u"Осложнения"].value}
+<div align="left">
+<b>Осложнения:</b> {curaction[u"Осложнения"].value:n}
+</div>
+{end:}
+
+<div align="left">
+<b>Проведенные обследования, лечение, медицинская реабилитация:</b>
+</div>
+
+{if: curaction[u"Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии"].value}
+<div align="left">
+<b>Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии:</b> {curaction[u"Осмотры врачей-специалистов, консилиумы врачей, врачебные комиссии"].value:n}
+</div>
+{end:}
+
+
+{if: (curaction[u"Результаты медицинского обследования"].value) or (curaction[u"Анализы"].value)}
+<div align="left">
+<b>Результаты медицинского обследования:</b><br>
+<b> Анализы:</b> <font  style=" font-family:'Times New Roman'; font-size:12pt;">  {curaction[u"Анализы"].value:n}</font> <br>
+{curaction[u"Результаты медицинского обследования"].value:n}
+</div>
+{end:}
+
+
+{if: curaction[u"Применения лекарственных препаратов"].value}
+<div align="left">
+<b>Применения лекарственных препаратов:</b> {curaction[u"Применения лекарственных препаратов"].value:n}
+</div>
+{end:}
+
+{if: curaction[u"Трансфузии (переливания) донорской крови и (или) ее компонентов"].value}
+<div align="left">
+<b>Трансфузии (переливания) донорской крови и (или) ее компонентов:</b> {curaction[u"Трансфузии (переливания) донорской крови и (или) ее компонентов"].value:n}
+</div>
+{end:}
+
+{if: curaction[u"Оперативные вмешательства (операции)"].value}
+<div align="left">
+<b>Оперативные вмешательства (операции):</b> {curaction[u"Оперативные вмешательства (операции)"].value:n}
+</div>
+{end:}
+
+{if: curaction[u"Медицинские вмешательства"].value}
+<div align="left">
+<b>Медицинские вмешательства:</b> {curaction[u"Медицинские вмешательства"].value:n}
+</div>
+{end:}
+
+{if: curaction[u"локальный статус при выписке"].value}
+<div align="left">
+<b>Дополнительные сведения (локальный статус при выписке):</b> {curaction[u"локальный статус при выписке"].value:n}
+</div>
+{end:}
+
+{if: event.result.code==u"105" or event.result.code==u"205" or event.result.code==u"206"}
+<div align="left">
+<b>Обстоятельства смерти:</b>{if: death_dop}{death_dop[u"Обстоятельства смерти"].value:n}{end:}
+</div>
+{else:}
+<div align="left">
+<b>Состояние при выписке, трудоспособность, листок нетрудоспособности:</b><br>
+<b>Состояние при выписке:</b> {curaction[u"Состояние при выписке"].value}<br>
+<b>Клинико-экспертный анамнез при выписке:</b> {curaction[u"Клинико-экспертный анамнез при выписке"].value}
+</div>
+<div align="left">
+<b>Рекомендации:</b> {curaction[u"Рекомендации"].value:n}<br>
+<b>Рекомендации по режиму труда:</b> {curaction[u"Рекомендации по режиму труда"].value}
+</div>
+{end:}
+
+
+<br>
+<div>
+<b>Лечащий врач, {curaction.person.post}____________________ {curaction.person.longName}</b> <br><br>
+{if: curaction[u"Зав. Отделением"].value.post}
+<b>{curaction[u"Зав. Отделением"].value.post} ____________________ {curaction[u"Зав. Отделением"].value.longName}</b><br>
+{else:}
+<b>{postupl[u"Направлен в отделение"].value.chief.post} ____________________ {postupl[u"Направлен в отделение"].value.chief.longName}</b><br>
+{end:}
+{if: curaction[u"Зам. по КЭР"].value}
+<div align="left">
+<!-- <b>Заместитель главного врача по КЭР____________________ Воронова О.А.</b>  <b>Заместитель главного врача по КЭР____________________ {curaction[u"Зам. по КЭР"].value.longName}</b> -->
+</div>
+{end:}
+
+{curaction.endDate}
+</div>
+{else:} <!-- if kodoshibki==0-->
+Код ошибки:{kodishibki}. Текст ошибки: {tekstoshibki}
+
+{end:} <!-- if kodoshibki==0-->
+
+</body>
+</html>

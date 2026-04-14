@@ -5,6 +5,25 @@
 <!--Контекст печати: RSanCur -->
 <!--Задача: DEV_TEMP-5578 Санаторно-курортная карта Взрослые -->
 
+<!--
+note недостающие пропы брать здесь
+ГП 122
+select * from ActionType where context = 'RSanCur';
+select * from ActionPropertyType where actionType_id = 4500715 and !deleted order by idx;
+
+select * from ActionType where code = 'dop_diag';
+select * from ActionPropertyType where actionType_id = 4500752;
+-->
+
+<!--
+note промт для поиска отсутствующих проп
+
+# Задача
+- сформировать список свойств action в верстке, которых нет в свойствах БД
+- сформировать список свойств БД, которых нет среди свойств action в верстке
+
+-->
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>

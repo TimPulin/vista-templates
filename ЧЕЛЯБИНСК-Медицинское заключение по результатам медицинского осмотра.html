@@ -1,13 +1,15 @@
+<!-- изменил Пулин дата 14.04.2026 задача  -->
+<!-- изменил Пулин дата 09.04.2026 задача  -->
 <!--Начальная дата разработки 08.04.2026 г.-->
 <!--Разработка: Пулин -->
-<!--Контекст печати:  -->
-<!--Задача:  -->
+<!--Контекст печати: ELMK -->
+<!--Задача: DEV_TEMP-6586 Разработка шаблона печати для СЭМД. (230) Медицинское заключение по результатам медицинского осмотра работника для предоставления в подсистему ЭЛМК (ред.1) -->
 
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>Медицинское заключение по результатам медицинского осмотра</title>
 <!-- @formatter:off -->
 {: setPageSize('A4')}
 {: setOrientation('P')}
@@ -26,15 +28,21 @@
 {:
 write('''
 <style>
+
+.main {
+    font-family: 'Times New Roman';
+    font-size: 10pt;
+}
 .h1 {
     text-align: center;
     margin-bottom: 20px;
     font-size: 12pt;
     font-weight: 900;
 }
-.main {
-    font-family: 'Times New Roman';
-    font-size: 10pt;
+.h2 {
+  font-weight: 900;
+  text-decoration: underline;
+  margin-bottom: 10px;
 }
 .small {
   font-size: 8pt;
@@ -48,6 +56,10 @@ write('''
 .white-wrap {
   white-space: nowrap;
 }
+
+.custom-tbl th {
+  background-color: #eaeaea;
+}
 </style>
 ''')}
 
@@ -59,9 +71,284 @@ def render_line(str=u'', base_length = 80):
 </head>
 <body>
 
-<div class="main">
-  <div align="center" class="h1"></div>
 
+  <header class="header">
+    <table width="100%" cellpadding="5" cellspacing="0">
+      <tr>
+        <td width="40%" valign="top">
+          <table width="100%" cellpadding="0" cellspacing="0" border="1" class="small">
+            <tr>
+              <td>
+                <div align="center" class="white-wrap">
+                  Наименование и адрес медицинской организации
+                </div>
+                <div>
+                  <b>{currentOrganisation.title}</b>
+                </div>
+                <div>
+                  Адрес места нахождения: <b>{currentOrganisation.address}</b>
+                </div>
+                <div>
+                  Контакты: <b>{currentOrganisation.phone}</b>
+                </div>
+                <div>
+                  <div>Номер и дата выдачи лицензии на осуществление медицинской деятельности:</div>
+                  <div>{'_' * 30}</div>
+                </div>
+                <div>
+                  ОГРН: <b>{currentOrganisation.OGRN}</b>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td width="60%"></td>
+      </tr>
+    </table>
+  </header>
+
+<div class="main">
+  <div align="center" class="h1">
+    Медицинское заключение по результатам медицинского осмотра работника для предоставления в <br>
+    подсистему ЭЛМК от {action.endDate.toString(u'dd.MM.yyyy')}
+  </div>
+
+  <!-- note base info-->
+  <div>
+    <div>Номер личной медицинской книжки: <b>{client.id}</b></div>
+    <div>Фамилия, имя, отчество (при наличии) работника: <b>{client.fullName}</b></div>
+    <div>Вид медицинского осмотра: <b>{action[u'Вид медицинского осмотра']}</b></div>
+
+{:
+person_info_ref = db.getRecordEx(stmt=u"""
+  select os.name as org_structure_name
+  from Person p
+           join OrgStructure os on p.orgStructure_id = os.id
+  where p.id = {person_id};
+""".format(person_id=action.person.id))
+if person_info_ref:
+  org_structure_name = forceString(person_info_ref.value(u'org_structure_name'))
+else:
+  org_structure_name = u'_' * 20
+}
+
+
+    <div>
+      Структурное подразделение (филиал), непосредственно осуществляющий медицинские осмотры:
+      <b>{org_structure_name}</b>
+      <b>{currentOrganisation.address}</b>
+    </div>
+    <div>Наименование вида работы: <b>{action[u'Наименование вида работы']}</b></div>
+
+
+    {: current_prop = action[u'Сведения о перенесенных инфекционных заболеваниях']}
+    {if: current_prop.value}
+      <div>
+        <div>
+          Сведения о перенесенных инфекционных заболеваниях:
+          {for: act in current_prop}
+            <b>{act[u'Перенесенное заболевание']} ({act[u'Год перенесенного заболевания'].value.toString(u'yyyy')})</b>;
+          {end:}
+        </div>
+      </div>
+    {end:}
+
+    <div>Заключение по результатам медицинского осмотра: <b>{action[u'Заключение по результатам медицинского осмотра']}</b></div>
+    <div>
+      Дата проведения очередного периодического медицинского осмотра:
+      <b>{action[u'Дата проведения очередного периодического медицинского осмотра']}</b>
+    </div>
+  </div> <!-- note END base info-->
+  <br>
+  
+  {: current_prop = action[u'Сведения о профилактических прививках']}
+  {if: current_prop.value}
+    <div align="center" class="h2">Сведения о профилактических прививках</div>
+    <br>
+    <table width="100%" cellpadding="4" cellspacing="0" border="1" class="custom-tbl">
+      <tr>
+        <th width="20%">Дата</th>
+        <th width="80%">Наименование</th>
+      </tr>
+      {for: act in current_prop}
+        <tr>
+          <td>
+            {act[u'Дата вакцинации']}
+          </td>
+          <td>
+            {act[u'Заболевание, против которого проведена профпрививка']}
+            {act[u'Информация о вакцинации']}
+          </td>
+        </tr>
+      {end:}
+    </table>
+    <br>
+  {end:}
+
+
+{:
+spec_name_list = [
+  [u'Терапевта', u'Терапевт'],
+  [u'Оториноларинголога', u'Оториноларинголог'],
+  [u'Дерматовенеролога', u'Дерматовенеролог'],
+  [u'Стоматолога', u'Стоматолог']
+]
+}
+
+  <div align="center" class="h2">Осмотры врачей-специалистов</div>
+  <br>
+  <table width="100%" cellpadding="4" cellspacing="0" border="1" class="custom-tbl">
+    <tr>
+      <th width="30%"><b>Врач-специалист</b></th>
+      <th width="20%"><b>Дата</b></th>
+      <th width="50%"><b>Заключение</b></th>
+    </tr>
+    {for: spec_name in spec_name_list}
+      <tr>
+        <td>
+          {action[u'Осмотр ' + spec_name[0]].value.split(u' ', -1)[-1].capitalize()}
+        </td>
+        <td>
+          {action[spec_name[1] + u': Дата осмотра']}
+        </td>
+        <td>
+          {action[spec_name[1] + u': Заключение']}
+        </td>
+      </tr>
+    {end:}
+  </table>
+
+  <br>
+{: current_prop = action[u'Данные лабораторных обследований']}
+
+  {if: current_prop.value or action[u'Дополнительные лабораторные обследования'].value}
+    <div>
+      <div align="center" class="h2">Данные лабораторных обследований</div>
+      <br>
+      <table width="100%" cellpadding="4" cellspacing="0" border="1" class="custom-tbl">
+        <tr>
+          <th width="40%"><b>Наименование</b></th>
+          <th width="20%"><b>Дата</b></th>
+          <th width="40%"><b>Заключение</b></th>
+        </tr>
+        {for: prop in current_prop}
+          <tr>
+            <td>{prop[u'Лабораторное обследование']}</td>
+            <td>{prop[u'Дата обследования']}</td>
+            <td>{prop[u'Заключение лабораторного обследования']}</td>
+          </tr>
+        {end:}
+        {: current_prop = action[u'Дополнительные лабораторные обследования']}
+        {for: prop in current_prop}
+          <tr>
+            <td>{prop[u'Дополнительное лабораторное обследование']}</td>
+            <td>{prop[u'Дата дополнительного обследования']}</td>
+            <td>{prop[u'Заключение дополнительного лабораторного обследования']}</td>
+          </tr>
+        {end:}
+      </table>
+    </div>
+    <br>
+  {end:}
+
+  {: current_prop = action[u'Данные инструментальных обследований']}
+  {if: current_prop.value}
+    <div>
+      <div align="center" class="h2">Данные инструментальных обследований</div>
+      <br>
+      <table width="100%" cellpadding="4" cellspacing="0" border="1">
+        <tr>
+          <td width="40%"><b>Наименование</b></td>
+          <td width="20%"><b>Дата</b></td>
+          <td width="40%"><b>Заключение</b></td>
+        </tr>
+        <tr>
+          <td>{current_prop[u'Вид инструментального обследования']}</td>
+          <td>{current_prop[u'Дата исследования']}</td>
+          <td>{current_prop[u'Заключение инструментального обследования']}</td>
+        </tr>
+      </table>
+    </div>
+    <br>
+  {end:}
+
+<!-- note doctor only -->
+<section>
+<!-- @formatter:off -->
+{:
+from library.Utils import forceString
+from PyQt4 import QtGui
+db = QtGui.qApp.db
+
+signRef = None
+flag_sgn = False
+
+if action.id:
+  signRef = db.getRecordEx(stmt="""
+      select i.certSerial        as certificate,
+             i.certOwner         as name,
+             i.ownerOrganisation as organisation,
+             i.notValidBefore    as beg_valid_date,
+             i.notValidAfter     as end_valid_date
+      from SignedIEMKDocument s
+               INNER JOIN IEMKSign i ON s.id = i.master_id
+      where i.signDateTime is not null
+        and i.sign_path is not null
+        and s.action_id = {actionId}
+        and s.person_id != 0
+        and s.template_id = 1808
+        and s.deleted = 0
+      limit 1;
+  """.format(actionId=action.id))
+
+if signRef:
+  flag_sgn = True
+  certificate = forceString(signRef.value('certificate'))
+  name = forceString(signRef.value('name'))
+  organisation = forceString(signRef.value('organisation'))
+  beg_valid_date = forceString(signRef.value('beg_valid_date'))
+  end_valid_date = forceString(signRef.value('end_valid_date'))
+}
+
+<!-- @formatter:on -->
+
+
+</section>
+  <div>Председатель врачебной комиссии (Фамилия и инициалы):</div>
+  <table width="100%" cellpadding="0" cellspacing="5">
+    <tr>
+      <td width="50%" valign="top">
+        <div>Врач-профпатолог {action.person.fullName}</div>
+      </td>
+      <td valign="top" align="right" width="50%">
+        {if: flag_sgn}
+            <table align="center">
+                <tr>
+                    <td>
+                      <table border="1" cellpadding="3" cellspacing="0">
+                          <tr>
+                              <td>
+                                  <table border="0" style="font-family: 'Times New Roman'; font-size: 8pt;">
+                                      <tr><td align="center">ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ</td></tr>
+                                      <tr><td>Сертификат: {certificate}</td></tr>
+                                      <tr><td>Владелец: {name}</td></tr>
+                                      {if: organisation}
+                                          <tr><td>Организация: <font style="font-size: 6pt">{organisation}</font></td></tr>
+                                      {else:}
+                                          <tr><td>Организация: {currentOrganisation.fullName}</td></tr>
+                                      {end:}
+                                      <tr><td>Действителен с {beg_valid_date} по {end_valid_date}</td></tr>
+                                  </table>
+                              </td>
+                          </tr>
+                      </table>
+                  </td>
+                </tr>
+            </table>
+        {end:}
+      </td>
+    </tr>
+  </table>
 
 </div>
 </body>
